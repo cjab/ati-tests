@@ -2,206 +2,140 @@
 #include "../common.h"
 
 void test_src_clipping(ati_device_t *dev) {
-  uint32_t dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-  uint32_t default_sc_bottom_right = ati_reg_read(dev, DEFAULT_SC_BOTTOM_RIGHT);
-  uint32_t src_sc_bottom = ati_reg_read(dev, SRC_SC_BOTTOM);
-  uint32_t src_sc_right = ati_reg_read(dev, SRC_SC_RIGHT);
-
   printf("Test SRC clipping\n");
   printf("====================================\n\n");
 
   printf("** Initializing DEFAULT_SC_BOTTOM_RIGHT to 0x0 **\n");
+  wr_default_sc_bottom_right(dev, 0x0);
   printf("** Initializing SRC_SC_BOTTOM to 0x0 **\n");
+  wr_src_sc_bottom(dev, 0x0);
   printf("** Initializing SRC_SC_RIGHT to 0x0 **\n");
-
-  ati_reg_write(dev, DEFAULT_SC_BOTTOM_RIGHT, 0x0);
-  ati_reg_write(dev, SRC_SC_BOTTOM, 0x0);
-  ati_reg_write(dev, SRC_SC_RIGHT, 0x0);
-
-  dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-  default_sc_bottom_right = ati_reg_read(dev, DEFAULT_SC_BOTTOM_RIGHT);
-  src_sc_bottom = ati_reg_read(dev, SRC_SC_BOTTOM);
-  src_sc_right = ati_reg_read(dev, SRC_SC_RIGHT);
+  wr_src_sc_right(dev, 0x0);
 
   printf("\n");
   printf("Initial State\n");
   printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", dp_gui_master_cntl);
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", default_sc_bottom_right);
-  printf("SRC_SC_BOTTOM:           0x%08x\n", src_sc_bottom);
-  printf("SRC_SC_RIGHT:            0x%08x\n", src_sc_right);
+  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
+  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
+  printf("SRC_SC_BOTTOM:           0x%08x\n", rd_src_sc_bottom(dev));
+  printf("SRC_SC_RIGHT:            0x%08x\n", rd_src_sc_right(dev));
   printf("\n");
 
   printf("** Setting DEFAULT_SC_BOTTOM_RIGHT to 0x0aaa0bbb **\n");
   printf("** Setting SRC_SC_BOTTOM to 0x111 **\n");
   printf("** Setting SRC_SC_RIGHT to 0x222 **\n");
-  ati_reg_write(dev, DEFAULT_SC_BOTTOM_RIGHT, 0x0aaa0bbb);
-  ati_reg_write(dev, SRC_SC_BOTTOM, 0x00000111);
-  ati_reg_write(dev, SRC_SC_RIGHT, 0x00000222);
-
-  dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-  default_sc_bottom_right = ati_reg_read(dev, DEFAULT_SC_BOTTOM_RIGHT);
-  src_sc_bottom = ati_reg_read(dev, SRC_SC_BOTTOM);
-  src_sc_right = ati_reg_read(dev, SRC_SC_RIGHT);
+  wr_default_sc_bottom_right(dev, 0x0aaa0bbb);
+  wr_src_sc_bottom(dev, 0x00000111);
+  wr_src_sc_right(dev, 0x00000222);
 
   printf("\n");
   printf("State After Setting\n");
   printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", dp_gui_master_cntl);
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", default_sc_bottom_right);
-  printf("SRC_SC_BOTTOM:           0x%08x\n", src_sc_bottom);
-  printf("SRC_SC_RIGHT:            0x%08x\n", src_sc_right);
+  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
+  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
+  printf("SRC_SC_BOTTOM:           0x%08x\n", rd_src_sc_bottom(dev));
+  printf("SRC_SC_RIGHT:            0x%08x\n", rd_src_sc_right(dev));
   printf("\n");
 
   printf("** Setting GMC_SRC_CLIPPING to default **\n");
-  ati_reg_write(dev, DP_GUI_MASTER_CNTL, dp_gui_master_cntl & ~0x4);
-  dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-
-  dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-  default_sc_bottom_right = ati_reg_read(dev, DEFAULT_SC_BOTTOM_RIGHT);
-  src_sc_bottom = ati_reg_read(dev, SRC_SC_BOTTOM);
-  src_sc_right = ati_reg_read(dev, SRC_SC_RIGHT);
+  wr_dp_gui_master_cntl(dev, rd_dp_gui_master_cntl(dev) & ~0x4);
 
   printf("\n");
   printf("State After Setting Default\n");
   printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", dp_gui_master_cntl);
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", default_sc_bottom_right);
-  printf("SRC_SC_BOTTOM:           0x%08x\n", src_sc_bottom);
-  printf("SRC_SC_RIGHT:            0x%08x\n", src_sc_right);
+  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
+  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
+  printf("SRC_SC_BOTTOM:           0x%08x\n", rd_src_sc_bottom(dev));
+  printf("SRC_SC_RIGHT:            0x%08x\n", rd_src_sc_right(dev));
   printf("\n");
 
   printf("** Setting GMC_SRC_CLIPPING to leave alone **\n");
-  ati_reg_write(dev, DP_GUI_MASTER_CNTL, dp_gui_master_cntl | 0x4);
-  dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-
-  dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-  default_sc_bottom_right = ati_reg_read(dev, DEFAULT_SC_BOTTOM_RIGHT);
-  src_sc_bottom = ati_reg_read(dev, SRC_SC_BOTTOM);
-  src_sc_right = ati_reg_read(dev, SRC_SC_RIGHT);
+  wr_dp_gui_master_cntl(dev, rd_dp_gui_master_cntl(dev) | 0x4);
 
   printf("\n");
   printf("State After Setting Leave Alone\n");
   printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", dp_gui_master_cntl);
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", default_sc_bottom_right);
-  printf("SRC_SC_BOTTOM:           0x%08x\n", src_sc_bottom);
-  printf("SRC_SC_RIGHT:            0x%08x\n", src_sc_right);
+  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
+  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
+  printf("SRC_SC_BOTTOM:           0x%08x\n", rd_src_sc_bottom(dev));
+  printf("SRC_SC_RIGHT:            0x%08x\n", rd_src_sc_right(dev));
   printf("\n");
 }
 
 void test_dst_clipping(ati_device_t *dev) {
-  uint32_t dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-  uint32_t default_sc_bottom_right = ati_reg_read(dev, DEFAULT_SC_BOTTOM_RIGHT);
-  uint32_t sc_bottom = ati_reg_read(dev, SC_BOTTOM);
-  uint32_t sc_right = ati_reg_read(dev, SC_RIGHT);
-  uint32_t sc_top = ati_reg_read(dev, SC_TOP);
-  uint32_t sc_left = ati_reg_read(dev, SC_LEFT);
-
   printf("Test DST clipping\n");
   printf("====================================\n\n");
 
   printf("** Initializing DEFAULT_SC_BOTTOM_RIGHT to 0x0 **\n");
+  wr_default_sc_bottom_right(dev, 0x0);
   printf("** Initializing SC_BOTTOM to 0x0 **\n");
+  wr_sc_bottom(dev, 0x0);
   printf("** Initializing SC_RIGHT to 0x0 **\n");
+  wr_sc_right(dev, 0x0);
   printf("** Initializing SC_TOP to 0x0 **\n");
+  wr_sc_top(dev, 0x0);
   printf("** Initializing SC_LEFT to 0x0 **\n");
-
-  ati_reg_write(dev, DEFAULT_SC_BOTTOM_RIGHT, 0x0);
-  ati_reg_write(dev, SC_BOTTOM, 0x0);
-  ati_reg_write(dev, SC_RIGHT, 0x0);
-  ati_reg_write(dev, SC_TOP, 0x0);
-  ati_reg_write(dev, SC_LEFT, 0x0);
-
-  dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-  default_sc_bottom_right = ati_reg_read(dev, DEFAULT_SC_BOTTOM_RIGHT);
-  sc_bottom = ati_reg_read(dev, SC_BOTTOM);
-  sc_right = ati_reg_read(dev, SC_RIGHT);
-  sc_top = ati_reg_read(dev, SC_TOP);
-  sc_left = ati_reg_read(dev, SC_LEFT);
+  wr_sc_left(dev, 0x0);
 
   printf("\n");
   printf("Initial State\n");
   printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", dp_gui_master_cntl);
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", default_sc_bottom_right);
-  printf("SC_BOTTOM:               0x%08x\n", sc_bottom);
-  printf("SC_RIGHT:                0x%08x\n", sc_right);
-  printf("SC_TOP:                  0x%08x\n", sc_top);
-  printf("SC_LEFT:                 0x%08x\n", sc_left);
+  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
+  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
+  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
+  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
+  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
+  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
   printf("\n");
 
   printf("** Setting DEFAULT_SC_BOTTOM_RIGHT to 0x0aaa0bbb **\n");
+  wr_default_sc_bottom_right(dev, 0x0aaa0bbb);
   printf("** Setting SC_BOTTOM to 0x111 **\n");
+  wr_sc_bottom(dev, 0x00000111);
   printf("** Setting SC_RIGHT to 0x222 **\n");
+  wr_sc_right(dev, 0x00000222);
   printf("** SETTING SC_TOP to 0x333 **\n");
+  wr_sc_top(dev, 0x00000333);
   printf("** SETTING SC_LEFT to 0x444 **\n");
-  ati_reg_write(dev, DEFAULT_SC_BOTTOM_RIGHT, 0x0aaa0bbb);
-  ati_reg_write(dev, SC_BOTTOM, 0x00000111);
-  ati_reg_write(dev, SC_RIGHT, 0x00000222);
-  ati_reg_write(dev, SC_TOP, 0x00000333);
-  ati_reg_write(dev, SC_LEFT, 0x00000444);
-
-  dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-  default_sc_bottom_right = ati_reg_read(dev, DEFAULT_SC_BOTTOM_RIGHT);
-  sc_bottom = ati_reg_read(dev, SC_BOTTOM);
-  sc_right = ati_reg_read(dev, SC_RIGHT);
-  sc_top = ati_reg_read(dev, SC_TOP);
-  sc_left = ati_reg_read(dev, SC_LEFT);
+  wr_sc_left(dev, 0x00000444);
 
   printf("\n");
   printf("State After Setting\n");
   printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", dp_gui_master_cntl);
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", default_sc_bottom_right);
-  printf("SC_BOTTOM:               0x%08x\n", sc_bottom);
-  printf("SC_RIGHT:                0x%08x\n", sc_right);
-  printf("SC_TOP:                  0x%08x\n", sc_top);
-  printf("SC_LEFT:                 0x%08x\n", sc_left);
+  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
+  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
+  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
+  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
+  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
+  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
   printf("\n");
 
   printf("** Setting GMC_DST_CLIPPING to default **\n");
-  ati_reg_write(dev, DP_GUI_MASTER_CNTL, dp_gui_master_cntl & ~0x8);
-  dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-
-  dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-  default_sc_bottom_right = ati_reg_read(dev, DEFAULT_SC_BOTTOM_RIGHT);
-  sc_bottom = ati_reg_read(dev, SC_BOTTOM);
-  sc_right = ati_reg_read(dev, SC_RIGHT);
-  sc_top = ati_reg_read(dev, SC_TOP);
-  sc_left = ati_reg_read(dev, SC_LEFT);
+  wr_dp_gui_master_cntl(dev, rd_dp_gui_master_cntl(dev) & ~0x8);
 
   printf("\n");
   printf("State After Setting Default\n");
   printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", dp_gui_master_cntl);
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", default_sc_bottom_right);
-  printf("SC_BOTTOM:               0x%08x\n", sc_bottom);
-  printf("SC_RIGHT:                0x%08x\n", sc_right);
-  printf("SC_TOP:                  0x%08x\n", sc_top);
-  printf("SC_LEFT:                 0x%08x\n", sc_left);
+  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
+  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
+  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
+  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
+  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
+  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
   printf("\n");
 
   printf("** Setting GMC_DST_CLIPPING to leave alone **\n");
-  ati_reg_write(dev, DP_GUI_MASTER_CNTL, dp_gui_master_cntl | 0x8);
-  dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-
-  dp_gui_master_cntl = ati_reg_read(dev, DP_GUI_MASTER_CNTL);
-  default_sc_bottom_right = ati_reg_read(dev, DEFAULT_SC_BOTTOM_RIGHT);
-  sc_bottom = ati_reg_read(dev, SC_BOTTOM);
-  sc_right = ati_reg_read(dev, SC_RIGHT);
-  sc_top = ati_reg_read(dev, SC_TOP);
-  sc_left = ati_reg_read(dev, SC_LEFT);
+  wr_dp_gui_master_cntl(dev, rd_dp_gui_master_cntl(dev) | 0x8);
 
   printf("\n");
   printf("State After Setting Leave Alone\n");
   printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", dp_gui_master_cntl);
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", default_sc_bottom_right);
-  printf("SC_BOTTOM:               0x%08x\n", sc_bottom);
-  printf("SC_RIGHT:                0x%08x\n", sc_right);
-  printf("SC_TOP:                  0x%08x\n", sc_top);
-  printf("SC_LEFT:                 0x%08x\n", sc_left);
+  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
+  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
+  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
+  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
+  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
+  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
   printf("\n");
 }
 

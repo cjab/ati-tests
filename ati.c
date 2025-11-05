@@ -130,3 +130,125 @@ void *map_bar(struct pci_dev *dev, int bar_idx) {
 
   return bar;
 }
+
+/* Register accessor functions */
+
+uint32_t rd_dp_gui_master_cntl(ati_device_t *dev) {
+  return ati_reg_read(dev, DP_GUI_MASTER_CNTL);
+}
+
+void wr_dp_gui_master_cntl(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DP_GUI_MASTER_CNTL, val);
+}
+
+void wr_src_sc_bottom_right(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, SRC_SC_BOTTOM_RIGHT, val);
+}
+
+uint32_t rd_src_sc_bottom(ati_device_t *dev) {
+  return ati_reg_read(dev, SRC_SC_BOTTOM);
+}
+
+void wr_src_sc_bottom(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, SRC_SC_BOTTOM, val);
+}
+
+uint32_t rd_src_sc_right(ati_device_t *dev) {
+  return ati_reg_read(dev, SRC_SC_RIGHT);
+}
+
+void wr_src_sc_right(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, SRC_SC_RIGHT, val);
+}
+
+uint32_t rd_default_sc_bottom_right(ati_device_t *dev) {
+  return ati_reg_read(dev, DEFAULT_SC_BOTTOM_RIGHT);
+}
+
+void wr_default_sc_bottom_right(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DEFAULT_SC_BOTTOM_RIGHT, val);
+}
+
+uint32_t rd_sc_left(ati_device_t *dev) {
+  return ati_reg_read(dev, SC_LEFT);
+}
+
+void wr_sc_left(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, SC_LEFT, val);
+}
+
+uint32_t rd_sc_top(ati_device_t *dev) {
+  return ati_reg_read(dev, SC_TOP);
+}
+
+void wr_sc_top(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, SC_TOP, val);
+}
+
+void wr_sc_bottom_right(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, SC_BOTTOM_RIGHT, val);
+}
+
+uint32_t rd_sc_right(ati_device_t *dev) {
+  return ati_reg_read(dev, SC_RIGHT);
+}
+
+void wr_sc_right(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, SC_RIGHT, val);
+}
+
+uint32_t rd_sc_bottom(ati_device_t *dev) {
+  return ati_reg_read(dev, SC_BOTTOM);
+}
+
+void wr_sc_bottom(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, SC_BOTTOM, val);
+}
+
+uint32_t rd_dst_offset(ati_device_t *dev) {
+  return ati_reg_read(dev, DST_OFFSET);
+}
+
+void wr_dst_offset(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DST_OFFSET, val);
+}
+
+uint32_t rd_dst_pitch(ati_device_t *dev) {
+  return ati_reg_read(dev, DST_PITCH);
+}
+
+void wr_dst_pitch(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DST_PITCH, val);
+}
+
+uint32_t rd_default_offset(ati_device_t *dev) {
+  return ati_reg_read(dev, DEFAULT_OFFSET);
+}
+
+void wr_default_offset(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DEFAULT_OFFSET, val);
+}
+
+uint32_t rd_default_pitch(ati_device_t *dev) {
+  return ati_reg_read(dev, DEFAULT_PITCH);
+}
+
+void wr_default_pitch(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DEFAULT_PITCH, val);
+}
+
+uint32_t rd_src_offset(ati_device_t *dev) {
+  return ati_reg_read(dev, SRC_OFFSET);
+}
+
+void wr_src_offset(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, SRC_OFFSET, val);
+}
+
+uint32_t rd_src_pitch(ati_device_t *dev) {
+  return ati_reg_read(dev, SRC_PITCH);
+}
+
+void wr_src_pitch(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, SRC_PITCH, val);
+}
