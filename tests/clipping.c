@@ -139,7 +139,70 @@ void test_dst_clipping(ati_device_t *dev) {
   printf("\n");
 }
 
+void test_reserved_scissor_bits(ati_device_t *dev) {
+  printf("** Initializing SC_BOTTOM to 0x0 **\n");
+  wr_sc_bottom(dev, 0x0);
+  printf("** Initializing SC_RIGHT to 0x0 **\n");
+  wr_sc_right(dev, 0x0);
+  printf("** Initializing SC_TOP to 0x0 **\n");
+  wr_sc_top(dev, 0x0);
+  printf("** Initializing SC_LEFT to 0x0 **\n");
+  wr_sc_left(dev, 0x0);
+
+  printf("\n");
+  printf("Initial State\n");
+  printf("------------------------------------\n");
+  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
+  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
+  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
+  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
+  printf("\n");
+
+  printf("** Setting SC_BOTTOM to 0xffffffff **\n");
+  wr_sc_bottom(dev, 0xffffffff);
+  printf("** Setting SC_TOP to 0xffffffff **\n");
+  wr_sc_top(dev, 0xffffffff);
+
+  printf("\n");
+  printf("After State\n");
+  printf("------------------------------------\n");
+  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
+  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
+  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
+  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
+  printf("\n");
+
+  printf("** Setting SC_RIGHT to 0xffffffff **\n");
+  wr_sc_right(dev, 0xffffffff);
+  printf("** Setting SC_LEFT to 0xffffffff **\n");
+  wr_sc_left(dev, 0xffffffff);
+
+  printf("\n");
+  printf("After State\n");
+  printf("------------------------------------\n");
+  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
+  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
+  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
+  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
+  printf("\n");
+
+  printf("** Setting SC_BOTTOM_RIGHT to 0xfeeefeee **\n");
+  wr_sc_bottom_right(dev, 0xfeeefeee);
+  printf("** Setting SC_TOP_LEFT to 0xfeeefeee **\n");
+  wr_sc_top_left(dev, 0xfeeefeee);
+
+  printf("\n");
+  printf("After State\n");
+  printf("------------------------------------\n");
+  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
+  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
+  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
+  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
+  printf("\n");
+}
+
 void register_clipping_tests(void) {
   register_test("SRC clipping", test_src_clipping);
   register_test("DST clipping", test_dst_clipping);
+  register_test("reserved scissor bits", test_reserved_scissor_bits);
 }

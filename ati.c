@@ -189,6 +189,10 @@ void wr_sc_bottom_right(ati_device_t *dev, uint32_t val) {
   ati_reg_write(dev, SC_BOTTOM_RIGHT, val);
 }
 
+void wr_sc_top_left(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, SC_TOP_LEFT, val);
+}
+
 uint32_t rd_sc_right(ati_device_t *dev) {
   return ati_reg_read(dev, SC_RIGHT);
 }

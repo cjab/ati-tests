@@ -30,6 +30,16 @@ void run_all_tests(ati_device_t *dev) {
   }
 }
 
+void run_test(ati_device_t *dev, char *name) {
+  for (int i = 0; i < test_count; i++) {
+    if (!strcmp(name, tests[i].name)) {
+      printf("%s", tests[i].name);
+      printf("\n======================================\n\n");
+      tests[i].func(dev);
+    }
+  }
+}
+
 extern void register_clipping_tests(void);
 extern void register_pitch_offset_cntl_tests(void);
 
@@ -38,13 +48,20 @@ void register_all_tests(void) {
   register_pitch_offset_cntl_tests();
 }
 
-int main(void) {
-  ati_device_t *ati = ati_device_init();
+int main(int argc, char **argv) {
+  ati_device_t *dev = ati_device_init();
 
   register_all_tests();
-  run_all_tests(ati);
 
-  ati_device_destroy(ati);
+  if (argc > 1) {
+    for (int i = 1; i < argc; i++) {
+      run_test(dev, argv[i]);
+    }
+  } else {
+    run_all_tests(dev);
+  }
+
+  ati_device_destroy(dev);
   return 0;
 }
 

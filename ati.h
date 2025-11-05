@@ -38,8 +38,11 @@ void wr_sc_left(ati_device_t *dev, uint32_t val);
 uint32_t rd_sc_top(ati_device_t *dev);
 void wr_sc_top(ati_device_t *dev, uint32_t val);
 
-#define SC_BOTTOM_RIGHT          0x1644
+#define SC_BOTTOM_RIGHT          0x16f0
 void wr_sc_bottom_right(ati_device_t *dev, uint32_t val);
+
+#define SC_TOP_LEFT              0x16ec
+void wr_sc_top_left(ati_device_t *dev, uint32_t val);
 
 #define SC_RIGHT                 0x1644
 uint32_t rd_sc_right(ati_device_t *dev);
