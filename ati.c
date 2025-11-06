@@ -27,6 +27,7 @@ ati_device_t *ati_device_init(void) {
   ati_device_t *ati = malloc(sizeof(ati_device_t));
   ati->pacc = pci_alloc();
   ati->pci_dev = find_device(ati->pacc, ati->name, sizeof(ati->name));
+  ati->bar[0] = map_bar(ati->pci_dev, 0);
   ati->bar[2] = map_bar(ati->pci_dev, 2);
   return ati;
 }
@@ -255,4 +256,100 @@ uint32_t rd_src_pitch(ati_device_t *dev) {
 
 void wr_src_pitch(ati_device_t *dev, uint32_t val) {
   ati_reg_write(dev, SRC_PITCH, val);
+}
+
+void wr_dst_y_x(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DST_Y_X, val);
+}
+
+void wr_dst_width_height(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DST_WIDTH_HEIGHT, val);
+}
+
+uint32_t rd_dp_datatype(ati_device_t *dev) {
+  return ati_reg_read(dev, DP_DATATYPE);
+}
+
+void wr_dp_datatype(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DP_DATATYPE, val);
+}
+
+uint32_t rd_dp_mix(ati_device_t *dev) {
+  return ati_reg_read(dev, DP_MIX);
+}
+
+void wr_dp_mix(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DP_MIX, val);
+}
+
+uint32_t rd_dp_write_msk(ati_device_t *dev) {
+  return ati_reg_read(dev, DP_WRITE_MSK);
+}
+
+void wr_dp_write_msk(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DP_WRITE_MSK, val);
+}
+
+uint32_t rd_dp_src_frgd_clr(ati_device_t *dev) {
+  return ati_reg_read(dev, DP_SRC_FRGD_CLR);
+}
+
+void wr_dp_src_frgd_clr(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DP_SRC_FRGD_CLR, val);
+}
+
+uint32_t rd_dp_src_bkgd_clr(ati_device_t *dev) {
+  return ati_reg_read(dev, DP_SRC_BKGD_CLR);
+}
+
+void wr_dp_src_bkgd_clr(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DP_SRC_BKGD_CLR, val);
+}
+
+uint32_t rd_gui_stat(ati_device_t *dev) {
+  return ati_reg_read(dev, GUI_STAT);
+}
+
+void wr_host_data0(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, HOST_DATA0, val);
+}
+
+void wr_host_data1(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, HOST_DATA1, val);
+}
+
+void wr_host_data2(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, HOST_DATA2, val);
+}
+
+void wr_host_data3(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, HOST_DATA3, val);
+}
+
+void wr_host_data4(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, HOST_DATA4, val);
+}
+
+void wr_host_data5(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, HOST_DATA5, val);
+}
+
+void wr_host_data6(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, HOST_DATA6, val);
+}
+
+void wr_host_data7(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, HOST_DATA7, val);
+}
+
+void wr_host_data_last(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, HOST_DATA_LAST, val);
+}
+
+uint32_t rd_dp_cntl(ati_device_t *dev, uint32_t val) {
+  return ati_reg_read(dev, DP_CNTL);
+}
+
+void wr_dp_cntl(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DP_CNTL, val);
 }
