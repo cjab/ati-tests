@@ -2,6 +2,8 @@
 #define ATI_H
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <stdbool.h>
 
 typedef struct ati_device ati_device_t;
 
@@ -10,6 +12,17 @@ void ati_device_destroy(ati_device_t *dev);
 
 uint32_t ati_reg_read(ati_device_t *dev, uint32_t offset);
 void ati_reg_write(ati_device_t *dev, uint32_t offset, uint32_t value);
+uint32_t ati_vram_read(ati_device_t *dev, uint32_t offset);
+void ati_vram_write(ati_device_t *dev, uint32_t offset, uint32_t value);
+#define VRAM_NOT_FOUND UINT64_MAX
+uint64_t ati_vram_search(ati_device_t *dev, uint32_t needle);
+void ati_vram_clear(ati_device_t *dev);
+void ati_screen_clear(ati_device_t *dev);
+void ati_vram_dump(ati_device_t *dev, const char *filename);
+void ati_screen_dump(ati_device_t *dev, const char *filename);
+void ati_vram_memcpy(ati_device_t *dev, uint32_t dst_offset,
+                     const void *src, size_t size);
+bool ati_screen_compare_file(ati_device_t *dev, const char *filename);
 
 #define DP_GUI_MASTER_CNTL       0x146c
 uint32_t rd_dp_gui_master_cntl(ati_device_t *dev);
@@ -76,6 +89,9 @@ void wr_src_offset(ati_device_t *dev, uint32_t val);
 uint32_t rd_src_pitch(ati_device_t *dev);
 void wr_src_pitch(ati_device_t *dev, uint32_t val);
 
+#define DST_X_Y                  0x1594
+void wr_dst_x_y(ati_device_t *dev, uint32_t val);
+
 #define DST_Y_X                  0x1438
 void wr_dst_y_x(ati_device_t *dev, uint32_t val);
 
@@ -110,11 +126,11 @@ void wr_dp_mix(ati_device_t *dev, uint32_t val);
 uint32_t rd_dp_write_msk(ati_device_t *dev);
 void wr_dp_write_msk(ati_device_t *dev, uint32_t val);
 
-#define DP_SRC_FRGD_CLR          0x1600
+#define DP_SRC_FRGD_CLR          0x15d8
 uint32_t rd_dp_src_frgd_clr(ati_device_t *dev);
 void wr_dp_src_frgd_clr(ati_device_t *dev, uint32_t val);
 
-#define DP_SRC_BKGD_CLR          0x1604
+#define DP_SRC_BKGD_CLR          0x15dc
 uint32_t rd_dp_src_bkgd_clr(ati_device_t *dev);
 void wr_dp_src_bkgd_clr(ati_device_t *dev, uint32_t val);
 
@@ -122,7 +138,7 @@ void wr_dp_src_bkgd_clr(ati_device_t *dev, uint32_t val);
 uint32_t rd_gui_stat(ati_device_t *dev);
 
 #define DP_CNTL                  0x16c0
-uint32_t rd_dp_cntl(ati_device_t *dev, uint32_t val);
+uint32_t rd_dp_cntl(ati_device_t *dev);
 void wr_dp_cntl(ati_device_t *dev, uint32_t val);
 
 #define HOST_DATA0               0x17c0

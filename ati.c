@@ -1,15 +1,13 @@
 #include <pci/pci.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 
 #include "ati.h"
 #include "common.h"
 
-#define ATI_VENDOR_ID            0x1002
-#define MAX_ATI_DEVICES          10
-#define NUM_BARS 8
+#define ATI_VENDOR_ID     0x1002
+#define MAX_ATI_DEVICES       10
+#define NUM_BARS               8
 
 struct ati_device {
   struct pci_access *pacc;
@@ -57,6 +55,134 @@ uint32_t ati_reg_read(ati_device_t *dev, uint32_t offset) {
 
 void ati_reg_write(ati_device_t *dev, uint32_t offset, uint32_t value) {
   reg_write(dev->bar[2], offset, value);
+}
+
+uint32_t ati_vram_read(ati_device_t *dev, uint32_t offset) {
+  return reg_read(dev->bar[0], offset);
+}
+
+void ati_vram_write(ati_device_t *dev, uint32_t offset, uint32_t value) {
+  reg_write(dev->bar[0], offset, value);
+}
+
+uint64_t ati_vram_search(ati_device_t *dev, uint32_t needle) {
+  volatile uint32_t *vram = (volatile uint32_t *)dev->bar[0];
+  size_t vram_size = dev->pci_dev->size[0];
+  size_t dwords = vram_size / 4;
+
+  for (size_t i = 0; i < dwords; i++) {
+    if (vram[i] == needle) {
+      return (uint64_t)i * 4;
+    }
+  }
+
+  return VRAM_NOT_FOUND;
+}
+
+void ati_vram_memcpy(ati_device_t *dev, uint32_t dst_offset,
+                         const void *src, size_t size) {
+  size_t vram_size = dev->pci_dev->size[0];
+  if (size > vram_size) {
+    printf("Copying data larger than BAR0\n");
+  }
+
+  memcpy(dev->bar[0], src, size);
+}
+
+bool ati_screen_compare_file(ati_device_t *dev, const char *filename) {
+      FILE *f = fopen(filename, "rb");
+    if (!f) {
+        fprintf(stderr, "Failed to open fixture %s: %s\n",
+                filename, strerror(errno));
+        return false;
+    }
+
+    // FIXME: Do better
+    // Get file size
+    fseek(f, 0, SEEK_END);
+    size_t file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    size_t screen_size = 640 * 480 * 4;
+    if (file_size != screen_size) {
+        fprintf(stderr, "Reference file size mismatch: expected %zu, got %zu\n",
+                screen_size, file_size);
+        fclose(f);
+        return false;
+    }
+
+    uint8_t *fixture = malloc(screen_size);
+    if (!fixture) {
+        fprintf(stderr, "Failed to allocate memory for fixture\n");
+        fclose(f);
+        return false;
+    }
+    size_t read = fread(fixture, 1, screen_size, f);
+    fclose(f);
+    if (read != screen_size) {
+        fprintf(stderr, "Failed to read complete fixture file\n");
+        free(fixture);
+        return false;
+    }
+
+    // Compare with current framebuffer
+    volatile uint8_t *vram = (volatile uint8_t *)dev->bar[0];
+    bool match = true;
+    int first_mismatch = -1;
+    int mismatch_count = 0;
+    for (size_t i = 0; i < screen_size; i++) {
+        if (vram[i] != fixture[i]) {
+            if (first_mismatch == -1) {
+                first_mismatch = i;
+            }
+            mismatch_count++;
+        }
+    }
+    if (!match || mismatch_count > 0) {
+        match = false;
+        printf("MISMATCH: %d bytes differ\n", mismatch_count);
+        if (first_mismatch >= 0) {
+            printf("First mismatch at byte offset 0x%x:\n", first_mismatch);
+            printf("  Expected: 0x%02x\n", fixture[first_mismatch]);
+            printf("  Got:      0x%02x\n", vram[first_mismatch]);
+
+            int pixel_offset = first_mismatch / 4;
+            int y = pixel_offset / 640;
+            int x = pixel_offset % 640;
+            printf("  Pixel at (%d, %d)\n", x, y);
+        }
+    }
+    free(fixture);
+    return match;
+}
+
+void ati_screen_clear(ati_device_t *dev) {
+  size_t screen_size = 640 * 480 * 4;
+  memset(dev->bar[0], NULL, screen_size);
+}
+
+void ati_vram_clear(ati_device_t *dev) {
+  size_t vram_size = dev->pci_dev->size[0];
+  memset(dev->bar[0], NULL, vram_size);
+}
+
+void ati_screen_dump(ati_device_t *dev, const char *filename) {
+  volatile uint32_t *vram = (volatile uint32_t *)dev->bar[0];
+  size_t screen_size = 640 * 480 * 4;
+
+  FILE *f = fopen(filename, "wb");
+  if (!f) {
+    fprintf(stderr, "Failed to open %s for writing: %s\n",
+            filename, strerror(errno));
+  }
+
+  size_t written = fwrite((void *)vram, 1, screen_size, f);
+
+  if (written != screen_size) {
+    fprintf(stderr, "Warning: only wrote %zu of %zu bytes\n",
+            written, screen_size);
+  }
+  fclose(f);
+  printf("Dumped %zu bytes of screen to %s\n", written, filename);
 }
 
 struct pci_dev *find_device(struct pci_access *pacc, char *name_out,
@@ -258,12 +384,48 @@ void wr_src_pitch(ati_device_t *dev, uint32_t val) {
   ati_reg_write(dev, SRC_PITCH, val);
 }
 
+void wr_dst_x_y(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DST_X_Y, val);
+}
+
 void wr_dst_y_x(ati_device_t *dev, uint32_t val) {
   ati_reg_write(dev, DST_Y_X, val);
 }
 
+uint32_t rd_dst_x(ati_device_t *dev) {
+  ati_reg_read(dev, DST_X);
+}
+
+void wr_dst_x(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DST_X, val);
+}
+
+uint32_t rd_dst_y(ati_device_t *dev) {
+  ati_reg_read(dev, DST_Y);
+}
+
+void wr_dst_y(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DST_Y, val);
+}
+
 void wr_dst_width_height(ati_device_t *dev, uint32_t val) {
   ati_reg_write(dev, DST_WIDTH_HEIGHT, val);
+}
+
+uint32_t rd_dst_width(ati_device_t *dev) {
+  ati_reg_read(dev, DST_WIDTH);
+}
+
+void wr_dst_width(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DST_WIDTH, val);
+}
+
+uint32_t rd_dst_height(ati_device_t *dev) {
+  ati_reg_read(dev, DST_HEIGHT);
+}
+
+void wr_dst_height(ati_device_t *dev, uint32_t val) {
+  ati_reg_write(dev, DST_HEIGHT, val);
 }
 
 uint32_t rd_dp_datatype(ati_device_t *dev) {
@@ -346,7 +508,7 @@ void wr_host_data_last(ati_device_t *dev, uint32_t val) {
   ati_reg_write(dev, HOST_DATA_LAST, val);
 }
 
-uint32_t rd_dp_cntl(ati_device_t *dev, uint32_t val) {
+uint32_t rd_dp_cntl(ati_device_t *dev) {
   return ati_reg_read(dev, DP_CNTL);
 }
 

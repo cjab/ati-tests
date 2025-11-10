@@ -42,10 +42,12 @@ void run_test(ati_device_t *dev, char *name) {
 
 extern void register_clipping_tests(void);
 extern void register_pitch_offset_cntl_tests(void);
+extern void register_host_data_tests(void);
 
 void register_all_tests(void) {
   register_clipping_tests();
   register_pitch_offset_cntl_tests();
+  register_host_data_tests();
 }
 
 int main(int argc, char **argv) {
