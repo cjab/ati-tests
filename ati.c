@@ -216,7 +216,7 @@ struct pci_dev *find_device(struct pci_access *pacc, char *name_out,
                   PCI_LOOKUP_VENDOR | PCI_LOOKUP_DEVICE, dev->vendor_id,
                   dev->device_id);
 
-  printf("# %s\n\n", name_out);
+  printf("\n# %s\n\n", name_out);
 
   return dev;
 }

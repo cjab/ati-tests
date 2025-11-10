@@ -1,7 +1,7 @@
 #include "../ati.h"
 #include "../common.h"
 
-void test_src_clipping(ati_device_t *dev) {
+bool test_src_clipping(ati_device_t *dev) {
   printf("Test SRC clipping\n");
   printf("====================================\n\n");
 
@@ -60,9 +60,11 @@ void test_src_clipping(ati_device_t *dev) {
   printf("SRC_SC_BOTTOM:           0x%08x\n", rd_src_sc_bottom(dev));
   printf("SRC_SC_RIGHT:            0x%08x\n", rd_src_sc_right(dev));
   printf("\n");
+
+  return true;
 }
 
-void test_dst_clipping(ati_device_t *dev) {
+bool test_dst_clipping(ati_device_t *dev) {
   printf("Test DST clipping\n");
   printf("====================================\n\n");
 
@@ -137,9 +139,11 @@ void test_dst_clipping(ati_device_t *dev) {
   printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
   printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
   printf("\n");
+
+  return true;
 }
 
-void test_reserved_scissor_bits(ati_device_t *dev) {
+bool test_reserved_scissor_bits(ati_device_t *dev) {
   printf("** Initializing SC_BOTTOM to 0x0 **\n");
   wr_sc_bottom(dev, 0x0);
   printf("** Initializing SC_RIGHT to 0x0 **\n");
@@ -199,6 +203,8 @@ void test_reserved_scissor_bits(ati_device_t *dev) {
   printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
   printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
   printf("\n");
+
+  return true;
 }
 
 void register_clipping_tests(void) {

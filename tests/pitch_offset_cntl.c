@@ -1,7 +1,7 @@
 #include "../common.h"
 #include "../ati.h"
 
-void test_src_pitch_offset_cntl(ati_device_t *dev) {
+bool test_src_pitch_offset_cntl(ati_device_t *dev) {
   printf("Test SRC pitch and offset\n");
   printf("====================================\n\n");
 
@@ -68,9 +68,11 @@ void test_src_pitch_offset_cntl(ati_device_t *dev) {
   printf("SRC_OFFSET:              0x%08x\n", rd_src_offset(dev));
   printf("SRC_PITCH:               0x%08x\n", rd_src_pitch(dev));
   printf("\n");
+
+  return true;
 }
 
-void test_dst_pitch_offset_cntl(ati_device_t *dev) {
+bool test_dst_pitch_offset_cntl(ati_device_t *dev) {
   printf("Test DST pitch and offset\n");
   printf("====================================\n\n");
 
@@ -138,6 +140,8 @@ void test_dst_pitch_offset_cntl(ati_device_t *dev) {
   printf("DST_OFFSET:              0x%08x\n", rd_dst_offset(dev));
   printf("DST_PITCH:               0x%08x\n", rd_dst_pitch(dev));
   printf("\n");
+
+  return true;
 }
 
 void register_pitch_offset_cntl_tests(void) {

@@ -71,21 +71,18 @@ void print_state(ati_device_t *dev) {
   printf("└──────────────────────────────────────┘\n\n");
 }
 
-void test_wip(ati_device_t *dev) {
+bool test_host_data_32x32(ati_device_t *dev) {
   uint32_t red = 0x00ff0000;
   uint32_t green = 0x0000ff00;
 
   //printf("Clear VRAM\n");
   //ati_vram_clear(dev);
-  printf("Clear Screen\n");
   ati_screen_clear(dev);
 
-  print_state(dev);
+  //print_state(dev);
 
   wr_dp_src_frgd_clr(dev, red);
   wr_dp_src_bkgd_clr(dev, green);
-
-  printf("** Setting up blit operation **\n");
 
   wr_default_pitch(dev, 0x50);
   wr_default_sc_bottom_right(dev, 0x1fff1fff);
@@ -173,23 +170,22 @@ void test_wip(ati_device_t *dev) {
   //wr_host_data6(dev, 0x77777777);
   //wr_host_data_last(dev, 0x88888888);
 
-  print_state(dev);
+  //print_state(dev);
 
-  printf("** Waiting a moment... **\n");
-  usleep(10000); /* 10ms */
+  //printf("** Waiting a moment... **\n");
+  //usleep(10000); /* 10ms */
 
   //printf("\nDumping VRAM Contents:\n");
   //printf("----------------------------------------\n");
   //ati_vram_dump(dev, "vram.dmp");
-  printf("\nDumping Screen Contents:\n");
-  printf("----------------------------------------\n");
-  ati_screen_dump(dev, "vram.dmp");
+  //printf("\nDumping Screen Contents:\n");
+  //printf("----------------------------------------\n");
+  //ati_screen_dump(dev, "vram.dmp");
 
-  if(ati_screen_compare_file(dev, "fixtures/640x480_bgra/host_data_mono_32x32.bin")) {
-    printf("Test pass");
-  } else {
-    printf("Test FAIL");
-  }
+  return ati_screen_compare_file(
+    dev,
+    "fixtures/640x480_bgra/host_data_mono_32x32.bin"
+  );
 }
 
 //void test_partial_write_new_operation(ati_device_t *dev) {
@@ -372,7 +368,7 @@ void test_wip(ati_device_t *dev) {
 //}
 
 void register_host_data_tests(void) {
-  register_test("wip", test_wip);
+  register_test("host_data 32x32", test_host_data_32x32);
   //register_test("HOST_DATA simple visibility", test_host_data_simple_visibility);
   //register_test("HOST_DATA partial write", test_partial_write_new_operation);
   //register_test("HOST_DATA incremental", test_incremental_visibility);
