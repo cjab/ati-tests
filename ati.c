@@ -90,69 +90,85 @@ void ati_vram_memcpy(ati_device_t *dev, uint32_t dst_offset,
 }
 
 bool ati_screen_compare_file(ati_device_t *dev, const char *filename) {
-      FILE *f = fopen(filename, "rb");
-    if (!f) {
-        fprintf(stderr, "Failed to open fixture %s: %s\n",
-                filename, strerror(errno));
-        return false;
-    }
+start: {
+  FILE *f = fopen(filename, "rb");
+  if (!f) {
+    if (errno == ENOENT) {
+      printf("Fixture does not yet exist. Create it now? (Y/n) ");
+      fflush(stdout);
 
-    // FIXME: Do better
-    // Get file size
-    fseek(f, 0, SEEK_END);
-    size_t file_size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    size_t screen_size = 640 * 480 * 4;
-    if (file_size != screen_size) {
-        fprintf(stderr, "Reference file size mismatch: expected %zu, got %zu\n",
-                screen_size, file_size);
-        fclose(f);
-        return false;
+      char response[10];
+      if (fgets(response, sizeof(response), stdin)) {
+          if (response[0] == 'Y' || response[0] == 'y' || response[0] == '\n') {
+            ati_screen_dump(dev, filename);
+            goto start;
+          } else {
+            return false;
+          }
+      }
     }
+    fprintf(stderr, "Failed to open fixture %s: %s\n",
+            filename, strerror(errno));
+    return false;
+  }
 
-    uint8_t *fixture = malloc(screen_size);
-    if (!fixture) {
-        fprintf(stderr, "Failed to allocate memory for fixture\n");
-        fclose(f);
-        return false;
-    }
-    size_t read = fread(fixture, 1, screen_size, f);
-    fclose(f);
-    if (read != screen_size) {
-        fprintf(stderr, "Failed to read complete fixture file\n");
-        free(fixture);
-        return false;
-    }
+  // FIXME: Do better
+  // Get file size
+  fseek(f, 0, SEEK_END);
+  size_t file_size = ftell(f);
+  fseek(f, 0, SEEK_SET);
+  size_t screen_size = 640 * 480 * 4;
+  if (file_size != screen_size) {
+      fprintf(stderr, "Reference file size mismatch: expected %zu, got %zu\n",
+              screen_size, file_size);
+      fclose(f);
+      return false;
+  }
 
-    // Compare with current framebuffer
-    volatile uint8_t *vram = (volatile uint8_t *)dev->bar[0];
-    bool match = true;
-    int first_mismatch = -1;
-    int mismatch_count = 0;
-    for (size_t i = 0; i < screen_size; i++) {
-        if (vram[i] != fixture[i]) {
-            if (first_mismatch == -1) {
-                first_mismatch = i;
-            }
-            mismatch_count++;
-        }
-    }
-    if (!match || mismatch_count > 0) {
-        match = false;
-        printf("MISMATCH: %d bytes differ\n", mismatch_count);
-        if (first_mismatch >= 0) {
-            printf("First mismatch at byte offset 0x%x:\n", first_mismatch);
-            printf("  Expected: 0x%02x\n", fixture[first_mismatch]);
-            printf("  Got:      0x%02x\n", vram[first_mismatch]);
+  uint8_t *fixture = malloc(screen_size);
+  if (!fixture) {
+      fprintf(stderr, "Failed to allocate memory for fixture\n");
+      fclose(f);
+      return false;
+  }
+  size_t read = fread(fixture, 1, screen_size, f);
+  fclose(f);
+  if (read != screen_size) {
+      fprintf(stderr, "Failed to read complete fixture file\n");
+      free(fixture);
+      return false;
+  }
 
-            int pixel_offset = first_mismatch / 4;
-            int y = pixel_offset / 640;
-            int x = pixel_offset % 640;
-            printf("  Pixel at (%d, %d)\n", x, y);
-        }
-    }
-    free(fixture);
-    return match;
+  // Compare with current framebuffer
+  volatile uint8_t *vram = (volatile uint8_t *)dev->bar[0];
+  bool match = true;
+  int first_mismatch = -1;
+  int mismatch_count = 0;
+  for (size_t i = 0; i < screen_size; i++) {
+      if (vram[i] != fixture[i]) {
+          if (first_mismatch == -1) {
+              first_mismatch = i;
+          }
+          mismatch_count++;
+      }
+  }
+  if (!match || mismatch_count > 0) {
+      match = false;
+      printf("MISMATCH: %d bytes differ\n", mismatch_count);
+      if (first_mismatch >= 0) {
+          printf("First mismatch at byte offset 0x%x:\n", first_mismatch);
+          printf("  Expected: 0x%02x\n", fixture[first_mismatch]);
+          printf("  Got:      0x%02x\n", vram[first_mismatch]);
+
+          int pixel_offset = first_mismatch / 4;
+          int y = pixel_offset / 640;
+          int x = pixel_offset % 640;
+          printf("  Pixel at (%d, %d)\n", x, y);
+      }
+  }
+  free(fixture);
+  return match;
+  }
 }
 
 void ati_screen_clear(ati_device_t *dev) {
@@ -163,6 +179,26 @@ void ati_screen_clear(ati_device_t *dev) {
 void ati_vram_clear(ati_device_t *dev) {
   size_t vram_size = dev->pci_dev->size[0];
   memset(dev->bar[0], NULL, vram_size);
+}
+
+void ati_vram_dump(ati_device_t *dev, const char *filename) {
+  volatile uint32_t *vram = (volatile uint32_t *)dev->bar[0];
+  size_t vram_size = dev->pci_dev->size[0];
+
+  FILE *f = fopen(filename, "wb");
+  if (!f) {
+    fprintf(stderr, "Failed to open %s for writing: %s\n",
+            filename, strerror(errno));
+  }
+
+  size_t written = fwrite((void *)vram, 1, vram_size, f);
+
+  if (written != vram_size) {
+    fprintf(stderr, "Warning: only wrote %zu of %zu bytes\n",
+            written, vram_size);
+  }
+  fclose(f);
+  printf("Dumped %zu bytes of VRAM to %s\n", written, filename);
 }
 
 void ati_screen_dump(ati_device_t *dev, const char *filename) {

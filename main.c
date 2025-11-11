@@ -29,7 +29,6 @@ void run_test(ati_device_t *dev, const test_case_t *test) {
     printf(GREEN "ok" RESET "\n");
   } else {
     printf(RED "FAILED" RESET "\n");
-    ati_screen_dump(dev, "failed-vram.bin");
   };
 }
 
