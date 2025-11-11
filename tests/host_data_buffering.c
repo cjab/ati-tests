@@ -95,76 +95,76 @@ bool test_host_data_32x32(ati_device_t *dev) {
   wr_host_data1(dev, 0x00000000);
   wr_host_data2(dev, 0x00000000);
   wr_host_data3(dev, 0x00000000);
-  pass = ati_screen_compare_file(
+  ASSERT_TRUE(ati_screen_compare_file(
     dev,
     "fixtures/640x480_bgra/host_data_mono_32x32_partial_1.bin"
-  );
-  if (!pass) return false;
+  ));
 
   wr_host_data4(dev, 0x0ffffff0);
   wr_host_data5(dev, 0x0ffffff0);
   wr_host_data6(dev, 0x0ffffff0);
   wr_host_data7(dev, 0x0ffffff0);
-  pass = ati_screen_compare_file(
+  ASSERT_TRUE(ati_screen_compare_file(
     dev,
     "fixtures/640x480_bgra/host_data_mono_32x32_partial_2.bin"
-  );
-  if (!pass) return false;
+  ));
+
   wr_host_data0(dev, 0x0ffffff0);
   wr_host_data1(dev, 0x0ffffff0);
   wr_host_data2(dev, 0x0ffffff0);
   wr_host_data3(dev, 0x0ffffff0);
-  pass = ati_screen_compare_file(
+  ASSERT_TRUE(ati_screen_compare_file(
     dev,
     "fixtures/640x480_bgra/host_data_mono_32x32_partial_3.bin"
-  );
-  if (!pass) return false;
+  ));
+
   wr_host_data4(dev, 0x0ffffff0);
   wr_host_data5(dev, 0x0ffffff0);
   wr_host_data6(dev, 0x0ffffff0);
   wr_host_data7(dev, 0x0ffffff0);
-  pass = ati_screen_compare_file(
+  ASSERT_TRUE(ati_screen_compare_file(
     dev,
     "fixtures/640x480_bgra/host_data_mono_32x32_partial_4.bin"
-  );
-  if (!pass) return false;
+  ));
+
   wr_host_data0(dev, 0x0ffffff0);
   wr_host_data1(dev, 0x0ffffff0);
   wr_host_data2(dev, 0x0ffffff0);
   wr_host_data3(dev, 0x0ffffff0);
-  pass = ati_screen_compare_file(
+  ASSERT_TRUE(ati_screen_compare_file(
     dev,
     "fixtures/640x480_bgra/host_data_mono_32x32_partial_5.bin"
-  );
-  if (!pass) return false;
+  ));
+
   wr_host_data4(dev, 0x0ffffff0);
   wr_host_data5(dev, 0x0ffffff0);
   wr_host_data6(dev, 0x0ffffff0);
   wr_host_data7(dev, 0x0ffffff0);
-  pass = ati_screen_compare_file(
+  ASSERT_TRUE(ati_screen_compare_file(
     dev,
     "fixtures/640x480_bgra/host_data_mono_32x32_partial_6.bin"
-  );
-  if (!pass) return false;
+  ));
+
   wr_host_data0(dev, 0x0ffffff0);
   wr_host_data1(dev, 0x0ffffff0);
   wr_host_data2(dev, 0x0ffffff0);
   wr_host_data3(dev, 0x0ffffff0);
-  pass = ati_screen_compare_file(
+  ASSERT_TRUE(ati_screen_compare_file(
     dev,
     "fixtures/640x480_bgra/host_data_mono_32x32_partial_7.bin"
-  );
-  if (!pass) return false;
+  ));
+
   wr_host_data4(dev, 0x00000000);
   wr_host_data5(dev, 0x00000000);
   wr_host_data6(dev, 0x00000000);
 
   wr_host_data_last(dev, 0x00000000);
-  pass = ati_screen_compare_file(
+  ASSERT_TRUE(ati_screen_compare_file(
     dev,
     "fixtures/640x480_bgra/host_data_mono_32x32.bin"
-  );
-  return pass;
+  ));
+
+  return true;
 }
 
 void register_host_data_tests(void) {
