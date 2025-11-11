@@ -46,11 +46,13 @@ bool test_dst_pitch_offset_cntl_latching(ati_device_t *dev) {
   uint32_t dp_gui_master_cntl;
 
   // Setting initial state
+  wr_dp_gui_master_cntl(dev, 0x0);
   wr_default_offset(dev, 0x000000a0);
   wr_default_pitch(dev, 0x000000bb);
   wr_dst_offset(dev, 0x00000010);
   wr_dst_pitch(dev, 0x00000022);
 
+  ASSERT_EQ(rd_dp_gui_master_cntl(dev), 0x00000000);
   ASSERT_EQ(rd_default_offset(dev), 0x000000a0);
   ASSERT_EQ(rd_default_pitch(dev), 0x000000bb);
   ASSERT_EQ(rd_dst_offset(dev), 0x00000010);

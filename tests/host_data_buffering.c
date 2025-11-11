@@ -63,8 +63,6 @@ bool test_host_data_32x32(ati_device_t *dev) {
 
   ati_vram_clear(dev);
 
-  print_state(dev);
-
   wr_dp_src_frgd_clr(dev, red);
   wr_dp_src_bkgd_clr(dev, green);
 

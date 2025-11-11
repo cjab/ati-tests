@@ -1,214 +1,132 @@
 #include "../ati.h"
 #include "../common.h"
 
-bool test_src_clipping(ati_device_t *dev) {
-  printf("Test SRC clipping\n");
-  printf("====================================\n\n");
+bool test_src_clipping_latches(ati_device_t *dev) {
+  uint32_t dp_gui_master_cntl;
 
-  printf("** Initializing DEFAULT_SC_BOTTOM_RIGHT to 0x0 **\n");
-  wr_default_sc_bottom_right(dev, 0x0);
-  printf("** Initializing SRC_SC_BOTTOM to 0x0 **\n");
-  wr_src_sc_bottom(dev, 0x0);
-  printf("** Initializing SRC_SC_RIGHT to 0x0 **\n");
-  wr_src_sc_right(dev, 0x0);
-
-  printf("\n");
-  printf("Initial State\n");
-  printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
-  printf("SRC_SC_BOTTOM:           0x%08x\n", rd_src_sc_bottom(dev));
-  printf("SRC_SC_RIGHT:            0x%08x\n", rd_src_sc_right(dev));
-  printf("\n");
-
-  printf("** Setting DEFAULT_SC_BOTTOM_RIGHT to 0x0aaa0bbb **\n");
-  printf("** Setting SRC_SC_BOTTOM to 0x111 **\n");
-  printf("** Setting SRC_SC_RIGHT to 0x222 **\n");
+  // Setting initial state
+  wr_dp_gui_master_cntl(dev, 0x0);
   wr_default_sc_bottom_right(dev, 0x0aaa0bbb);
   wr_src_sc_bottom(dev, 0x00000111);
   wr_src_sc_right(dev, 0x00000222);
 
-  printf("\n");
-  printf("State After Setting\n");
-  printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
-  printf("SRC_SC_BOTTOM:           0x%08x\n", rd_src_sc_bottom(dev));
-  printf("SRC_SC_RIGHT:            0x%08x\n", rd_src_sc_right(dev));
-  printf("\n");
+  ASSERT_EQ(rd_dp_gui_master_cntl(dev), 0x00000000);
+  ASSERT_EQ(rd_default_sc_bottom_right(dev), 0x0aaa0bbb);
+  ASSERT_EQ(rd_src_sc_bottom(dev), 0x00000111);
+  ASSERT_EQ(rd_src_sc_right(dev), 0x00000222);
 
-  printf("** Setting GMC_SRC_CLIPPING to default **\n");
-  wr_dp_gui_master_cntl(dev, rd_dp_gui_master_cntl(dev) & ~0x4);
+  // Set GMC_SRC_CLIPPING to default
+  dp_gui_master_cntl = rd_dp_gui_master_cntl(dev);
+  wr_dp_gui_master_cntl(dev, dp_gui_master_cntl & ~0x4);
 
-  printf("\n");
-  printf("State After Setting Default\n");
-  printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
-  printf("SRC_SC_BOTTOM:           0x%08x\n", rd_src_sc_bottom(dev));
-  printf("SRC_SC_RIGHT:            0x%08x\n", rd_src_sc_right(dev));
-  printf("\n");
+  // src_sc_bottom and src_sc_right should latch default
+  ASSERT_EQ(rd_dp_gui_master_cntl(dev), dp_gui_master_cntl & ~0x4);
+  ASSERT_EQ(rd_default_sc_bottom_right(dev), 0x0aaa0bbb);
+  ASSERT_EQ(rd_src_sc_bottom(dev), 0x00000aaa);
+  ASSERT_EQ(rd_src_sc_right(dev), 0x00000bbb);
 
-  printf("** Setting GMC_SRC_CLIPPING to leave alone **\n");
-  wr_dp_gui_master_cntl(dev, rd_dp_gui_master_cntl(dev) | 0x4);
+  // Set GMC_SRC_CLIPPING to leave alone
+  dp_gui_master_cntl = rd_dp_gui_master_cntl(dev);
+  wr_dp_gui_master_cntl(dev, dp_gui_master_cntl | 0x4);
 
-  printf("\n");
-  printf("State After Setting Leave Alone\n");
-  printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
-  printf("SRC_SC_BOTTOM:           0x%08x\n", rd_src_sc_bottom(dev));
-  printf("SRC_SC_RIGHT:            0x%08x\n", rd_src_sc_right(dev));
-  printf("\n");
+  // src_sc_bottom and src_sc_right should remain default
+  ASSERT_EQ(rd_dp_gui_master_cntl(dev), dp_gui_master_cntl | 0x4);
+  ASSERT_EQ(rd_default_sc_bottom_right(dev), 0x0aaa0bbb);
+  ASSERT_EQ(rd_src_sc_bottom(dev), 0x00000aaa);
+  ASSERT_EQ(rd_src_sc_right(dev), 0x00000bbb);
 
   return true;
 }
 
-bool test_dst_clipping(ati_device_t *dev) {
-  printf("Test DST clipping\n");
-  printf("====================================\n\n");
+bool test_dst_clipping_latches(ati_device_t *dev) {
+  uint32_t dp_gui_master_cntl;
 
-  printf("** Initializing DEFAULT_SC_BOTTOM_RIGHT to 0x0 **\n");
-  wr_default_sc_bottom_right(dev, 0x0);
-  printf("** Initializing SC_BOTTOM to 0x0 **\n");
-  wr_sc_bottom(dev, 0x0);
-  printf("** Initializing SC_RIGHT to 0x0 **\n");
-  wr_sc_right(dev, 0x0);
-  printf("** Initializing SC_TOP to 0x0 **\n");
-  wr_sc_top(dev, 0x0);
-  printf("** Initializing SC_LEFT to 0x0 **\n");
-  wr_sc_left(dev, 0x0);
-
-  printf("\n");
-  printf("Initial State\n");
-  printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
-  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
-  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
-  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
-  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
-  printf("\n");
-
-  printf("** Setting DEFAULT_SC_BOTTOM_RIGHT to 0x0aaa0bbb **\n");
+  // Setting initial state
+  wr_dp_gui_master_cntl(dev, 0x0);
   wr_default_sc_bottom_right(dev, 0x0aaa0bbb);
-  printf("** Setting SC_BOTTOM to 0x111 **\n");
   wr_sc_bottom(dev, 0x00000111);
-  printf("** Setting SC_RIGHT to 0x222 **\n");
   wr_sc_right(dev, 0x00000222);
-  printf("** SETTING SC_TOP to 0x333 **\n");
   wr_sc_top(dev, 0x00000333);
-  printf("** SETTING SC_LEFT to 0x444 **\n");
   wr_sc_left(dev, 0x00000444);
 
-  printf("\n");
-  printf("State After Setting\n");
-  printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
-  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
-  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
-  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
-  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
-  printf("\n");
+  ASSERT_EQ(rd_dp_gui_master_cntl(dev), 0x00000000);
+  ASSERT_EQ(rd_default_sc_bottom_right(dev), 0x0aaa0bbb);
+  ASSERT_EQ(rd_sc_bottom(dev), 0x00000111);
+  ASSERT_EQ(rd_sc_right(dev), 0x00000222);
+  ASSERT_EQ(rd_sc_top(dev), 0x00000333);
+  ASSERT_EQ(rd_sc_left(dev), 0x00000444);
 
-  printf("** Setting GMC_DST_CLIPPING to default **\n");
-  wr_dp_gui_master_cntl(dev, rd_dp_gui_master_cntl(dev) & ~0x8);
+  // Set GMC_DST_CLIPPING to default
+  dp_gui_master_cntl = rd_dp_gui_master_cntl(dev);
+  wr_dp_gui_master_cntl(dev, dp_gui_master_cntl & ~0x8);
 
-  printf("\n");
-  printf("State After Setting Default\n");
-  printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
-  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
-  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
-  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
-  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
-  printf("\n");
+  // sc_bottom and src_right should latch default
+  // sc_top and sc_left are set to the origin
+  ASSERT_EQ(rd_dp_gui_master_cntl(dev), dp_gui_master_cntl & ~0x8);
+  ASSERT_EQ(rd_default_sc_bottom_right(dev), 0x0aaa0bbb);
+  ASSERT_EQ(rd_sc_bottom(dev), 0x00000aaa);
+  ASSERT_EQ(rd_sc_right(dev), 0x00000bbb);
+  ASSERT_EQ(rd_sc_top(dev), 0x00000000);
+  ASSERT_EQ(rd_sc_left(dev), 0x00000000);
 
-  printf("** Setting GMC_DST_CLIPPING to leave alone **\n");
-  wr_dp_gui_master_cntl(dev, rd_dp_gui_master_cntl(dev) | 0x8);
+  // Set GMC_DST_CLIPPING to leave alone
+  dp_gui_master_cntl = rd_dp_gui_master_cntl(dev);
+  wr_dp_gui_master_cntl(dev, dp_gui_master_cntl | 0x8);
 
-  printf("\n");
-  printf("State After Setting Leave Alone\n");
-  printf("------------------------------------\n");
-  printf("DP_GUI_MASTER_CNTL:      0x%08x\n", rd_dp_gui_master_cntl(dev));
-  printf("DEFAULT_SC_BOTTOM_RIGHT: 0x%08x\n", rd_default_sc_bottom_right(dev));
-  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
-  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
-  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
-  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
-  printf("\n");
+  // sc_bottom and src_right should remain default
+  // sc_top and sc_left remain at the origin
+  ASSERT_EQ(rd_dp_gui_master_cntl(dev), dp_gui_master_cntl | 0x8);
+  ASSERT_EQ(rd_default_sc_bottom_right(dev), 0x0aaa0bbb);
+  ASSERT_EQ(rd_sc_bottom(dev), 0x00000aaa);
+  ASSERT_EQ(rd_sc_right(dev), 0x00000bbb);
+  ASSERT_EQ(rd_sc_top(dev), 0x00000000);
+  ASSERT_EQ(rd_sc_left(dev), 0x00000000);
 
   return true;
 }
 
 bool test_reserved_scissor_bits(ati_device_t *dev) {
-  printf("** Initializing SC_BOTTOM to 0x0 **\n");
+  // Setting initial state
+  wr_default_sc_bottom_right(dev, 0x0aaa0bbb);
   wr_sc_bottom(dev, 0x0);
-  printf("** Initializing SC_RIGHT to 0x0 **\n");
   wr_sc_right(dev, 0x0);
-  printf("** Initializing SC_TOP to 0x0 **\n");
   wr_sc_top(dev, 0x0);
-  printf("** Initializing SC_LEFT to 0x0 **\n");
   wr_sc_left(dev, 0x0);
 
-  printf("\n");
-  printf("Initial State\n");
-  printf("------------------------------------\n");
-  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
-  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
-  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
-  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
-  printf("\n");
+  ASSERT_EQ(rd_sc_bottom(dev), 0x00000000);
+  ASSERT_EQ(rd_sc_right(dev), 0x00000000);
+  ASSERT_EQ(rd_sc_top(dev), 0x00000000);
+  ASSERT_EQ(rd_sc_left(dev), 0x00000000);
 
-  printf("** Setting SC_BOTTOM to 0xffffffff **\n");
   wr_sc_bottom(dev, 0xffffffff);
-  printf("** Setting SC_TOP to 0xffffffff **\n");
   wr_sc_top(dev, 0xffffffff);
 
-  printf("\n");
-  printf("After State\n");
-  printf("------------------------------------\n");
-  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
-  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
-  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
-  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
-  printf("\n");
+  ASSERT_EQ(rd_sc_bottom(dev), 0x00003fff);
+  ASSERT_EQ(rd_sc_right(dev), 0x00000000);
+  ASSERT_EQ(rd_sc_top(dev), 0x00003fff);
+  ASSERT_EQ(rd_sc_left(dev), 0x00000000);
 
-  printf("** Setting SC_RIGHT to 0xffffffff **\n");
   wr_sc_right(dev, 0xffffffff);
-  printf("** Setting SC_LEFT to 0xffffffff **\n");
   wr_sc_left(dev, 0xffffffff);
 
-  printf("\n");
-  printf("After State\n");
-  printf("------------------------------------\n");
-  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
-  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
-  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
-  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
-  printf("\n");
+  ASSERT_EQ(rd_sc_bottom(dev), 0x00003fff);
+  ASSERT_EQ(rd_sc_right(dev), 0x00003fff);
+  ASSERT_EQ(rd_sc_top(dev), 0x00003fff);
+  ASSERT_EQ(rd_sc_left(dev), 0x00003fff);
 
-  printf("** Setting SC_BOTTOM_RIGHT to 0xfeeefeee **\n");
   wr_sc_bottom_right(dev, 0xfeeefeee);
-  printf("** Setting SC_TOP_LEFT to 0xfeeefeee **\n");
   wr_sc_top_left(dev, 0xfeeefeee);
 
-  printf("\n");
-  printf("After State\n");
-  printf("------------------------------------\n");
-  printf("SC_BOTTOM:               0x%08x\n", rd_sc_bottom(dev));
-  printf("SC_RIGHT:                0x%08x\n", rd_sc_right(dev));
-  printf("SC_TOP:                  0x%08x\n", rd_sc_top(dev));
-  printf("SC_LEFT:                 0x%08x\n", rd_sc_left(dev));
-  printf("\n");
+  ASSERT_EQ(rd_sc_bottom(dev), 0x00003eee);
+  ASSERT_EQ(rd_sc_right(dev), 0x00003eee);
+  ASSERT_EQ(rd_sc_top(dev), 0x00003eee);
+  ASSERT_EQ(rd_sc_left(dev), 0x00003eee);
 
   return true;
 }
 
 void register_clipping_tests(void) {
-  register_test("SRC clipping", test_src_clipping);
-  register_test("DST clipping", test_dst_clipping);
+  register_test("SRC clipping latches", test_src_clipping_latches);
+  register_test("DST clipping latches", test_dst_clipping_latches);
   register_test("reserved scissor bits", test_reserved_scissor_bits);
 }

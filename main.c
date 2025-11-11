@@ -25,6 +25,7 @@ void register_test(const char *name, bool (*func)(ati_device_t *)) {
 
 void run_test(ati_device_t *dev, const test_case_t *test) {
   printf("  %s ... ", test->name);
+  fflush(stdout);
   if (test->func(dev)) {
     printf(GREEN "ok" RESET "\n");
   } else {
