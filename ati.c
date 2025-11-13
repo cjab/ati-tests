@@ -1,6 +1,7 @@
 #include <pci/pci.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <stdarg.h>
 
 #include "ati.h"
 #include "common.h"
@@ -86,7 +87,7 @@ void ati_vram_memcpy(ati_device_t *dev, uint32_t dst_offset,
     printf("Copying data larger than BAR0\n");
   }
 
-  memcpy(dev->bar[0], src, size);
+  memcpy(dev->bar[0] + dst_offset, src, size);
 }
 
 bool ati_screen_compare_file(ati_device_t *dev, const char *filename) {
@@ -173,12 +174,12 @@ start: {
 
 void ati_screen_clear(ati_device_t *dev) {
   size_t screen_size = 640 * 480 * 4;
-  memset(dev->bar[0], NULL, screen_size);
+  memset(dev->bar[0], 0, screen_size);
 }
 
 void ati_vram_clear(ati_device_t *dev) {
   size_t vram_size = dev->pci_dev->size[0];
-  memset(dev->bar[0], NULL, vram_size);
+  memset(dev->bar[0], 0, vram_size);
 }
 
 void ati_vram_dump(ati_device_t *dev, const char *filename) {
@@ -294,260 +295,129 @@ void *map_bar(struct pci_dev *dev, int bar_idx) {
   return bar;
 }
 
+void ati_dump_mode(ati_device_t *dev) {
+  DUMP_REGISTERS(dev,
+                 CRTC_H_TOTAL_DISP,
+                 CRTC_H_SYNC_STRT_WID,
+                 CRTC_V_TOTAL_DISP,
+                 CRTC_V_SYNC_STRT_WID,
+                 CRTC_GEN_CNTL,
+                 CRTC_EXT_CNTL,
+                 CRTC_OFFSET,
+                 CRTC_OFFSET_CNTL,
+                 CRTC_PITCH,
+                 DAC_CNTL);
+}
+
 /* Register accessor functions */
 
-uint32_t rd_dp_gui_master_cntl(ati_device_t *dev) {
-  return ati_reg_read(dev, DP_GUI_MASTER_CNTL);
+/* Reads */
+#define X(func_name, const_name, offset, mode) \
+  X_##mode##_READ_IMPL(func_name, const_name)
+
+  #define X_RW_READ_IMPL(func_name, const_name) \
+    uint32_t rd_##func_name(ati_device_t *dev) { \
+      return ati_reg_read(dev, const_name); \
+    }
+
+  #define X_RO_READ_IMPL(func_name, const_name) \
+    uint32_t rd_##func_name(ati_device_t *dev) { \
+      return ati_reg_read(dev, const_name); \
+    }
+
+  #define X_WO_READ_IMPL(func_name, const_name)  /* No read for write-only */
+
+ATI_REGISTERS
+#undef X
+#undef X_RW_READ_IMPL
+#undef X_RO_READ_IMPL
+#undef X_WO_READ_IMPL
+
+/* Writes */
+#define X(func_name, const_name, offset, mode) \
+  X_##mode##_WRITE_IMPL(func_name, const_name)
+
+  #define X_RW_WRITE_IMPL(func_name, const_name) \
+    void wr_##func_name(ati_device_t *dev, uint32_t val) { \
+      ati_reg_write(dev, const_name, val); \
+    }
+  #define X_WO_WRITE_IMPL(func_name, const_name) \
+    void wr_##func_name(ati_device_t *dev, uint32_t val) { \
+      ati_reg_write(dev, const_name, val); \
+    }
+  #define X_RO_WRITE_IMPL(func_name, const_name)  /* No write for read-only */
+
+ATI_REGISTERS
+#undef X
+#undef X_RW_WRITE_IMPL
+#undef X_WO_WRITE_IMPL
+#undef X_RO_WRITE_IMPL
+
+void ati_dump_registers(ati_device_t *dev, int count, ...) {
+  va_list args;
+  printf("\n============== Register State ==============\n");
+  va_start(args, count);
+
+  for (int i = 0; i < count; i++) {
+    uint32_t offset = va_arg(args, uint32_t);
+    bool found = false;
+
+    #define X(func_name, const_name, offset_val, mode) \
+        X_##mode##_DUMP_IF(func_name, const_name, offset_val, offset, &found)
+
+    #define X_RW_DUMP_IF(func_name, const_name, offset_val, target, found_ptr) \
+        if (offset_val == target) { \
+            printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":", rd_##func_name(dev)); \
+            *found_ptr = true; \
+        }
+
+    #define X_RO_DUMP_IF(func_name, const_name, offset_val, target, found_ptr) \
+        if (offset_val == target) { \
+            printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":", rd_##func_name(dev)); \
+            *found_ptr = true; \
+        }
+
+    #define X_WO_DUMP_IF(func_name, const_name, offset_val, target, found_ptr) \
+        if (offset_val == target) { \
+            printf(" %-30s " RED "[write-only]\n" RESET, #const_name ":"); \
+            *found_ptr = true; \
+        }
+
+    ATI_REGISTERS
+
+    #undef X
+    #undef X_RW_DUMP_IF
+    #undef X_RO_DUMP_IF
+    #undef X_WO_DUMP_IF
+
+    if (!found) {
+        printf("0x%08x:                   [unknown register]\n", offset);
+    }
+  }
+
+  va_end(args);
+  printf("============================================\n");
 }
 
-void wr_dp_gui_master_cntl(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DP_GUI_MASTER_CNTL, val);
-}
+void ati_dump_all_registers(ati_device_t *dev) {
+  printf("\n============== Register State ==============\n");
 
-void wr_src_sc_bottom_right(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, SRC_SC_BOTTOM_RIGHT, val);
-}
+  #define X(func_name, const_name, offset, mode) \
+    X_##mode##_DUMP(func_name, const_name)
 
-uint32_t rd_src_sc_bottom(ati_device_t *dev) {
-  return ati_reg_read(dev, SRC_SC_BOTTOM);
-}
+    #define X_RW_DUMP(func_name, const_name) \
+      printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":", rd_##func_name(dev));
 
-void wr_src_sc_bottom(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, SRC_SC_BOTTOM, val);
-}
+    #define X_RO_DUMP(func_name, const_name) \
+      printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":", rd_##func_name(dev));
 
-uint32_t rd_src_sc_right(ati_device_t *dev) {
-  return ati_reg_read(dev, SRC_SC_RIGHT);
-}
+    #define X_WO_DUMP(func_name, const_name) \
+      printf(" %-30s " RED "[write-only]\n" RESET, #const_name ":");
 
-void wr_src_sc_right(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, SRC_SC_RIGHT, val);
-}
-
-uint32_t rd_default_sc_bottom_right(ati_device_t *dev) {
-  return ati_reg_read(dev, DEFAULT_SC_BOTTOM_RIGHT);
-}
-
-void wr_default_sc_bottom_right(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DEFAULT_SC_BOTTOM_RIGHT, val);
-}
-
-uint32_t rd_sc_left(ati_device_t *dev) {
-  return ati_reg_read(dev, SC_LEFT);
-}
-
-void wr_sc_left(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, SC_LEFT, val);
-}
-
-uint32_t rd_sc_top(ati_device_t *dev) {
-  return ati_reg_read(dev, SC_TOP);
-}
-
-void wr_sc_top(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, SC_TOP, val);
-}
-
-void wr_sc_bottom_right(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, SC_BOTTOM_RIGHT, val);
-}
-
-void wr_sc_top_left(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, SC_TOP_LEFT, val);
-}
-
-uint32_t rd_sc_right(ati_device_t *dev) {
-  return ati_reg_read(dev, SC_RIGHT);
-}
-
-void wr_sc_right(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, SC_RIGHT, val);
-}
-
-uint32_t rd_sc_bottom(ati_device_t *dev) {
-  return ati_reg_read(dev, SC_BOTTOM);
-}
-
-void wr_sc_bottom(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, SC_BOTTOM, val);
-}
-
-uint32_t rd_dst_offset(ati_device_t *dev) {
-  return ati_reg_read(dev, DST_OFFSET);
-}
-
-void wr_dst_offset(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DST_OFFSET, val);
-}
-
-uint32_t rd_dst_pitch(ati_device_t *dev) {
-  return ati_reg_read(dev, DST_PITCH);
-}
-
-void wr_dst_pitch(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DST_PITCH, val);
-}
-
-uint32_t rd_default_offset(ati_device_t *dev) {
-  return ati_reg_read(dev, DEFAULT_OFFSET);
-}
-
-void wr_default_offset(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DEFAULT_OFFSET, val);
-}
-
-uint32_t rd_default_pitch(ati_device_t *dev) {
-  return ati_reg_read(dev, DEFAULT_PITCH);
-}
-
-void wr_default_pitch(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DEFAULT_PITCH, val);
-}
-
-uint32_t rd_src_offset(ati_device_t *dev) {
-  return ati_reg_read(dev, SRC_OFFSET);
-}
-
-void wr_src_offset(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, SRC_OFFSET, val);
-}
-
-uint32_t rd_src_pitch(ati_device_t *dev) {
-  return ati_reg_read(dev, SRC_PITCH);
-}
-
-void wr_src_pitch(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, SRC_PITCH, val);
-}
-
-void wr_dst_x_y(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DST_X_Y, val);
-}
-
-void wr_dst_y_x(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DST_Y_X, val);
-}
-
-uint32_t rd_dst_x(ati_device_t *dev) {
-  ati_reg_read(dev, DST_X);
-}
-
-void wr_dst_x(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DST_X, val);
-}
-
-uint32_t rd_dst_y(ati_device_t *dev) {
-  ati_reg_read(dev, DST_Y);
-}
-
-void wr_dst_y(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DST_Y, val);
-}
-
-void wr_dst_width_height(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DST_WIDTH_HEIGHT, val);
-}
-
-uint32_t rd_dst_width(ati_device_t *dev) {
-  ati_reg_read(dev, DST_WIDTH);
-}
-
-void wr_dst_width(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DST_WIDTH, val);
-}
-
-uint32_t rd_dst_height(ati_device_t *dev) {
-  ati_reg_read(dev, DST_HEIGHT);
-}
-
-void wr_dst_height(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DST_HEIGHT, val);
-}
-
-uint32_t rd_dp_datatype(ati_device_t *dev) {
-  return ati_reg_read(dev, DP_DATATYPE);
-}
-
-void wr_dp_datatype(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DP_DATATYPE, val);
-}
-
-uint32_t rd_dp_mix(ati_device_t *dev) {
-  return ati_reg_read(dev, DP_MIX);
-}
-
-void wr_dp_mix(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DP_MIX, val);
-}
-
-uint32_t rd_dp_write_msk(ati_device_t *dev) {
-  return ati_reg_read(dev, DP_WRITE_MSK);
-}
-
-void wr_dp_write_msk(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DP_WRITE_MSK, val);
-}
-
-uint32_t rd_dp_src_frgd_clr(ati_device_t *dev) {
-  return ati_reg_read(dev, DP_SRC_FRGD_CLR);
-}
-
-void wr_dp_src_frgd_clr(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DP_SRC_FRGD_CLR, val);
-}
-
-uint32_t rd_dp_src_bkgd_clr(ati_device_t *dev) {
-  return ati_reg_read(dev, DP_SRC_BKGD_CLR);
-}
-
-void wr_dp_src_bkgd_clr(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DP_SRC_BKGD_CLR, val);
-}
-
-uint32_t rd_gui_stat(ati_device_t *dev) {
-  return ati_reg_read(dev, GUI_STAT);
-}
-
-void wr_host_data0(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, HOST_DATA0, val);
-}
-
-void wr_host_data1(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, HOST_DATA1, val);
-}
-
-void wr_host_data2(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, HOST_DATA2, val);
-}
-
-void wr_host_data3(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, HOST_DATA3, val);
-}
-
-void wr_host_data4(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, HOST_DATA4, val);
-}
-
-void wr_host_data5(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, HOST_DATA5, val);
-}
-
-void wr_host_data6(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, HOST_DATA6, val);
-}
-
-void wr_host_data7(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, HOST_DATA7, val);
-}
-
-void wr_host_data_last(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, HOST_DATA_LAST, val);
-}
-
-uint32_t rd_dp_cntl(ati_device_t *dev) {
-  return ati_reg_read(dev, DP_CNTL);
-}
-
-void wr_dp_cntl(ati_device_t *dev, uint32_t val) {
-  ati_reg_write(dev, DP_CNTL, val);
+  ATI_REGISTERS
+  #undef X
+  #undef X_RW_DUMP
+  #undef X_RO_DUMP
+  #undef X_WO_DUMP
+  printf("============================================\n");
 }

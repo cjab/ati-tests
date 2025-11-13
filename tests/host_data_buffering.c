@@ -57,7 +57,6 @@ void print_state(ati_device_t *dev) {
 }
 
 bool test_host_data_32x32(ati_device_t *dev) {
-  bool pass = true;
   uint32_t red = 0x00ff0000;
   uint32_t green = 0x0000ff00;
 
