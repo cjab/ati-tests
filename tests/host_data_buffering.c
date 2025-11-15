@@ -11,51 +11,6 @@
 #define GMC_DST_PITCH_OFFSET_LEAVE      0x00000002
 #define GMC_BYTE_LSB_TO_MSB             0x00004000
 
-void print_state(ati_device_t *dev) {
-  uint32_t dp_gui_master_cntl = rd_dp_gui_master_cntl(dev);
-  uint32_t default_offset = rd_default_offset(dev);
-  uint32_t default_pitch = rd_default_pitch(dev);
-  uint32_t default_sc_br = rd_default_sc_bottom_right(dev);
-  uint32_t sc_top = rd_sc_top(dev);
-  uint32_t sc_left = rd_sc_left(dev);
-  uint32_t sc_bottom = rd_sc_bottom(dev);
-  uint32_t sc_right = rd_sc_right(dev);
-  uint32_t dp_datatype = rd_dp_datatype(dev);
-  uint32_t dp_write_mask = rd_dp_write_msk(dev);
-  uint32_t src_offset = rd_src_offset(dev);
-  uint32_t dst_offset = rd_dst_offset(dev);
-  uint32_t dst_pitch = rd_dst_pitch(dev);
-  uint32_t dst_width = rd_dst_width(dev);
-  uint32_t dst_height = rd_dst_height(dev);
-  uint32_t dst_x = rd_dst_x(dev);
-  uint32_t dst_y = rd_dst_y(dev);
-  uint32_t dp_src_frgd_clr = rd_dp_src_frgd_clr(dev);
-  uint32_t dp_src_bkgd_clr = rd_dp_src_bkgd_clr(dev);
-
-  printf("\n");
-  printf("┌──────  Current Hardware State  ──────┐\n");
-  printf("│ DP_GUI_MASTER_CNTL:       0x%08x │\n", dp_gui_master_cntl);
-  printf("│ DEFAULT_OFFSET:           0x%08x │\n", default_offset);
-  printf("│ DEFAULT_PITCH:            0x%08x │\n", default_pitch);
-  printf("│ DEFAULT_SC_BOTTOM_RIGHT:  0x%08x │\n", default_sc_br);
-  printf("│ SC_TOP:                   0x%08x │\n", sc_top);
-  printf("│ SC_LEFT:                  0x%08x │\n", sc_left);
-  printf("│ SC_BOTTOM:                0x%08x │\n", sc_bottom);
-  printf("│ SC_RIGHT:                 0x%08x │\n", sc_right);
-  printf("│ DP_DATATYPE:              0x%08x │\n", dp_datatype);
-  printf("│ DP_WRITE_MASK:            0x%08x │\n", dp_write_mask);
-  printf("│ SRC_OFFSET:               0x%08x │\n", src_offset);
-  printf("│ DST_OFFSET:               0x%08x │\n", dst_offset);
-  printf("│ DST_PITCH:                0x%08x │\n", dst_pitch);
-  printf("│ DST_WIDTH:                0x%08x │\n", dst_width);
-  printf("│ DST_HEIGHT:               0x%08x │\n", dst_height);
-  printf("│ DST_X:                    0x%08x │\n", dst_x);
-  printf("│ DST_Y:                    0x%08x │\n", dst_y);
-  printf("│ DP_SRC_FRGD_CLR:          0x%08x │\n", dp_src_frgd_clr);
-  printf("│ DP_SRC_BKGD_CLR:          0x%08x │\n", dp_src_bkgd_clr);
-  printf("└──────────────────────────────────────┘\n\n");
-}
-
 bool test_host_data_32x32(ati_device_t *dev) {
   uint32_t red = 0x00ff0000;
   uint32_t green = 0x0000ff00;
