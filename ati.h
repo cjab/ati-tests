@@ -60,8 +60,8 @@ void ati_dump_registers(ati_device_t *dev, int count, ...);
   X(dst_pitch,                DST_PITCH,               0x1408, RW) \
   X(dst_x,                    DST_X,                   0x141c, RW) \
   X(dst_y,                    DST_Y,                   0x1420, RW) \
-  X(dst_x_y,                  DST_X_Y,                 0x1594, RW) \
-  X(dst_y_x,                  DST_Y_X,                 0x1438, RW) \
+  X(dst_x_y,                  DST_X_Y,                 0x1594, WO) \
+  X(dst_y_x,                  DST_Y_X,                 0x1438, WO) \
   X(dst_width,                DST_WIDTH,               0x140c, RW) \
   X(dst_height,               DST_HEIGHT,              0x1410, RW) \
   X(dst_width_height,         DST_WIDTH_HEIGHT,        0x1598, RW) \
@@ -69,6 +69,10 @@ void ati_dump_registers(ati_device_t *dev, int count, ...);
   /* Source Registers */ \
   X(src_offset,               SRC_OFFSET,              0x15ac, RW) \
   X(src_pitch,                SRC_PITCH,               0x15b0, RW) \
+  X(src_x,                    SRC_X,                   0x141c, RW) \
+  X(src_y,                    SRC_Y,                   0x1420, RW) \
+  X(src_x_y,                  SRC_X_Y,                 0x1594, WO) \
+  X(src_y_x,                  SRC_Y_X,                 0x1438, WO) \
   \
   /* Default Registers */ \
   X(default_offset,           DEFAULT_OFFSET,          0x16e0, RW) \
