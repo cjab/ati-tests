@@ -1,9 +1,9 @@
 #ifndef ATI_H
 #define ATI_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
 typedef struct ati_device ati_device_t;
 
@@ -20,14 +20,15 @@ void ati_vram_clear(ati_device_t *dev);
 void ati_screen_clear(ati_device_t *dev);
 void ati_vram_dump(ati_device_t *dev, const char *filename);
 void ati_screen_dump(ati_device_t *dev, const char *filename);
-void ati_vram_memcpy(ati_device_t *dev, uint32_t dst_offset,
-                     const void *src, size_t size);
+void ati_vram_memcpy(ati_device_t *dev, uint32_t dst_offset, const void *src,
+                     size_t size);
 bool ati_screen_compare_file(ati_device_t *dev, const char *filename);
 void ati_dump_mode(ati_device_t *dev);
 
 void ati_dump_all_registers(ati_device_t *dev);
 void ati_dump_registers(ati_device_t *dev, int count, ...);
 
+// clang-format off
 #define DUMP_REGISTERS(dev, ...) \
   ati_dump_registers(dev, \
     sizeof((uint32_t[]){__VA_ARGS__})/sizeof(uint32_t), \
@@ -148,5 +149,6 @@ void ati_dump_registers(ati_device_t *dev, int count, ...);
 #undef X_RW_WRITE_DECL
 #undef X_WO_WRITE_DECL
 #undef X_RO_WRITE_DECL
+// clang-format on
 
 #endif

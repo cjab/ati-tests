@@ -1,10 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <stdint.h>
 #include <errno.h>
-#include <string.h>
-#include <stdio.h>
 
 #include "ati.h"
 
@@ -13,26 +10,33 @@
 #define RED "\033[31m"
 #define RESET "\033[0m"
 
-#define ASSERT_EQ(actual, expected) do { \
-    uint32_t _a = (actual); \
-    uint32_t _e = (expected); \
-    if (_a != _e) { \
-        fprintf(stderr, "%s:%d: ASSERT_EQ failed: got 0x%08x, expected 0x%08x\n", \
-                __FILE__, __LINE__, _a, _e); \
-        return false; \
-    } \
-} while(0)
+#define ASSERT_EQ(actual, expected)                                            \
+    do {                                                                       \
+        uint32_t _a = (actual);                                                \
+        uint32_t _e = (expected);                                              \
+        if (_a != _e) {                                                        \
+            fprintf(stderr,                                                    \
+                    "%s:%d: ASSERT_EQ failed: got 0x%08x, expected 0x%08x\n",  \
+                    __FILE__, __LINE__, _a, _e);                               \
+            return false;                                                      \
+        }                                                                      \
+    } while (0)
 
-#define ASSERT_TRUE(cond) do { \
-    if (!(cond)) { \
-        fprintf(stderr, "%s:%d: ASSERT_TRUE failed: %s\n", \
-                __FILE__, __LINE__, #cond); \
-        return false; \
-    } \
-} while(0)
+#define ASSERT_TRUE(cond)                                                      \
+    do {                                                                       \
+        if (!(cond)) {                                                         \
+            fprintf(stderr, "%s:%d: ASSERT_TRUE failed: %s\n", __FILE__,       \
+                    __LINE__, #cond);                                          \
+            return false;                                                      \
+        }                                                                      \
+    } while (0)
 
-#define FATAL do { fprintf(stderr, "Error at line %d, file %s (%d) [%s]\n", \
-  __LINE__, __FILE__, errno, strerror(errno)); exit(1); } while(0)
+#define FATAL                                                                  \
+    do {                                                                       \
+        fprintf(stderr, "Error at line %d, file %s (%d) [%s]\n", __LINE__,     \
+                __FILE__, errno, strerror(errno));                             \
+        exit(1);                                                               \
+    } while (0)
 
 void register_test(const char *name, bool (*func)(ati_device_t *));
 void register_all_tests(void);
