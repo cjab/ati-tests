@@ -1,9 +1,11 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 #ifndef ATI_H
 #define ATI_H
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 typedef struct ati_device ati_device_t;
 

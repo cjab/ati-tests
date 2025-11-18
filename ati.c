@@ -1,6 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 #include <fcntl.h>
 #include <pci/pci.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/mman.h>
 
 #include "ati.h"
