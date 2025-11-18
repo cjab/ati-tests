@@ -1,3 +1,5 @@
 .direnv
+.cache
 *.o
 run-tests
+compile_commands.json

@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra
 LDFLAGS = -lpci
 
-SRCS = main.c ati.c tests/clipping.c tests/pitch_offset_cntl.c tests/host_data_buffering.c tests/rop3.c
+SRCS = main.c ati.c $(wildcard tests/*.c)
 OBJS = $(SRCS:.c=.o)
 TARGET = run-tests
 
@@ -16,5 +16,9 @@ $(TARGET): $(OBJS)
 
 clean:
 	rm -f $(OBJS) $(TARGET)
+
+compile_commands.json:
+	bear -- $(MAKE) clean
+	bear -- $(MAKE)
 
 .PHONY: all clean

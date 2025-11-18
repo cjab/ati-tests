@@ -113,7 +113,6 @@ start: {
     return false;
   }
 
-  // FIXME: Do better
   // Get file size
   fseek(f, 0, SEEK_END);
   size_t file_size = ftell(f);
@@ -153,7 +152,7 @@ start: {
           mismatch_count++;
       }
   }
-  if (!match || mismatch_count > 0) {
+  if (mismatch_count > 0) {
       match = false;
       printf("MISMATCH: %d bytes differ\n", mismatch_count);
       if (first_mismatch >= 0) {
@@ -210,6 +209,7 @@ void ati_screen_dump(ati_device_t *dev, const char *filename) {
   if (!f) {
     fprintf(stderr, "Failed to open %s for writing: %s\n",
             filename, strerror(errno));
+    return;
   }
 
   size_t written = fwrite((void *)vram, 1, screen_size, f);

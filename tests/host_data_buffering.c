@@ -129,7 +129,6 @@ bool test_host_data_mono_is_bit_packed(ati_device_t *dev) {
   unsigned width = 2;
   unsigned height = 2;
 
-  //ati_vram_clear(dev);
   ati_screen_clear(dev);
 
   wr_dp_src_frgd_clr(dev, red);

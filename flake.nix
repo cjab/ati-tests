@@ -18,6 +18,7 @@
             pkgs.gnumake
             pkgs.pciutils
             pkgs.clang-tools
+            pkgs.bear
           ];
         };
       });

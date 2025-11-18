@@ -14,7 +14,6 @@
 bool test_rop3_16x16(ati_device_t *dev) {
   uint32_t red = 0x00ff0000;
   uint32_t grn = 0x0000ff00;
-  uint32_t blu = 0x000000ff;
 
   uint32_t data[] = {
     red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
@@ -35,13 +34,12 @@ bool test_rop3_16x16(ati_device_t *dev) {
     red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
   };
 
-  //ati_vram_clear(dev);
   ati_screen_clear(dev);
 
   unsigned rows = 16;
   unsigned cols = 16;
   uint32_t pitch = 0x50;
-  for (int i = 0; i < rows; i++) {
+  for (unsigned i = 0; i < rows; i++) {
     unsigned offset = pitch * 8 * i * sizeof(uint32_t);
     ati_vram_memcpy(dev, offset, &data[i * cols], cols * sizeof(uint32_t));
   }
