@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 #include <errno.h>
 #include <fcntl.h>
 #include <pci/pci.h>
