@@ -109,3 +109,51 @@ platform_pci_get_bar_size(platform_pci_device_t *dev, int bar_idx)
 {
     return dev->pci_dev->size[bar_idx];
 };
+
+void *
+platform_read_file(const char *path, size_t *size_out)
+{
+    FILE *f = fopen(path, "rb");
+    if (!f)
+        return NULL;
+
+    // Get file size
+    fseek(f, 0, SEEK_END);
+    size_t file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    uint8_t *file = malloc(file_size);
+    if (!file) {
+        fprintf(stderr, "Failed to allocate memory for read\n");
+        fclose(f);
+        return NULL;
+    }
+    *size_out = fread(file, 1, file_size, f);
+    fclose(f);
+
+    return file;
+}
+
+void
+platform_free_file(void *data)
+{
+    free(data);
+}
+
+size_t
+platform_write_file(const char *path, const void *data, size_t size)
+{
+    FILE *f = fopen(path, "wb");
+    if (!f) {
+        fprintf(stderr, "Failed to open %s for writing: %s\n", path,
+                strerror(errno));
+    }
+
+    size_t written = fwrite(data, 1, size, f);
+    if (written != size) {
+        fprintf(stderr, "Warning: only wrote %zu of %zu bytes\n", written,
+                size);
+    }
+    fclose(f);
+
+    return written;
+}

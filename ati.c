@@ -108,48 +108,26 @@ bool
 ati_screen_compare_file(ati_device_t *dev, const char *filename)
 {
 start: {
-    FILE *f = fopen(filename, "rb");
-    if (!f) {
-        if (errno == ENOENT) {
-            printf("Fixture does not yet exist. Create it now? (Y/n) ");
-            fflush(stdout);
+    size_t read;
+    uint8_t *fixture = platform_read_file(filename, &read);
 
-            char response[10];
-            if (fgets(response, sizeof(response), stdin)) {
-                if (response[0] == 'Y' || response[0] == 'y' ||
-                    response[0] == '\n') {
-                    ati_screen_dump(dev, filename);
-                    goto start;
-                } else {
-                    return false;
-                }
+    if (!fixture) {
+        printf("Fixture does not yet exist. Create it now? (Y/n) ");
+        fflush(stdout);
+
+        char response[10];
+        if (fgets(response, sizeof(response), stdin)) {
+            if (response[0] == 'Y' || response[0] == 'y' ||
+                response[0] == '\n') {
+                ati_screen_dump(dev, filename);
+                goto start;
+            } else {
+                return false;
             }
         }
-        fprintf(stderr, "Failed to open fixture %s: %s\n", filename,
-                strerror(errno));
-        return false;
     }
 
-    // Get file size
-    fseek(f, 0, SEEK_END);
-    size_t file_size = ftell(f);
-    fseek(f, 0, SEEK_SET);
     size_t screen_size = 640 * 480 * 4;
-    if (file_size != screen_size) {
-        fprintf(stderr, "Reference file size mismatch: expected %zu, got %zu\n",
-                screen_size, file_size);
-        fclose(f);
-        return false;
-    }
-
-    uint8_t *fixture = malloc(screen_size);
-    if (!fixture) {
-        fprintf(stderr, "Failed to allocate memory for fixture\n");
-        fclose(f);
-        return false;
-    }
-    size_t read = fread(fixture, 1, screen_size, f);
-    fclose(f);
     if (read != screen_size) {
         fprintf(stderr, "Failed to read complete fixture file\n");
         free(fixture);
@@ -183,7 +161,7 @@ start: {
             printf("  Pixel at (%d, %d)\n", x, y);
         }
     }
-    free(fixture);
+    platform_free_file(fixture);
     return match;
 }
 }
@@ -207,20 +185,7 @@ ati_vram_dump(ati_device_t *dev, const char *filename)
 {
     volatile uint32_t *vram = (volatile uint32_t *) dev->bar[0];
     size_t vram_size = platform_pci_get_bar_size(dev->pci_dev, 0);
-
-    FILE *f = fopen(filename, "wb");
-    if (!f) {
-        fprintf(stderr, "Failed to open %s for writing: %s\n", filename,
-                strerror(errno));
-    }
-
-    size_t written = fwrite((void *) vram, 1, vram_size, f);
-
-    if (written != vram_size) {
-        fprintf(stderr, "Warning: only wrote %zu of %zu bytes\n", written,
-                vram_size);
-    }
-    fclose(f);
+    size_t written = platform_write_file(filename, (void *) vram, vram_size);
     printf("Dumped %zu bytes of VRAM to %s\n", written, filename);
 }
 
@@ -229,21 +194,7 @@ ati_screen_dump(ati_device_t *dev, const char *filename)
 {
     volatile uint32_t *vram = (volatile uint32_t *) dev->bar[0];
     size_t screen_size = 640 * 480 * 4;
-
-    FILE *f = fopen(filename, "wb");
-    if (!f) {
-        fprintf(stderr, "Failed to open %s for writing: %s\n", filename,
-                strerror(errno));
-        return;
-    }
-
-    size_t written = fwrite((void *) vram, 1, screen_size, f);
-
-    if (written != screen_size) {
-        fprintf(stderr, "Warning: only wrote %zu of %zu bytes\n", written,
-                screen_size);
-    }
-    fclose(f);
+    size_t written = platform_write_file(filename, (void *) vram, screen_size);
     printf("Dumped %zu bytes of screen to %s\n", written, filename);
 }
 
