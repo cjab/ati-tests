@@ -236,6 +236,23 @@ platform_pci_get_name(platform_pci_device_t *dev, char *buf, size_t len)
 void *
 platform_pci_map_bar(platform_pci_device_t *dev, int bar_idx)
 {
+    // TODO: I think technically we should be masking these just like X.org
+    //
+    // From the Rage 128 programmers guide:
+    //
+    // """
+    // The memory aperture base address value at offset 0x10 within the PCI configuration space
+    // is in bits [31:26] of its DWORD. Therefore, to isolate the proper bits, the value should be
+    // logically ANDed with 0xFC000000.
+    //
+    // For the I/O base aperture, the actual value is within bits [31:8] of its DWORD (at offset
+    // 0x14). Therefore, to isolate the proper bits, the value should be logically ANDed with
+    // 0xFFFFFF00.
+    //
+    // The register aperture base value resides in bits [31:14] of its DWORD (at offset 0x18).
+    // Therefore, to isolate the proper bits, the value should be logically ANDed with
+    // 0xFFFFC000.
+    // """
     return (void *) (uintptr_t) (dev->bar[bar_idx] & ~0xful);
 }
 

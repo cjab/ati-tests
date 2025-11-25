@@ -4,3 +4,4 @@
 run-tests
 *.elf
 compile_commands.json
+.nvim.lua

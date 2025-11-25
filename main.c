@@ -46,7 +46,6 @@ run_all_tests(ati_device_t *dev)
 {
     printf("\nRunning tests...\n");
     for (int i = 0; i < test_count; i++) {
-        printf("\nRunning i...\n");
         run_test(dev, &tests[i]);
     }
 }
@@ -102,6 +101,8 @@ kernel_main()
     platform_init();
 
     ati_device_t *dev = ati_device_init();
+    ati_set_display_mode(dev);
+    ati_init_gui_engine(dev);
     register_all_tests();
     run_all_tests(dev);
     printf("\n\nTests complete. Halting.\n");

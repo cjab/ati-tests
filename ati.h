@@ -8,6 +8,13 @@
 // IWYU pragma: begin_exports
 #include "platform/platform.h"
 // IWYU pragma: end_exports
+//
+
+#define X_RES 640
+#define Y_RES 480
+#define BPP 32
+#define BYPP (BPP / 8)
+#define FIFO_MAX 64
 
 typedef struct ati_device ati_device_t;
 
@@ -31,6 +38,8 @@ void ati_dump_mode(ati_device_t *dev);
 
 void ati_dump_all_registers(ati_device_t *dev);
 void ati_dump_registers(ati_device_t *dev, int count, ...);
+void ati_set_display_mode(ati_device_t *dev);
+void ati_init_gui_engine(ati_device_t *dev);
 
 // clang-format off
 #define DUMP_REGISTERS(dev, ...) \
@@ -38,6 +47,9 @@ void ati_dump_registers(ati_device_t *dev, int count, ...);
     sizeof((uint32_t[]){__VA_ARGS__})/sizeof(uint32_t), \
     __VA_ARGS__)
 
+// ============================================================================
+// Register Definitions
+// ============================================================================
 #define ATI_REGISTERS \
   /* Datapath / Drawing Engine Registers */ \
   X(dp_gui_master_cntl,       DP_GUI_MASTER_CNTL,      0x146c, RW) \
@@ -45,8 +57,10 @@ void ati_dump_registers(ati_device_t *dev, int count, ...);
   X(dp_mix,                   DP_MIX,                  0x16c8, RW) \
   X(dp_write_msk,             DP_WRITE_MSK,            0x16cc, RW) \
   X(dp_cntl,                  DP_CNTL,                 0x16c0, RW) \
-  X(dp_src_frgd_clr,          DP_SRC_FRGD_CLR,         0x15d8, RW) \
+  X(dp_brush_bkgd_clr,        DP_BRUSH_BKGD_CLR,       0x15dc, RW) \
+  X(dp_brush_frgd_clr,        DP_BRUSH_FRGD_CLR,       0x1578, RW) \
   X(dp_src_bkgd_clr,          DP_SRC_BKGD_CLR,         0x15dc, RW) \
+  X(dp_src_frgd_clr,          DP_SRC_FRGD_CLR,         0x15d8, RW) \
   \
   /* Scissor / Clipping Registers */ \
   X(sc_left,                  SC_LEFT,                 0x1640, RW) \
@@ -70,6 +84,9 @@ void ati_dump_registers(ati_device_t *dev, int count, ...);
   X(dst_width,                DST_WIDTH,               0x140c, RW) \
   X(dst_height,               DST_HEIGHT,              0x1410, RW) \
   X(dst_width_height,         DST_WIDTH_HEIGHT,        0x1598, RW) \
+  X(dst_bres_err,             DST_BRES_ERR,            0x1628, RW) \
+  X(dst_bres_inc,             DST_BRES_INC,            0x162c, RW) \
+  X(dst_bres_dec,             DST_BRES_DEC,            0x1630, RW) \
   \
   /* Source Registers */ \
   X(src_offset,               SRC_OFFSET,              0x15ac, RW) \
@@ -153,6 +170,314 @@ void ati_dump_registers(ati_device_t *dev, int count, ...);
 #undef X_RW_WRITE_DECL
 #undef X_WO_WRITE_DECL
 #undef X_RO_WRITE_DECL
-// clang-format on
 
+// ============================================================================
+// Register Fields
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// CRTC_GEN_CNTL
+// ----------------------------------------------------------------------------
+enum {
+    CRTC_DBL_SCAN_EN      = (1 <<  0),
+    CRTC_INTERLACE_EN     = (1 <<  1),
+    CRTC_C_SYNC_EN        = (1 <<  4),
+    CRTC_PIX_WIDTH_SHIFT  = 8,
+    CRTC_PIX_WIDTH_MASK   = (7 <<  8),
+    CRTC_CUR_EN           = (1 << 16),
+    CRTC_CUR_MODE_SHIFT   = 17,
+    CRTC_CUR_MODE_MASK    = (7 << 17),
+    CRTC_EXT_DISP_EN      = (1 << 24),
+    CRTC_EN               = (1 << 25),
+    CRTC_DISP_REQ_EN_B    = (1 << 26),
+};
+
+// Pix width values
+enum {
+    CRTC_PIX_WIDTH_4BPP  = 1,
+    CRTC_PIX_WIDTH_8BPP  = 2,
+    CRTC_PIX_WIDTH_15BPP = 3,
+    CRTC_PIX_WIDTH_16BPP = 4,
+    CRTC_PIX_WIDTH_24BPP = 5,
+    CRTC_PIX_WIDTH_32BPP = 6,
+};
+
+// Cursor mode values
+enum {
+    CRTC_CUR_MODE_64X64_MONO = 0,
+    // All others reserved, the register guide unfortunately seems to have
+    // an error here that confusingly lists unrelated (I think) values.
+};
+
+
+// ----------------------------------------------------------------------------
+// CRTC_EXT_CNTL
+// ----------------------------------------------------------------------------
+enum {
+    CRTC_VGA_XOVERSCAN     = (1 << 0),
+    VGA_BLINK_RATE_SHIFT   = 1,
+    VGA_BLINK_RATE_MASK    = (3 <<  1),
+    VGA_ATI_LINEAR         = (1 <<  3),
+    VGA_128KAP_PAGING      = (1 <<  4),
+    VGA_TEXT_132           = (1 <<  5),
+    VGA_XCRT_CNT_EN        = (1 <<  6),
+    CRTC_HSYNC_DIS         = (1 <<  8),
+    CRTC_VSYNC_DIS         = (1 <<  9),
+    CRTC_DISPLAY_DIS       = (1 << 10),
+    CRTC_SYNC_TRISTATE     = (1 << 11),
+    CRTC_HSYNC_TRISTATE    = (1 << 12),
+    CRTC_VSYNC_TRISTATE    = (1 << 13),
+    VGA_CUR_B_TEST         = (1 << 17),
+    VGA_PACK_DIS           = (1 << 18),
+    VGA_MEM_PS_EN          = (1 << 19),
+    VGA_READ_PREFETCH_DIS  = (1 << 20),
+    DFIFO_EXTSENSE         = (1 << 21),
+    FP_OUT_EN              = (1 << 22),
+    FP_ACTIVE              = (1 << 23),
+    VCRTC_IDX_MASTER_SHIFT = 24,
+    VCRTC_IDX_MASTER_MASK  = (0x7f << 24),
+};
+
+// ----------------------------------------------------------------------------
+// DAC_CNTL
+// ----------------------------------------------------------------------------
+enum {
+    DAC_RANGE_CNTL_SHIFT   = 0,
+    DAC_RANGE_CNTL_MASK    = (3 <<  0),
+    DAC_BLANKING           = (1 <<  2),
+    DAC_CMP_EN             = (1 <<  3),
+    DAC_CMP_OUTPUT         = (1 <<  7),
+    DAC_8BIT_EN            = (1 <<  8),
+    DAC_4BPP_PIX_ORDER     = (1 <<  9),
+    DAC_TVO_EN             = (1 << 10),
+    DAC_TVO_OVR_EXCL       = (1 << 11),
+    DAC_TVO_16BPP_DITH_EN  = (1 << 12),
+    DAC_VGA_ADR_EN         = (1 << 13),
+    DAC_PDWN               = (1 << 15),
+    DAC_CRC_EN             = (1 << 19),
+    DAC_MASK_SHIFT         = 24,
+    DAC_MASK_MASK          = (0xff << 24),
+};
+
+// ----------------------------------------------------------------------------
+// CRTC_H_TOTAL_DISP
+// ----------------------------------------------------------------------------
+enum {
+    CRTC_H_TOTAL_SHIFT = 0,
+    CRTC_H_TOTAL_MASK  = (0x1ff <<  0),
+    CRTC_H_DISP_SHIFT  = 16,
+    CRTC_H_DISP_MASK   = (0xff  << 16),
+};
+
+// ----------------------------------------------------------------------------
+// CRTC_H_SYNC_STRT_WID
+// ----------------------------------------------------------------------------
+enum {
+    CRTC_H_SYNC_STRT_PIX_SHIFT  = 0,
+    CRTC_H_SYNC_STRT_PIX_MASK   = (    7 <<  0),
+    CRTC_H_SYNC_STRT_CHAR_SHIFT = 3,
+    CRTC_H_SYNC_STRT_CHAR_MASK  = (0x1ff <<  3),
+    CRTC_H_SYNC_WID_SHIFT       = 16,
+    CRTC_H_SYNC_WID_MASK        = ( 0x3f << 16),
+    CRTC_H_SYNC_POL             = (    1 << 23)
+};
+
+// ----------------------------------------------------------------------------
+// CRTC_V_TOTAL_DISP
+// ----------------------------------------------------------------------------
+enum {
+    CRTC_V_TOTAL_SHIFT = 0,
+    CRTC_V_TOTAL_MASK  = (0x7ff <<  0),
+    CRTC_V_DISP_SHIFT  = 16,
+    CRTC_V_DISP_MASK   = (0x7ff  << 16),
+};
+
+// ----------------------------------------------------------------------------
+// GUI_STAT
+// ----------------------------------------------------------------------------
+enum {
+    GUI_FIFO_CNT_SHIFT = 0,
+    GUI_FIFO_CNT_MASK  = (0xfff <<  0),
+    PM4_BUSY           = (    1  << 16),
+    MICRO_BUSY         = (    1  << 17),
+    FPU_BUSY           = (    1  << 18),
+    VC_BUSY            = (    1  << 19),
+    IDCT_BUSY          = (    1  << 20),
+    ENG_EV_BUSY        = (    1  << 21),
+    SETUP_BUSY         = (    1  << 22),
+    EDGEWALK_BUSY      = (    1  << 23),
+    ADDRESSING_BUSY    = (    1  << 24),
+    ENG_3D_BUSY        = (    1  << 25),
+    ENG_2D_SM_BUSY     = (    1  << 26),
+    ENG_2D_BUSY        = (    1  << 27),
+    GUI_WB_BUSY        = (    1  << 28),
+    CACHE_BUSY         = (    1  << 29),
+    GUI_ACTIVE         = (    1u << 31),
+};
+
+// ----------------------------------------------------------------------------
+// DEFAULT_OFFSET
+// ----------------------------------------------------------------------------
+enum {
+    DEFAULT_OFFSET_SHIFT = 0,
+    DEFAULT_OFFSET_MASK  = (0x3ffffff << 0),
+};
+
+// ----------------------------------------------------------------------------
+// DEFAULT_PITCH
+// ----------------------------------------------------------------------------
+enum {
+    DEFAULT_PITCH_SHIFT = 0,
+    DEFAULT_PITCH_MASK  = (0x3ff <<  0),
+    DEFAULT_TILE_SHIFT  = 16,
+    DEFAULT_TILE_MASK   = (    1 << 16),
+};
+
+// ----------------------------------------------------------------------------
+// DEFAULT_SC_BOTTOM_RIGHT
+// ----------------------------------------------------------------------------
+enum {
+    DEFAULT_SC_RIGHT_SHIFT  = 0,
+    DEFAULT_SC_RIGHT_MASK   = (0x3fff << 0),
+    DEFAULT_SC_BOTTOM_SHIFT = 16,
+    DEFAULT_SC_BOTTOM_MASK  = (0x3fff << 16),
+};
+
+// ----------------------------------------------------------------------------
+// DEFAULT_SC_TOP_LEFT
+// ----------------------------------------------------------------------------
+enum {
+    DEFAULT_SC_LEFT_SHIFT  = 0,
+    DEFAULT_SC_LEFT_MASK   = (0x3fff << 0),
+    DEFAULT_SC_TOP_SHIFT   = 16,
+    DEFAULT_SC_TOP_MASK    = (0x3fff << 16),
+};
+
+// ----------------------------------------------------------------------------
+// DP_GUI_MASTER_CNTL
+// ----------------------------------------------------------------------------
+enum {
+    GMC_SRC_PITCH_OFFSET_CNTL = (   1 <<  0),
+    GMC_DST_PITCH_OFFSET_CNTL = (   1 <<  1),
+    GMC_SRC_CLIPPING          = (   1 <<  2),
+    GMC_DST_CLIPPING          = (   1 <<  3),
+    GMC_BRUSH_DATATYPE_SHIFT  = 4,
+    GMC_BRUSH_DATATYPE_MASK   = ( 0xf <<  4),
+    GMC_DST_DATATYPE_SHIFT    = 8,
+    GMC_DST_DATATYPE_MASK     = ( 0xf <<  8),
+    GMC_SRC_DATATYPE_SHIFT    = 12,
+    GMC_SRC_DATATYPE_MASK     = ( 0x3 << 12),
+    GMC_BYTE_PIX_ORDER        = (   1 << 14),
+    GMC_CONVERSION_TEMP       = (   1 << 15),
+    GMC_ROP3_SHIFT            = 16,
+    GMC_ROP3_MASK             = (0xff << 16),
+    GMC_SRC_SOURCE_SHIFT      = 24,
+    GMC_SRC_SOURCE_MASK       = ( 0x7 << 24),
+    GMC_3D_FCN_EN             = (   1 << 27),
+    GMC_CLR_CMP_CNTL_DIS      = (   1 << 28),
+    GMC_AUX_CLIP_DIS          = (   1 << 29),
+    GMC_WR_MSK_DIS            = (   1 << 30),
+    GMC_LD_BRUSH_Y_X          = (  1u << 31),
+};
+
+// Brush datatype values
+enum {
+    BRUSH_8X8_MONO         =  0,
+    BRUSH_8X8_MONO_TRANS   =  1,
+    BRUSH_8X1_MONO         =  2,
+    BRUSH_8X1_MONO_TRANS   =  3,
+    BRUSH_1X8_MONO         =  4,
+    BRUSH_1X8_MONO_TRANS   =  5,
+    BRUSH_32X1_MONO        =  6,
+    BRUSH_32X1_MONO_TRANS  =  7,
+    BRUSH_32X32_MONO       =  8,
+    BRUSH_32X32_MONO_TRANS =  9,
+    BRUSH_8X8_COLOR        = 10,
+    BRUSH_8X1_COLOR        = 11,
+    BRUSH_1X8_COLOR        = 12,
+    BRUSH_SOLIDCOLOR       = 13,
+    BRUSH_NONE             = 15,
+};
+
+// Src datatype values
+enum {
+    SRC_MONO       = 0,
+    SRC_MONO_TRANS = 1,
+    SRC_DST_COLOR  = 3,
+};
+
+// Dst datatype values
+enum {
+    DST_PSEUDO_COLOR_8  =  2,
+    DST_ARGB_1555       =  3,
+    DST_RGB_565         =  4,
+    DST_RGB_888         =  5,
+    DST_ARGB_8888       =  6,
+    DST_RGB_332         =  7,
+    DST_Y8_GREYSCALE    =  8,
+    DST_RGB_8_GREYSCALE =  9,
+    DST_YUV_422_VYUY    = 11,
+    DST_YUV_422_YVYU    = 12,
+    DST_AYUV_444_8888   = 14,
+    DST_ARGB_4444       = 15,
+};
+
+// clang-format on
+static inline uint32_t
+ati_get_dst_datatype(int bpp)
+{
+    switch (bpp) {
+    case 8:
+        return DST_PSEUDO_COLOR_8;
+    case 15:
+        return DST_ARGB_1555;
+    case 16:
+        return DST_RGB_565;
+    case 24:
+        return DST_RGB_888;
+    case 32:
+        return DST_ARGB_8888;
+    default:
+        return DST_ARGB_8888;
+    }
+}
+// clang-format off
+
+// ROP3 values
+enum {
+    ROP3_SRCCOPY = 0xcc,
+};
+
+// Source values
+enum {
+    SOURCE_MEMORY            = 2,
+    SOURCE_HOST_DATA         = 3,
+    SOURCE_HOST_DATA_ALIGNED = 4,
+};
+
+// ----------------------------------------------------------------------------
+// DST_BRES_ERR
+// ----------------------------------------------------------------------------
+enum {
+    DST_BRES_ERR_SHIFT = 0,
+    DST_BRES_ERR_MASK  = (0xfffff << 0),
+};
+
+// ----------------------------------------------------------------------------
+// DST_BRES_INC
+// ----------------------------------------------------------------------------
+enum {
+    DST_BRES_INC_SHIFT = 0,
+    DST_BRES_INC_MASK  = (0xfffff << 0),
+};
+
+// ----------------------------------------------------------------------------
+// DST_BRES_DEC
+// ----------------------------------------------------------------------------
+enum {
+    DST_BRES_DEC_SHIFT = 0,
+    DST_BRES_DEC_MASK  = (0xfffff << 0),
+};
+
+// clang-format on
 #endif

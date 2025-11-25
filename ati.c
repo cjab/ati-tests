@@ -335,3 +335,103 @@ ati_dump_all_registers(ati_device_t *dev)
 #undef X_WO_DUMP
     printf("============================================\n");
 }
+
+void
+ati_set_display_mode(ati_device_t *dev)
+{
+    uint32_t crtc_ext_cntl = rd_crtc_ext_cntl(dev);
+    wr_crtc_ext_cntl(dev, crtc_ext_cntl | CRTC_HSYNC_DIS | CRTC_VSYNC_DIS |
+                              CRTC_DISPLAY_DIS | VGA_ATI_LINEAR |
+                              VGA_XCRT_CNT_EN);
+
+    uint32_t dac_cntl = rd_dac_cntl(dev);
+    wr_dac_cntl(dev,
+                (dac_cntl & ~DAC_TVO_EN & ~DAC_VGA_ADR_EN & ~DAC_MASK_MASK) |
+                    DAC_8BIT_EN | (0xff << DAC_MASK_SHIFT));
+
+    uint32_t crtc_h_total_disp = rd_crtc_h_total_disp(dev);
+    uint32_t h_disp =
+        (((X_RES / 8) - 1) << CRTC_H_DISP_SHIFT) & CRTC_H_DISP_MASK;
+    // TODO: I'm not positive this is correct. It probably isn't in most cases.
+    //       There will be overscan on actual CRTs.
+    uint32_t h_total =
+        (((X_RES / 8) - 1) << CRTC_H_TOTAL_SHIFT) & CRTC_H_TOTAL_MASK;
+    wr_crtc_h_total_disp(
+        dev, (crtc_h_total_disp & ~CRTC_H_DISP_MASK & ~CRTC_H_TOTAL_MASK) |
+                 h_disp | h_total);
+
+    uint32_t crtc_h_sync_strt_wid = rd_crtc_h_sync_strt_wid(dev);
+    // TODO: Really not sure about this one.
+    wr_crtc_h_sync_strt_wid(dev, crtc_h_sync_strt_wid);
+
+    uint32_t crtc_v_total_disp = rd_crtc_v_total_disp(dev);
+    uint32_t v_disp = (Y_RES << CRTC_V_DISP_SHIFT) & CRTC_V_DISP_MASK;
+    // TODO: I'm not positive this is correct. It probably isn't in most cases.
+    //       There will be overscan on actual CRTs.
+    uint32_t v_total = (Y_RES << CRTC_V_TOTAL_SHIFT) & CRTC_V_TOTAL_MASK;
+    wr_crtc_v_total_disp(
+        dev, (crtc_v_total_disp & ~CRTC_V_DISP_MASK & ~CRTC_V_TOTAL_MASK) |
+                 v_disp | v_total);
+
+    crtc_ext_cntl = rd_crtc_ext_cntl(dev);
+    wr_crtc_ext_cntl(dev, crtc_ext_cntl & ~CRTC_HSYNC_DIS & ~CRTC_VSYNC_DIS &
+                              ~CRTC_DISPLAY_DIS & VGA_ATI_LINEAR &
+                              VGA_XCRT_CNT_EN);
+
+    printf("MODESET COMPLETE\n");
+}
+
+void
+ati_init_gui_engine(ati_device_t *dev)
+{
+    wr_default_offset(dev, 0x0 & DEFAULT_OFFSET_MASK);
+    wr_default_pitch(dev, (X_RES * BYPP) & DEFAULT_PITCH_MASK);
+    // Set scissor clipping to the max.
+    // Range is -8192 to +8191 which is why these aren't just set to the mask.
+    wr_default_sc_bottom_right(dev, (0x1fff << DEFAULT_SC_RIGHT_SHIFT) &
+                                        (0x1fff << DEFAULT_SC_BOTTOM_SHIFT));
+    // The docs say to set DEFAULT_SC_TOP_LEFT... That doesn't exist as far as I
+    // can tell. So, set the actual scissor top left just to be safe.
+    wr_sc_top_left(dev, 0x00000000);
+    wr_dp_gui_master_cntl(
+        dev, 0x0 | (BRUSH_SOLIDCOLOR << GMC_BRUSH_DATATYPE_SHIFT) |
+                 (ati_get_dst_datatype(BPP) << GMC_DST_DATATYPE_SHIFT) |
+                 (SRC_DST_COLOR << GMC_SRC_DATATYPE_SHIFT) |
+                 GMC_BYTE_PIX_ORDER | // LSB to MSB
+                 (ROP3_SRCCOPY << GMC_ROP3_SHIFT) |
+                 (SOURCE_MEMORY << GMC_SRC_SOURCE_SHIFT) |
+                 GMC_CLR_CMP_CNTL_DIS | GMC_AUX_CLIP_DIS | GMC_WR_MSK_DIS);
+
+    // Clear the line drawing registers
+    wr_dst_bres_err(dev, 0);
+    wr_dst_bres_inc(dev, 0);
+    wr_dst_bres_dec(dev, 0);
+
+    // Set brush colors
+    wr_dp_brush_frgd_clr(dev, 0xffffffff);
+    wr_dp_brush_bkgd_clr(dev, 0x00000000);
+}
+
+void
+ati_wait_for_fifo(ati_device_t *dev, uint32_t entries)
+{
+    uint32_t timeout = 1000000;
+    while (timeout--) {
+        uint32_t slots = rd_gui_stat(dev) & GUI_FIFO_CNT_MASK;
+        if (slots >= entries) {
+            return;
+        }
+    }
+    printf("ati_wait_for_fifo timed out! (waiting for %d entries)\n", entries);
+    // TODO: I'm not sure what should happen on a timeout here.
+    //       It looks like the r128 driver resets the engine.
+    //       We'll see if we can get away with not worrying about it...
+}
+
+void
+ati_wait_for_idle(ati_device_t *dev)
+{
+    ati_wait_for_fifo(dev, FIFO_MAX);
+    // TODO: There's more to this. It also needs to reset the engine and flush
+    //       the pixel cache (per Rage 128 software dev guide).
+}
