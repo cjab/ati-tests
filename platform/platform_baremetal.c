@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "platform.h"
+#include "tinyprintf.h"
 
 // clang-format off
 // I/O Ports
@@ -86,8 +87,9 @@ serial_init(void)
 }
 
 void
-serial_putc(char c)
+serial_putc(void* p, char c)
 {
+    (void)p;
     while (!(inb(SERIAL_PORT + 5) & 0x20))
         ; // Wait for ready
     outb(SERIAL_PORT, c);
@@ -97,7 +99,7 @@ void
 serial_puts(const char *s)
 {
     while(*s) {
-        serial_putc(*s++);
+        serial_putc(NULL, *s++);
     }
 }
 
@@ -290,19 +292,14 @@ platform_write_file(const char *path, const void *data, size_t size)
 }
 
 int
-printf(const char *format, ...)
-{
-    // FIXME: Just outputs the format string for now.
-    serial_puts(format);
-    return 0;
-}
-
-int
 fprintf(FILE *stream, const char *format, ...)
 {
-    // FIXME: Just outputs the format string for now.
     (void) stream;
-    serial_puts(format);
+    va_list va;
+    va_start(va, format);
+    tfp_format(NULL, serial_putc, format, va);
+    va_end(va);
+
     return 0;
 }
 
@@ -317,7 +314,6 @@ fflush(FILE *stream)
 void
 exit(int status)
 {
-    // TODO: stubbed
     (void) status;
     while (1) {
         __asm__ volatile("hlt");
@@ -367,4 +363,5 @@ void
 platform_init(void)
 {
     serial_init();
+    init_printf(NULL, serial_putc);
 }

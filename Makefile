@@ -5,7 +5,7 @@ PLATFORM ?= linux
 ifeq ($(PLATFORM),baremetal)
 	CFLAGS += -ffreestanding -fno-stack-protector -no-pie -m32 -DPLATFORM_BAREMETAL
 	LDFLAGS = -nostdlib -T linker.ld -m32 -no-pie
-	PLATFORM_SRC = platform/platform_baremetal.c boot.S
+	PLATFORM_SRC = platform/platform_baremetal.c boot.S platform/tinyprintf.c
 	TARGET = ati_tests.elf
 else
 	LDFLAGS = -lpci

@@ -6,11 +6,11 @@
 #include <stddef.h>
 
 #ifdef PLATFORM_BAREMETAL
+#include "tinyprintf.h"
 typedef void FILE;
 #define stdin ((FILE *)0)
 #define stdout ((FILE *)1)
 #define stderr ((FILE *)2)
-int printf(const char *format, ...);
 int fprintf(FILE *stream, const char *format, ...);
 int fflush(FILE *stream);
 char *fgets(char *s, int n, FILE *stream);
@@ -20,7 +20,7 @@ int strcmp(const char *s1, const char *s2);
 void *memcpy(void *dest, const void *src, size_t n);
 void *memset(void *s, int c, size_t n);
 void serial_init(void);
-void serial_putc(char c);
+void serial_putc(void* p, char c);
 #else
 #include <stdio.h>
 #include <stdlib.h>
