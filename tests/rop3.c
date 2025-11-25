@@ -13,26 +13,27 @@
 #define GMC_BYTE_LSB_TO_MSB             0x00004000
 // clang-format on
 
-static const uint32_t red = 0x00ff0000;
-static const uint32_t grn = 0x0000ff00;
+#define R 0x00ff0000
+#define G 0x0000ff00
+
 // clang-format off
 static const uint32_t data[] = {
-  red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
-  red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
-  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-  red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
-  red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
+  R, R, R, R, R, R, R, R, R, R, R, R, R, R, R, R,
+  R, R, R, R, R, R, R, R, R, R, R, R, R, R, R, R,
+  R, R, G, G, G, G, G, G, G, G, G, G, G, G, R, R,
+  R, R, G, G, G, G, G, G, G, G, G, G, G, G, R, R,
+  R, R, G, G, G, G, G, G, G, G, G, G, G, G, R, R,
+  R, R, G, G, G, G, G, G, G, G, G, G, G, G, R, R,
+  R, R, G, G, G, G, G, G, G, G, G, G, G, G, R, R,
+  R, R, G, G, G, G, G, G, G, G, G, G, G, G, R, R,
+  R, R, G, G, G, G, G, G, G, G, G, G, G, G, R, R,
+  R, R, G, G, G, G, G, G, G, G, G, G, G, G, R, R,
+  R, R, G, G, G, G, G, G, G, G, G, G, G, G, R, R,
+  R, R, G, G, G, G, G, G, G, G, G, G, G, G, R, R,
+  R, R, G, G, G, G, G, G, G, G, G, G, G, G, R, R,
+  R, R, G, G, G, G, G, G, G, G, G, G, G, G, R, R,
+  R, R, R, R, R, R, R, R, R, R, R, R, R, R, R, R,
+  R, R, R, R, R, R, R, R, R, R, R, R, R, R, R, R,
 };
 // clang-format on
 
