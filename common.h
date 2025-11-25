@@ -2,7 +2,9 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <errno.h>
+// IWYU pragma: begin_exports
+#include "platform/platform.h"
+// IWYU pragma: end_exports
 
 #include "ati.h"
 

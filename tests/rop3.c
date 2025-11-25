@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "../ati.h"
 #include "../common.h"
-#include <unistd.h>
 
 // clang-format off
 #define GMC_SRC_DATATYPE_COLOR          0x00003000
@@ -14,33 +13,32 @@
 #define GMC_BYTE_LSB_TO_MSB             0x00004000
 // clang-format on
 
+static const uint32_t red = 0x00ff0000;
+static const uint32_t grn = 0x0000ff00;
+// clang-format off
+static const uint32_t data[] = {
+  red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
+  red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
+  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
+  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
+  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
+  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
+  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
+  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
+  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
+  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
+  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
+  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
+  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
+  red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
+  red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
+  red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
+};
+// clang-format on
+
 bool
 test_rop3_16x16(ati_device_t *dev)
 {
-    uint32_t red = 0x00ff0000;
-    uint32_t grn = 0x0000ff00;
-
-    // clang-format off
-    uint32_t data[] = {
-      red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
-      red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
-      red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-      red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-      red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-      red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-      red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-      red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-      red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-      red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-      red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-      red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-      red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-      red, red, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, grn, red, red,
-      red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
-      red, red, red, red, red, red, red, red, red, red, red, red, red, red, red, red,
-    };
-    // clang-format on
-
     ati_screen_clear(dev);
 
     unsigned rows = 16;

@@ -1,10 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include "platform.h"
 
@@ -31,6 +27,7 @@
 // clang-format on
 
 #define NUM_BARS 8
+#define SERIAL_PORT 0x3f8
 
 struct platform_pci_device {
     uint8_t bus;
@@ -43,9 +40,8 @@ struct platform_pci_device {
 
 #define FATAL                                                                  \
     do {                                                                       \
-        fprintf(stderr, "Error at line %d, file %s (%d) [%s]\n", __LINE__,     \
-                __FILE__, errno, strerror(errno));                             \
-        exit(1);                                                               \
+        while (1)                                                              \
+            ;                                                                  \
     } while (0)
 
 static platform_pci_device_t g_pci_dev;
@@ -64,6 +60,48 @@ inl(uint16_t port)
     return ret;
 }
 
+static inline void
+outb(uint16_t port, uint8_t val)
+{
+    __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port));
+}
+static inline uint8_t
+inb(uint16_t port)
+{
+    uint8_t ret;
+    __asm__ volatile("inb %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
+}
+
+// Serial
+void
+serial_init(void)
+{
+    outb(SERIAL_PORT + 1, 0x00); // Disable interrupts
+    outb(SERIAL_PORT + 3, 0x80); // Enable DLAB
+    outb(SERIAL_PORT + 0, 0x03); // Divisor low (38400 baud)
+    outb(SERIAL_PORT + 1, 0x00); // Divisor high
+    outb(SERIAL_PORT + 3, 0x03); // 8N1
+    outb(SERIAL_PORT + 2, 0xC7); // Enable FIFO
+}
+
+void
+serial_putc(char c)
+{
+    while (!(inb(SERIAL_PORT + 5) & 0x20))
+        ; // Wait for ready
+    outb(SERIAL_PORT, c);
+}
+
+void
+serial_puts(const char *s)
+{
+    while(*s) {
+        serial_putc(*s++);
+    }
+}
+
+// PCI
 static uint32_t
 pci_config_address(uint8_t bus, uint8_t device, uint8_t function,
                    uint8_t offset)
@@ -83,7 +121,7 @@ pci_config_read32(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset)
     return inl(PCI_CONFIG_DATA);
 }
 
-uint16_t
+static uint16_t
 pci_config_read16(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset)
 {
     uint32_t value = pci_config_read32(bus, device, function, offset & 0xFC);
@@ -91,7 +129,7 @@ pci_config_read16(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset)
     return (uint16_t) ((value >> ((offset & 2) * 8)) & 0xFFFF);
 }
 
-void
+static void
 pci_config_write32(uint8_t bus, uint8_t device, uint8_t function,
                    uint8_t offset, uint32_t value)
 {
@@ -182,8 +220,15 @@ platform_pci_destroy(platform_pci_device_t *dev)
 void
 platform_pci_get_name(platform_pci_device_t *dev, char *buf, size_t len)
 {
+    (void) dev;
+    (void) len;
     // TODO: Actually lookup the device name from a static table
-    snprintf(buf, len, "%04x", dev->device_id);
+    if (len >= 4) {
+        buf[0] = 'A';
+        buf[1] = 'T';
+        buf[2] = 'I';
+        buf[3] = '\0';
+    }
 }
 
 void *
@@ -242,4 +287,84 @@ platform_write_file(const char *path, const void *data, size_t size)
     (void) data;
     (void) size;
     return 0;
+}
+
+int
+printf(const char *format, ...)
+{
+    // FIXME: Just outputs the format string for now.
+    serial_puts(format);
+    return 0;
+}
+
+int
+fprintf(FILE *stream, const char *format, ...)
+{
+    // FIXME: Just outputs the format string for now.
+    (void) stream;
+    serial_puts(format);
+    return 0;
+}
+
+int
+fflush(FILE *stream)
+{
+    // TODO: stubbed
+    (void) stream;
+    return 0;
+}
+
+void
+exit(int status)
+{
+    // TODO: stubbed
+    (void) status;
+    while (1) {
+        __asm__ volatile("hlt");
+    } // Halt CPU
+}
+
+void *memcpy(void *dest, const void *src, size_t n)
+{
+    unsigned char *d = dest;
+    const unsigned char *s = src;
+    while (n--) {
+        *d++ = *s++;
+    }
+    return dest;
+}
+
+void *memset(void *s, int c, size_t n)
+{
+    unsigned char *p = s;
+    while (n--) {
+        *p++ = (unsigned char)c;
+    }
+    return s;
+}
+
+int
+strcmp(const char *s1, const char *s2)
+{
+    while (*s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+    }
+    return *(unsigned char *) s1 - *(unsigned char *) s2;
+}
+
+char *
+fgets(char *s, int size, FILE *stream)
+{
+    // TODO: stubbed
+    (void) s;
+    (void) size;
+    (void) stream;
+    return NULL;
+}
+
+void
+platform_init(void)
+{
+    serial_init();
 }

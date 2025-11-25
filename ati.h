@@ -4,8 +4,10 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
+
+// IWYU pragma: begin_exports
+#include "platform/platform.h"
+// IWYU pragma: end_exports
 
 typedef struct ati_device ati_device_t;
 

@@ -158,3 +158,10 @@ platform_write_file(const char *path, const void *data, size_t size)
 
     return written;
 }
+
+void
+platform_init(void)
+{
+    // Nothing to init under Linux
+    return;
+}

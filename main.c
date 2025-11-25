@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+
+// IWYU pragma: begin_exports
+#include "platform/platform.h"
+// IWYU pragma: end_exports
 
 #include "ati.h"
 #include "common.h"
@@ -45,6 +46,7 @@ run_all_tests(ati_device_t *dev)
 {
     printf("\nRunning tests...\n");
     for (int i = 0; i < test_count; i++) {
+        printf("\nRunning i...\n");
         run_test(dev, &tests[i]);
     }
 }
@@ -92,4 +94,16 @@ main(int argc, char **argv)
 
     ati_device_destroy(dev);
     return 0;
+}
+
+void
+kernel_main()
+{
+    platform_init();
+
+    ati_device_t *dev = ati_device_init();
+    register_all_tests();
+    run_all_tests(dev);
+    printf("\n\nTests complete. Halting.\n");
+    ati_device_destroy(dev);
 }

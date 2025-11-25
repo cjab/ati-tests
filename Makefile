@@ -3,7 +3,9 @@ CFLAGS = -std=c99 -Wall -Wextra
 PLATFORM ?= linux
 
 ifeq ($(PLATFORM),baremetal)
-	PLATFORM_SRC = platform/platform_baremetal.c
+	CFLAGS += -ffreestanding -fno-stack-protector -no-pie -m32 -DPLATFORM_BAREMETAL
+	LDFLAGS = -nostdlib -T linker.ld -m32 -no-pie
+	PLATFORM_SRC = platform/platform_baremetal.c boot.S
 	TARGET = ati_tests.elf
 else
 	LDFLAGS = -lpci

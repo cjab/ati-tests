@@ -1,11 +1,10 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
+
+#include "platform/platform.h"
 
 #include "ati.h"
 #include "common.h"
-#include "platform/platform.h"
 
 #define NUM_BARS 8
 
@@ -18,7 +17,8 @@ struct ati_device {
 ati_device_t *
 ati_device_init(void)
 {
-    ati_device_t *ati = malloc(sizeof(ati_device_t));
+    static ati_device_t ati_dev;
+    ati_device_t *ati = &ati_dev;
     ati->pci_dev = platform_pci_init();
     ati->bar[0] = platform_pci_map_bar(ati->pci_dev, 0);
     ati->bar[2] = platform_pci_map_bar(ati->pci_dev, 2);
@@ -124,13 +124,17 @@ start: {
             } else {
                 return false;
             }
+        } else {
+            // FIXME: This is mostly for the baremetal case where we
+            //        don't yet have an fgets.
+            return false;
         }
     }
 
     size_t screen_size = 640 * 480 * 4;
     if (read != screen_size) {
         fprintf(stderr, "Failed to read complete fixture file\n");
-        free(fixture);
+        platform_free_file(fixture);
         return false;
     }
 
