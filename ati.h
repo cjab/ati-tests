@@ -40,6 +40,10 @@ void ati_dump_all_registers(ati_device_t *dev);
 void ati_dump_registers(ati_device_t *dev, int count, ...);
 void ati_set_display_mode(ati_device_t *dev);
 void ati_init_gui_engine(ati_device_t *dev);
+void ati_engine_flush(ati_device_t *dev);
+void ati_engine_reset(ati_device_t *dev);
+void ati_wait_for_fifo(ati_device_t *dev, uint32_t entries);
+void ati_wait_for_idle(ati_device_t *dev);
 
 // clang-format off
 #define DUMP_REGISTERS(dev, ...) \
@@ -73,6 +77,7 @@ void ati_init_gui_engine(ati_device_t *dev);
   X(src_sc_right,             SRC_SC_RIGHT,            0x1654, RW) \
   X(src_sc_bottom_right,      SRC_SC_BOTTOM_RIGHT,     0x16f4, RW) \
   X(default_sc_bottom_right,  DEFAULT_SC_BOTTOM_RIGHT, 0x16e8, RW) \
+  X(aux_sc_cntl,              AUX_SC_CNTL,             0x1660, RW) \
   \
   /* Destination Registers */ \
   X(dst_offset,               DST_OFFSET,              0x1404, RW) \
@@ -93,7 +98,7 @@ void ati_init_gui_engine(ati_device_t *dev);
   X(src_pitch,                SRC_PITCH,               0x15b0, RW) \
   X(src_x,                    SRC_X,                   0x141c, RW) \
   X(src_y,                    SRC_Y,                   0x1420, RW) \
-  X(src_x_y,                  SRC_X_Y,                 0x1594, WO) \
+  X(src_x_y,                  SRC_X_Y,                 0x1590, WO) \
   X(src_y_x,                  SRC_Y_X,                 0x1438, WO) \
   \
   /* Default Registers */ \
@@ -110,6 +115,10 @@ void ati_init_gui_engine(ati_device_t *dev);
   X(crtc_offset,              CRTC_OFFSET,             0x0224, RW) \
   X(crtc_offset_cntl,         CRTC_OFFSET_CNTL,        0x0228, RW) \
   X(crtc_pitch,               CRTC_PITCH,              0x022c, RW) \
+  \
+  /* Reset & Engine Control Registers */ \
+  X(gen_reset_cntl,           GEN_RESET_CNTL,          0x00f0, RW) \
+  X(pc_ngui_ctlstat,          PC_NGUI_CTLSTAT,         0x0184, RW) \
   \
   /* DAC Registers */ \
   X(dac_cntl,                 DAC_CNTL,                0x0058, RW) \
@@ -152,7 +161,10 @@ void ati_init_gui_engine(ati_device_t *dev);
   X(host_data5,               HOST_DATA5,              0x17d4, WO) \
   X(host_data6,               HOST_DATA6,              0x17d8, WO) \
   X(host_data7,               HOST_DATA7,              0x17dc, WO) \
-  X(host_data_last,           HOST_DATA_LAST,          0x17e0, WO)
+  X(host_data_last,           HOST_DATA_LAST,          0x17e0, WO) \
+  \
+  /* 3D Registers */ \
+  X(scale_3d_cntl,            SCALE_3D_CNTL,           0x1a00, RW)
 
 // Register offset enum
 #define X(func_name, const_name, offset, mode) const_name = offset,
@@ -283,6 +295,37 @@ enum {
     DAC_CRC_EN             = (1 << 19),
     DAC_MASK_SHIFT         = 24,
     DAC_MASK_MASK          = (0xff << 24),
+};
+
+// ----------------------------------------------------------------------------
+// GEN_RESET_CNTL
+// ----------------------------------------------------------------------------
+enum {
+    SOFT_RESET_GUI = (1 << 0),
+};
+
+// ----------------------------------------------------------------------------
+// PC_NGUI_CTLSTAT
+// ----------------------------------------------------------------------------
+enum {
+    PC_FLUSH_ALL = 0x00ff,
+    PC_BUSY      = (1u << 31),
+};
+
+// ----------------------------------------------------------------------------
+// DP_DATATYPE
+// ----------------------------------------------------------------------------
+enum {
+    HOST_BIG_ENDIAN_EN = (1 << 29),
+};
+
+// ----------------------------------------------------------------------------
+// DP_CNTL
+// ----------------------------------------------------------------------------
+enum {
+    DST_X_LEFT_TO_RIGHT = (1 << 0),
+    DST_Y_TOP_TO_BOTTOM = (1 << 1),
+    DST_Y_MAJOR         = (1 << 2),
 };
 
 // ----------------------------------------------------------------------------

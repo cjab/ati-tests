@@ -420,8 +420,22 @@ ati_set_display_mode(ati_device_t *dev)
 void
 ati_init_gui_engine(ati_device_t *dev)
 {
+    // Disable 3D scaling
+    wr_scale_3d_cntl(dev, 0x0);
+
+    // Reset the engine
+    ati_engine_reset(dev);
+
+    // Wait for engine to be idle after reset
+    ati_wait_for_idle(dev);
+
+    // Set default offset and pitch
     wr_default_offset(dev, 0x0);
     wr_default_pitch(dev, (X_RES * BYPP) / 8);
+
+    // Disable auxiliary scissor
+    wr_aux_sc_cntl(dev, 0x0);
+
     // Set scissor clipping to the max.
     // Range is -8192 to +8191 which is why these aren't just set to the mask.
     wr_default_sc_bottom_right(dev, (0x1fff << DEFAULT_SC_RIGHT_SHIFT) |
@@ -429,6 +443,16 @@ ati_init_gui_engine(ati_device_t *dev)
     // The docs say to set DEFAULT_SC_TOP_LEFT... That doesn't exist as far as I
     // can tell. So, set the actual scissor top left just to be safe.
     wr_sc_top_left(dev, 0x00000000);
+    wr_sc_bottom_right(dev, (0x1fff << DEFAULT_SC_RIGHT_SHIFT) |
+                                (0x1fff << DEFAULT_SC_BOTTOM_SHIFT));
+
+    // Set datatype with little-endian byte order
+    wr_dp_datatype(dev, 0x0); // Little-endian, HOST_BIG_ENDIAN_EN = 0
+
+    // Set blit direction to left-to-right, top-to-bottom
+    wr_dp_cntl(dev, DST_X_LEFT_TO_RIGHT | DST_Y_TOP_TO_BOTTOM);
+
+    // Set GUI master control
     wr_dp_gui_master_cntl(
         dev, 0x0 | (BRUSH_SOLIDCOLOR << GMC_BRUSH_DATATYPE_SHIFT) |
                  (ati_get_dst_datatype(BPP) << GMC_DST_DATATYPE_SHIFT) |
@@ -446,6 +470,56 @@ ati_init_gui_engine(ati_device_t *dev)
     // Set brush colors
     wr_dp_brush_frgd_clr(dev, 0xffffffff);
     wr_dp_brush_bkgd_clr(dev, 0x00000000);
+
+    // Set source colors
+    wr_dp_src_frgd_clr(dev, 0xffffffff);
+    wr_dp_src_bkgd_clr(dev, 0x00000000);
+
+    // Set write mask
+    wr_dp_write_msk(dev, 0xffffffff);
+
+    // Wait for idle to ensure initialization is complete
+    ati_wait_for_idle(dev);
+}
+
+void
+ati_engine_flush(ati_device_t *dev)
+{
+    // Flush the pixel cache
+    wr_pc_ngui_ctlstat(dev, PC_FLUSH_ALL);
+
+    // Wait for flush to complete (PC_BUSY bit to clear)
+    uint32_t timeout = 1000000;
+    while (timeout--) {
+        uint32_t status = rd_pc_ngui_ctlstat(dev);
+        if ((status & PC_BUSY) == 0) {
+            return;
+        }
+    }
+    printf("ati_engine_flush timed out! Pixel cache still busy.\n");
+}
+
+void
+ati_engine_reset(ati_device_t *dev)
+{
+    // Flush pixel cache first
+    ati_engine_flush(dev);
+
+    // Read current GEN_RESET_CNTL value
+    uint32_t gen_reset_cntl = rd_gen_reset_cntl(dev);
+
+    // Assert soft reset
+    wr_gen_reset_cntl(dev, gen_reset_cntl | SOFT_RESET_GUI);
+    // Read back to ensure write completes
+    rd_gen_reset_cntl(dev);
+
+    // Deassert soft reset
+    wr_gen_reset_cntl(dev, gen_reset_cntl & ~SOFT_RESET_GUI);
+    // Read back to ensure write completes
+    rd_gen_reset_cntl(dev);
+
+    // Restore original value
+    wr_gen_reset_cntl(dev, gen_reset_cntl);
 }
 
 void
@@ -467,7 +541,21 @@ ati_wait_for_fifo(ati_device_t *dev, uint32_t entries)
 void
 ati_wait_for_idle(ati_device_t *dev)
 {
+    // Wait for FIFO to be completely empty
     ati_wait_for_fifo(dev, FIFO_MAX);
-    // TODO: There's more to this. It also needs to reset the engine and flush
-    //       the pixel cache (per Rage 128 software dev guide).
+
+    // Wait for engine to be idle
+    uint32_t timeout = 1000000;
+    while (timeout--) {
+        uint32_t status = rd_gui_stat(dev);
+        if ((status & GUI_ACTIVE) == 0) {
+            break;
+        }
+    }
+    if (timeout == 0) {
+        printf("ati_wait_for_idle timed out! GUI still active.\n");
+    }
+
+    // Flush pixel cache
+    ati_engine_flush(dev);
 }
