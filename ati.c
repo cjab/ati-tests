@@ -105,36 +105,21 @@ ati_vram_memcpy(ati_device_t *dev, uint32_t dst_offset, const void *src,
 }
 
 bool
-ati_screen_compare_file(ati_device_t *dev, const char *filename)
+ati_screen_compare_fixture(ati_device_t *dev, const char *fixture_name)
 {
-start: {
-    size_t read;
-    uint8_t *fixture = platform_read_file(filename, &read);
+    size_t fixture_size;
+    const uint8_t *fixture = platform_get_fixture(fixture_name, &fixture_size);
 
     if (!fixture) {
-        printf("Fixture does not yet exist. Create it now? (Y/n) ");
-        fflush(stdout);
-
-        char response[10];
-        if (fgets(response, sizeof(response), stdin)) {
-            if (response[0] == 'Y' || response[0] == 'y' ||
-                response[0] == '\n') {
-                ati_screen_dump(dev, filename);
-                goto start;
-            } else {
-                return false;
-            }
-        } else {
-            // FIXME: This is mostly for the baremetal case where we
-            //        don't yet have an fgets.
-            return false;
-        }
+        fprintf(stderr, "Fixture '%s' not found\n", fixture_name);
+        return false;
     }
 
     size_t screen_size = 640 * 480 * 4;
-    if (read != screen_size) {
-        fprintf(stderr, "Failed to read complete fixture file\n");
-        platform_free_file(fixture);
+    if (fixture_size != screen_size) {
+        fprintf(stderr, "Fixture size mismatch: expected %zu, got %zu\n",
+                screen_size, fixture_size);
+        platform_free_fixture(fixture);
         return false;
     }
 
@@ -165,9 +150,8 @@ start: {
             printf("  Pixel at (%d, %d)\n", x, y);
         }
     }
-    platform_free_file(fixture);
+    platform_free_fixture(fixture);
     return match;
-}
 }
 
 void

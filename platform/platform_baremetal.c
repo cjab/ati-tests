@@ -281,22 +281,33 @@ platform_pci_get_bar_size(platform_pci_device_t *dev, int bar_idx)
     return ~size_mask + 1;
 }
 
-void *
-platform_read_file(const char *path, size_t *size_out)
+// Fixture registry - generated at build time
+typedef struct {
+    const char *name;
+    const uint8_t *start;
+    const uint8_t *end;
+} fixture_entry_t;
+
+extern const fixture_entry_t fixture_registry[];
+
+const uint8_t *
+platform_get_fixture(const char *name, size_t *size_out)
 {
-    // TODO: How to handle this? Possibly embed fixtures directly in the kernel?
-    (void) path;
+    for (int i = 0; fixture_registry[i].name != NULL; i++) {
+        if (strcmp(fixture_registry[i].name, name) == 0) {
+            *size_out = fixture_registry[i].end - fixture_registry[i].start;
+            return fixture_registry[i].start;
+        }
+    }
     *size_out = 0;
     return NULL;
 }
 
 void
-platform_free_file(void *data)
+platform_free_fixture(const uint8_t *data)
 {
-    // TODO: How to handle this? Possibly embed fixtures directly
-    //       in the elf file?
+    // No-op for baremetal - data is in rodata section
     (void) data;
-    return;
 }
 
 size_t

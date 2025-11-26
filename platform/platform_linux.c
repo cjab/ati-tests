@@ -111,33 +111,49 @@ platform_pci_get_bar_size(platform_pci_device_t *dev, int bar_idx)
     return dev->pci_dev->size[bar_idx];
 };
 
-void *
-platform_read_file(const char *path, size_t *size_out)
+const uint8_t *
+platform_get_fixture(const char *name, size_t *size_out)
 {
+    char path[512];
+    snprintf(path, sizeof(path), "fixtures/%s.bin", name);
+
     FILE *f = fopen(path, "rb");
-    if (!f)
+    if (!f) {
+        *size_out = 0;
         return NULL;
+    }
 
     // Get file size
     fseek(f, 0, SEEK_END);
     size_t file_size = ftell(f);
     fseek(f, 0, SEEK_SET);
-    uint8_t *file = malloc(file_size);
-    if (!file) {
-        fprintf(stderr, "Failed to allocate memory for read\n");
+
+    uint8_t *data = malloc(file_size);
+    if (!data) {
+        fprintf(stderr, "Failed to allocate memory for fixture\n");
         fclose(f);
+        *size_out = 0;
         return NULL;
     }
-    *size_out = fread(file, 1, file_size, f);
+
+    size_t read = fread(data, 1, file_size, f);
     fclose(f);
 
-    return file;
+    if (read != file_size) {
+        fprintf(stderr, "Failed to read complete fixture file\n");
+        free(data);
+        *size_out = 0;
+        return NULL;
+    }
+
+    *size_out = file_size;
+    return data;
 }
 
 void
-platform_free_file(void *data)
+platform_free_fixture(const uint8_t *data)
 {
-    free(data);
+    free((void *) data);
 }
 
 size_t

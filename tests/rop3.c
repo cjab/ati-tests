@@ -77,8 +77,8 @@ test_rop3_16x16(ati_device_t *dev)
     wr_dst_y(dev, 0x10);
     wr_dst_width_height(dev, (16 << 16) | 16);
 
-    ASSERT_TRUE(ati_screen_compare_file(
-        dev, "fixtures/640x480_bgra/rop3_color_16x16.bin"));
+    ASSERT_TRUE(ati_screen_compare_fixture(
+        dev, "rop3_color_16x16"));
 
     return true;
 }

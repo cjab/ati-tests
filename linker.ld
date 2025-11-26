@@ -40,6 +40,14 @@ SECTIONS
         *(.rodata*)
     } :rodata
 
+    /* Fixture data - embedded binary files */
+    . = ALIGN(4K);
+    .rodata.fixtures : {
+        __fixtures_section_start = .;
+        *(.rodata.fixtures)
+        __fixtures_section_end = .;
+    } :rodata
+
     /* Initialized data - align to page boundary */
     . = ALIGN(4K);
     .data : {

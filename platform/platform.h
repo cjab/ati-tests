@@ -4,6 +4,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 // IWYU pragma: begin_exports
 #ifdef PLATFORM_BAREMETAL
@@ -34,9 +35,11 @@ void platform_pci_unmap_bar(platform_pci_device_t *dev, void *addr,
                             int bar_idx);
 size_t platform_pci_get_bar_size(platform_pci_device_t *dev, int bar_idx);
 
-/* File I/O */
-void *platform_read_file(const char *path, size_t *size_out);
-void platform_free_file(void *data);
+/* Fixture access - abstracted from filesystem */
+const uint8_t *platform_get_fixture(const char *name, size_t *size_out);
+void platform_free_fixture(const uint8_t *data);
+
+/* File I/O - for Linux platform only */
 size_t platform_write_file(const char *path, const void *data, size_t size);
 
 #endif

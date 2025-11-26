@@ -53,57 +53,56 @@ test_host_data_32x32(ati_device_t *dev)
     wr_host_data1(dev, 0x00000000);
     wr_host_data2(dev, 0x00000000);
     wr_host_data3(dev, 0x00000000);
-    ASSERT_TRUE(ati_screen_compare_file(
-        dev, "fixtures/640x480_bgra/host_data_mono_32x32_partial_1.bin"));
+    ASSERT_TRUE(
+        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_1"));
 
     wr_host_data4(dev, 0x0ffffff0);
     wr_host_data5(dev, 0x0ffffff0);
     wr_host_data6(dev, 0x0ffffff0);
     wr_host_data7(dev, 0x0ffffff0);
-    ASSERT_TRUE(ati_screen_compare_file(
-        dev, "fixtures/640x480_bgra/host_data_mono_32x32_partial_2.bin"));
+    ASSERT_TRUE(
+        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_2"));
 
     wr_host_data0(dev, 0x0ffffff0);
     wr_host_data1(dev, 0x0ffffff0);
     wr_host_data2(dev, 0x0ffffff0);
     wr_host_data3(dev, 0x0ffffff0);
-    ASSERT_TRUE(ati_screen_compare_file(
-        dev, "fixtures/640x480_bgra/host_data_mono_32x32_partial_3.bin"));
+    ASSERT_TRUE(
+        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_3"));
 
     wr_host_data4(dev, 0x0ffffff0);
     wr_host_data5(dev, 0x0ffffff0);
     wr_host_data6(dev, 0x0ffffff0);
     wr_host_data7(dev, 0x0ffffff0);
-    ASSERT_TRUE(ati_screen_compare_file(
-        dev, "fixtures/640x480_bgra/host_data_mono_32x32_partial_4.bin"));
+    ASSERT_TRUE(
+        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_4"));
 
     wr_host_data0(dev, 0x0ffffff0);
     wr_host_data1(dev, 0x0ffffff0);
     wr_host_data2(dev, 0x0ffffff0);
     wr_host_data3(dev, 0x0ffffff0);
-    ASSERT_TRUE(ati_screen_compare_file(
-        dev, "fixtures/640x480_bgra/host_data_mono_32x32_partial_5.bin"));
+    ASSERT_TRUE(
+        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_5"));
 
     wr_host_data4(dev, 0x0ffffff0);
     wr_host_data5(dev, 0x0ffffff0);
     wr_host_data6(dev, 0x0ffffff0);
     wr_host_data7(dev, 0x0ffffff0);
-    ASSERT_TRUE(ati_screen_compare_file(
-        dev, "fixtures/640x480_bgra/host_data_mono_32x32_partial_6.bin"));
+    ASSERT_TRUE(
+        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_6"));
 
     wr_host_data0(dev, 0x0ffffff0);
     wr_host_data1(dev, 0x0ffffff0);
     wr_host_data2(dev, 0x0ffffff0);
     wr_host_data3(dev, 0x0ffffff0);
-    ASSERT_TRUE(ati_screen_compare_file(
-        dev, "fixtures/640x480_bgra/host_data_mono_32x32_partial_7.bin"));
+    ASSERT_TRUE(
+        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_7"));
 
     wr_host_data4(dev, 0x00000000);
     wr_host_data5(dev, 0x00000000);
     wr_host_data6(dev, 0x00000000);
     wr_host_data_last(dev, 0x00000000);
-    ASSERT_TRUE(ati_screen_compare_file(
-        dev, "fixtures/640x480_bgra/host_data_mono_32x32.bin"));
+    ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_mono_32x32"));
 
     return true;
 }
@@ -148,8 +147,7 @@ test_host_data_mono_is_bit_packed(ati_device_t *dev)
     wr_dst_width_height(dev, (width << 16) | height);
 
     wr_host_data_last(dev, 0x00000033);
-    ASSERT_TRUE(ati_screen_compare_file(
-        dev, "fixtures/640x480_bgra/host_data_mono_bitpacked.bin"));
+    ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_mono_bitpacked"));
 
     return true;
 }
