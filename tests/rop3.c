@@ -86,5 +86,5 @@ test_rop3_16x16(ati_device_t *dev)
 void
 register_rop3_tests(void)
 {
-    register_test("rop3 16x16", test_rop3_16x16);
+    REGISTER_TEST(test_rop3_16x16, "rop3 16x16");
 }

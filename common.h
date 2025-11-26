@@ -41,7 +41,11 @@
         exit(1);                                                               \
     } while (0)
 
-void register_test(const char *name, bool (*func)(ati_device_t *));
+void register_test(const char *id, const char *display_name, bool (*func)(ati_device_t *));
+
+#define REGISTER_TEST(func, display_name) \
+    register_test(#func, display_name, func)
+
 void register_all_tests(void);
 void run_all_tests(ati_device_t *dev);
 

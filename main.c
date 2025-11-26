@@ -10,7 +10,8 @@
 #define MAX_TESTS 100
 
 typedef struct {
-    const char *name;
+    const char *id;
+    const char *display_name;
     bool (*func)(ati_device_t *);
 } test_case_t;
 
@@ -18,13 +19,14 @@ static test_case_t tests[MAX_TESTS];
 static int test_count = 0;
 
 void
-register_test(const char *name, bool (*func)(ati_device_t *))
+register_test(const char *id, const char *display_name, bool (*func)(ati_device_t *))
 {
     if (test_count >= MAX_TESTS) {
         fprintf(stderr, "Too many tests registered");
         exit(1);
     }
-    tests[test_count].name = name;
+    tests[test_count].id = id;
+    tests[test_count].display_name = display_name;
     tests[test_count].func = func;
     test_count += 1;
 }
@@ -32,7 +34,7 @@ register_test(const char *name, bool (*func)(ati_device_t *))
 void
 run_test(ati_device_t *dev, const test_case_t *test)
 {
-    printf("  %s ... ", test->name);
+    printf("  %s ... ", test->display_name);
     fflush(stdout);
     if (test->func(dev)) {
         printf(GREEN "ok" RESET "\n");
@@ -54,7 +56,7 @@ void
 run_test_by_name(ati_device_t *dev, char *name)
 {
     for (int i = 0; i < test_count; i++) {
-        if (!strcmp(name, tests[i].name)) {
+        if (!strcmp(name, tests[i].id)) {
             run_test(dev, &tests[i]);
         }
     }

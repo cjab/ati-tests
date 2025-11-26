@@ -135,7 +135,7 @@ test_reserved_scissor_bits(ati_device_t *dev)
 void
 register_clipping_tests(void)
 {
-    register_test("SRC clipping latches", test_src_clipping_latches);
-    register_test("DST clipping latches", test_dst_clipping_latches);
-    register_test("reserved scissor bits", test_reserved_scissor_bits);
+    REGISTER_TEST(test_src_clipping_latches, "SRC clipping latches");
+    REGISTER_TEST(test_dst_clipping_latches, "DST clipping latches");
+    REGISTER_TEST(test_reserved_scissor_bits, "reserved scissor bits");
 }
