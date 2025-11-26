@@ -19,7 +19,8 @@ static test_case_t tests[MAX_TESTS];
 static int test_count = 0;
 
 void
-register_test(const char *id, const char *display_name, bool (*func)(ati_device_t *))
+register_test(const char *id, const char *display_name,
+              bool (*func)(ati_device_t *))
 {
     if (test_count >= MAX_TESTS) {
         fprintf(stderr, "Too many tests registered");
@@ -79,56 +80,23 @@ register_all_tests(void)
 int
 main(int argc, char **argv)
 {
-    ati_device_t *dev = ati_device_init();
+    platform_t *platform = platform_init(argc, argv);
+    ati_device_t *dev = ati_device_init(platform->pci_dev);
+
+    ati_set_display_mode(dev);
+    ati_init_gui_engine(dev);
 
     register_all_tests();
 
-    if (argc > 1) {
-        for (int i = 1; i < argc; i++) {
-            run_test_by_name(dev, argv[i]);
+    if (platform->argc > 0) {
+        for (int i = 0; i < platform->argc; i++) {
+            run_test_by_name(dev, platform->argv[i]);
         }
     } else {
         run_all_tests(dev);
     }
 
-    printf("\n");
-
     ati_device_destroy(dev);
+    platform_destroy(platform);
     return 0;
-}
-
-// Multiboot v1 information
-typedef struct {
-    uint32_t flags;
-    uint32_t mem_lower;
-    uint32_t mem_upper;
-    uint32_t boot_device;
-    uint32_t cmdline;
-    // And more... See:
-    // https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#Boot-information-format
-} multiboot_info_t;
-
-void
-kernel_main(uint32_t magic, multiboot_info_t *mbi)
-{
-    platform_init();
-
-    if (magic != 0x2BADB002) {
-        printf("Invalid multiboot magic\n");
-        return;
-    }
-
-    // Bit 2 of flags determines if cmdline string is present.
-    if (mbi->flags & (1 << 2)) {
-        char *cmdline = (char *) (uintptr_t) mbi->cmdline;
-        printf("Kernel cmdline: %s\n", cmdline);
-    }
-
-    ati_device_t *dev = ati_device_init();
-    ati_set_display_mode(dev);
-    ati_init_gui_engine(dev);
-    register_all_tests();
-    run_all_tests(dev);
-    printf("\n\nTests complete. Halting.\n");
-    ati_device_destroy(dev);
 }

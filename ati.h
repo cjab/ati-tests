@@ -15,17 +15,17 @@
 #define BPP 32
 #define BYPP (BPP / 8)
 #define FIFO_MAX 64
+#define VRAM_NOT_FOUND UINT64_MAX
 
 typedef struct ati_device ati_device_t;
 
-ati_device_t *ati_device_init(void);
+ati_device_t *ati_device_init(platform_pci_device_t *pci_dev);
 void ati_device_destroy(ati_device_t *dev);
 
 uint32_t ati_reg_read(ati_device_t *dev, uint32_t offset);
 void ati_reg_write(ati_device_t *dev, uint32_t offset, uint32_t value);
 uint32_t ati_vram_read(ati_device_t *dev, uint32_t offset);
 void ati_vram_write(ati_device_t *dev, uint32_t offset, uint32_t value);
-#define VRAM_NOT_FOUND UINT64_MAX
 uint64_t ati_vram_search(ati_device_t *dev, uint32_t needle);
 void ati_vram_clear(ati_device_t *dev);
 void ati_screen_clear(ati_device_t *dev);

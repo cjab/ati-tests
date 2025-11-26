@@ -45,8 +45,8 @@ platform_pci_get_name(platform_pci_device_t *dev, char *buf, size_t len)
                     dev->pci_dev->vendor_id, dev->pci_dev->device_id);
 }
 
-platform_pci_device_t *
-platform_pci_init(void)
+static platform_pci_device_t *
+platform_pci_init_internal(void)
 {
     platform_pci_device_t *dev = malloc(sizeof(platform_pci_device_t));
     if (!dev)
@@ -159,9 +159,24 @@ platform_write_file(const char *path, const void *data, size_t size)
     return written;
 }
 
-void
-platform_init(void)
+platform_t *
+platform_init(int argc, char **argv)
 {
-    // Nothing to init under Linux
-    return;
+    static platform_t platform;
+
+    // Skip program name (argv[0])
+    platform.argc = argc > 1 ? argc - 1 : 0;
+    platform.argv = argc > 1 ? &argv[1] : NULL;
+
+    // Initialize PCI device
+    platform.pci_dev = platform_pci_init_internal();
+
+    return &platform;
+}
+
+void
+platform_destroy(platform_t *platform)
+{
+    // Nothing to do on Linux
+    (void) platform;
 }

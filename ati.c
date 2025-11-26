@@ -15,11 +15,11 @@ struct ati_device {
 };
 
 ati_device_t *
-ati_device_init(void)
+ati_device_init(platform_pci_device_t *pci_dev)
 {
     static ati_device_t ati_dev;
     ati_device_t *ati = &ati_dev;
-    ati->pci_dev = platform_pci_init();
+    ati->pci_dev = pci_dev;
     ati->bar[0] = platform_pci_map_bar(ati->pci_dev, 0);
     ati->bar[2] = platform_pci_map_bar(ati->pci_dev, 2);
     platform_pci_get_name(ati->pci_dev, ati->name, sizeof(ati->name));

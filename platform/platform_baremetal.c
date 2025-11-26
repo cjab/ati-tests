@@ -87,9 +87,9 @@ serial_init(void)
 }
 
 void
-serial_putc(void* p, char c)
+serial_putc(void *p, char c)
 {
-    (void)p;
+    (void) p;
     while (!(inb(SERIAL_PORT + 5) & 0x20))
         ; // Wait for ready
     outb(SERIAL_PORT, c);
@@ -98,7 +98,7 @@ serial_putc(void* p, char c)
 void
 serial_puts(const char *s)
 {
-    while(*s) {
+    while (*s) {
         serial_putc(NULL, *s++);
     }
 }
@@ -200,8 +200,8 @@ pci_enable_device(platform_pci_device_t *dev)
                        cmd_status);
 }
 
-platform_pci_device_t *
-platform_pci_init(void)
+static platform_pci_device_t *
+platform_pci_init_internal(void)
 {
     if (!find_device(&g_pci_dev))
         FATAL;
@@ -241,17 +241,18 @@ platform_pci_map_bar(platform_pci_device_t *dev, int bar_idx)
     // From the Rage 128 programmers guide:
     //
     // """
-    // The memory aperture base address value at offset 0x10 within the PCI configuration space
-    // is in bits [31:26] of its DWORD. Therefore, to isolate the proper bits, the value should be
-    // logically ANDed with 0xFC000000.
+    // The memory aperture base address value at offset 0x10 within the PCI
+    // configuration space is in bits [31:26] of its DWORD. Therefore, to
+    // isolate the proper bits, the value should be logically ANDed with
+    // 0xFC000000.
     //
-    // For the I/O base aperture, the actual value is within bits [31:8] of its DWORD (at offset
-    // 0x14). Therefore, to isolate the proper bits, the value should be logically ANDed with
-    // 0xFFFFFF00.
+    // For the I/O base aperture, the actual value is within bits [31:8] of its
+    // DWORD (at offset 0x14). Therefore, to isolate the proper bits, the value
+    // should be logically ANDed with 0xFFFFFF00.
     //
-    // The register aperture base value resides in bits [31:14] of its DWORD (at offset 0x18).
-    // Therefore, to isolate the proper bits, the value should be logically ANDed with
-    // 0xFFFFC000.
+    // The register aperture base value resides in bits [31:14] of its DWORD (at
+    // offset 0x18). Therefore, to isolate the proper bits, the value should be
+    // logically ANDed with 0xFFFFC000.
     // """
     return (void *) (uintptr_t) (dev->bar[bar_idx] & ~0xful);
 }
@@ -337,7 +338,8 @@ exit(int status)
     } // Halt CPU
 }
 
-void *memcpy(void *dest, const void *src, size_t n)
+void *
+memcpy(void *dest, const void *src, size_t n)
 {
     unsigned char *d = dest;
     const unsigned char *s = src;
@@ -347,11 +349,12 @@ void *memcpy(void *dest, const void *src, size_t n)
     return dest;
 }
 
-void *memset(void *s, int c, size_t n)
+void *
+memset(void *s, int c, size_t n)
 {
     unsigned char *p = s;
     while (n--) {
-        *p++ = (unsigned char)c;
+        *p++ = (unsigned char) c;
     }
     return s;
 }
@@ -376,9 +379,102 @@ fgets(char *s, int size, FILE *stream)
     return NULL;
 }
 
-void
-platform_init(void)
+// Multiboot v1 information structure
+struct multiboot_info {
+    uint32_t flags;
+    uint32_t mem_lower;
+    uint32_t mem_upper;
+    uint32_t boot_device;
+    uint32_t cmdline;
+    // And more... See:
+    // https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#Boot-information-format
+};
+
+// Storage for parsed command line arguments
+static char *g_argv[32];
+static int g_argc;
+
+// Simple tokenizer - splits on whitespace, null-terminates each token
+static int
+parse_cmdline(char *cmdline, char **argv, int max_args)
 {
+    int argc = 0;
+    char *p = cmdline;
+
+    while (*p && argc < max_args) {
+        // Skip leading whitespace
+        while (*p == ' ' || *p == '\t') {
+            p++;
+        }
+        if (!*p) {
+            break;
+        }
+
+        // Found start of argument
+        argv[argc++] = p;
+
+        // Find end of argument (next whitespace or null)
+        while (*p && *p != ' ' && *p != '\t') {
+            p++;
+        }
+
+        // Null-terminate this argument
+        if (*p) {
+            *p++ = '\0';
+        }
+    }
+
+    return argc;
+}
+
+platform_t *
+platform_init(int argc, char **argv)
+{
+    static platform_t platform;
+
+    // argc/argv are ignored on baremetal, we get args from multiboot
+    (void) argc;
+    (void) argv;
+
     serial_init();
     init_printf(NULL, serial_putc);
+
+    // Args already parsed by platform_init_args() called from boot.S
+    platform.argc = g_argc;
+    platform.argv = g_argv;
+
+    // Initialize PCI device
+    platform.pci_dev = platform_pci_init_internal();
+
+    return &platform;
+}
+
+void
+platform_init_args(uint32_t magic, struct multiboot_info *mbi)
+{
+    g_argc = 0;
+
+    if (magic != 0x2BADB002) {
+        serial_puts("Invalid multiboot magic\n");
+        return;
+    }
+
+    // Check if command line arguments were provided (bit 2 of flags)
+    if ((mbi->flags & (1 << 2)) && mbi->cmdline) {
+        char *cmdline = (char *) (uintptr_t) mbi->cmdline;
+        g_argc = parse_cmdline(cmdline, g_argv, 32);
+    }
+}
+
+void
+platform_destroy(platform_t *platform)
+{
+    (void) platform;
+
+    printf("\n\nTests complete. Halting.\n");
+
+    // Halt the CPU
+    while (1) {
+        __asm__ volatile("hlt");
+    }
 }

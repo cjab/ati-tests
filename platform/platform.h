@@ -7,6 +7,7 @@
 
 #ifdef PLATFORM_BAREMETAL
 #include "tinyprintf.h"
+#include <stdint.h>
 typedef void FILE;
 #define stdin ((FILE *)0)
 #define stdout ((FILE *)1)
@@ -21,6 +22,10 @@ void *memcpy(void *dest, const void *src, size_t n);
 void *memset(void *s, int c, size_t n);
 void serial_init(void);
 void serial_putc(void* p, char c);
+
+// Forward declaration for multiboot info
+struct multiboot_info;
+void platform_init_args(uint32_t magic, struct multiboot_info *mbi);
 #else
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,8 +37,15 @@ void serial_putc(void* p, char c);
 
 typedef struct platform_pci_device platform_pci_device_t;
 
-void platform_init(void);
-platform_pci_device_t *platform_pci_init(void);
+/* Platform state - everything needed from platform initialization */
+typedef struct {
+    int argc;
+    char **argv;
+    platform_pci_device_t *pci_dev;
+} platform_t;
+
+platform_t *platform_init(int argc, char **argv);
+void platform_destroy(platform_t *platform);
 void platform_pci_destroy(platform_pci_device_t *dev);
 void platform_pci_get_name(platform_pci_device_t *dev, char *buf, size_t len);
 

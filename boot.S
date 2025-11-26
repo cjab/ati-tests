@@ -39,11 +39,14 @@ _start:
     /* Set up stack pointer */
     mov $stack_top, %esp
 
-    push %ebx   /* Second argument to kernel_main: multiboot info */
-    push %eax   /* First argument to kernel_main: magic number */
+    /* First, call platform_init_args with multiboot info */
+    push %ebx   /* Second argument: multiboot info */
+    push %eax   /* First argument: magic number */
+    call platform_init_args
+    add $8, %esp  /* Clean up stack (2 args * 4 bytes) */
 
-    /* Call the main C function */
-    call kernel_main
+    /* Now call main() with no arguments */
+    call main
 
     /* If main returns, halt the CPU */
     cli              /* Disable interrupts */
