@@ -339,15 +339,37 @@ ati_dump_all_registers(ati_device_t *dev)
 void
 ati_set_display_mode(ati_device_t *dev)
 {
+    // Disable display while programming CRTC registers
     uint32_t crtc_ext_cntl = rd_crtc_ext_cntl(dev);
     wr_crtc_ext_cntl(dev, crtc_ext_cntl | CRTC_HSYNC_DIS | CRTC_VSYNC_DIS |
                               CRTC_DISPLAY_DIS | VGA_ATI_LINEAR |
                               VGA_XCRT_CNT_EN);
 
+    // Clear common registers that could interfere with CRTC settings
+    wr_ovr_clr(dev, 0x0);
+    wr_ovr_wid_left_right(dev, 0x0);
+    wr_ovr_wid_top_bottom(dev, 0x0);
+    wr_ov0_scale_cntl(dev, 0x0);
+    wr_mpp_tb_config(dev, 0x0);
+    wr_mpp_gp_config(dev, 0x0);
+    wr_subpic_cntl(dev, 0x0);
+    wr_viph_control(dev, 0x0);
+    wr_i2c_cntl_1(dev, 0x0);
+    wr_gen_int_cntl(dev, 0x0);
+    wr_cap0_trig_cntl(dev, 0x0);
+    wr_cap1_trig_cntl(dev, 0x0);
+
     uint32_t dac_cntl = rd_dac_cntl(dev);
     wr_dac_cntl(dev,
                 (dac_cntl & ~DAC_TVO_EN & ~DAC_VGA_ADR_EN & ~DAC_MASK_MASK) |
                     DAC_8BIT_EN | (0xff << DAC_MASK_SHIFT));
+
+    // Enable acceleration
+    uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
+    wr_crtc_gen_cntl(dev, (crtc_gen_cntl & ~CRTC_PIX_WIDTH_MASK & ~CRTC_CUR_EN &
+                           ~CRTC_C_SYNC_EN) |
+                              CRTC_EXT_DISP_EN | CRTC_EN |
+                              (CRTC_PIX_WIDTH_32BPP << CRTC_PIX_WIDTH_SHIFT));
 
     uint32_t crtc_h_total_disp = rd_crtc_h_total_disp(dev);
     uint32_t h_disp =
@@ -373,10 +395,11 @@ ati_set_display_mode(ati_device_t *dev)
         dev, (crtc_v_total_disp & ~CRTC_V_DISP_MASK & ~CRTC_V_TOTAL_MASK) |
                  v_disp | v_total);
 
+    // Re-enable the display
     crtc_ext_cntl = rd_crtc_ext_cntl(dev);
-    wr_crtc_ext_cntl(dev, crtc_ext_cntl & ~CRTC_HSYNC_DIS & ~CRTC_VSYNC_DIS &
-                              ~CRTC_DISPLAY_DIS & VGA_ATI_LINEAR &
-                              VGA_XCRT_CNT_EN);
+    wr_crtc_ext_cntl(dev, (crtc_ext_cntl & ~CRTC_HSYNC_DIS & ~CRTC_VSYNC_DIS &
+                           ~CRTC_DISPLAY_DIS) |
+                              VGA_ATI_LINEAR | VGA_XCRT_CNT_EN);
 
     printf("MODESET COMPLETE\n");
 }
@@ -388,7 +411,7 @@ ati_init_gui_engine(ati_device_t *dev)
     wr_default_pitch(dev, (X_RES * BYPP) & DEFAULT_PITCH_MASK);
     // Set scissor clipping to the max.
     // Range is -8192 to +8191 which is why these aren't just set to the mask.
-    wr_default_sc_bottom_right(dev, (0x1fff << DEFAULT_SC_RIGHT_SHIFT) &
+    wr_default_sc_bottom_right(dev, (0x1fff << DEFAULT_SC_RIGHT_SHIFT) |
                                         (0x1fff << DEFAULT_SC_BOTTOM_SHIFT));
     // The docs say to set DEFAULT_SC_TOP_LEFT... That doesn't exist as far as I
     // can tell. So, set the actual scissor top left just to be safe.

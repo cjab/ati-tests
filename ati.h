@@ -114,6 +114,32 @@ void ati_init_gui_engine(ati_device_t *dev);
   /* DAC Registers */ \
   X(dac_cntl,                 DAC_CNTL,                0x0058, RW) \
   \
+  /* Overscan Registers */ \
+  X(ovr_clr,                  OVR_CLR,                 0x0230, RW) \
+  X(ovr_wid_left_right,       OVR_WID_LEFT_RIGHT,      0x0234, RW) \
+  X(ovr_wid_top_bottom,       OVR_WID_TOP_BOTTOM,      0x0238, RW) \
+  \
+  /* Interrupt & Control Registers */ \
+  X(gen_int_cntl,             GEN_INT_CNTL,            0x0040, RW) \
+  \
+  /* Overlay & Video Registers */ \
+  X(ov0_scale_cntl,           OV0_SCALE_CNTL,          0x0420, RW) \
+  \
+  /* Multimedia Port Processor Registers */ \
+  X(mpp_tb_config,            MPP_TB_CONFIG,           0x01c0, RW) \
+  X(mpp_gp_config,            MPP_GP_CONFIG,           0x01c8, RW) \
+  \
+  /* MPEG/DVD Registers */ \
+  X(subpic_cntl,              SUBPIC_CNTL,             0x0540, RW) \
+  \
+  /* VIP & I2C Registers */ \
+  X(viph_control,             VIPH_CONTROL,            0x01d0, RW) \
+  X(i2c_cntl_1,               I2C_CNTL_1,              0x0094, RW) \
+  \
+  /* Capture Registers */ \
+  X(cap0_trig_cntl,           CAP0_TRIG_CNTL,          0x0950, RW) \
+  X(cap1_trig_cntl,           CAP1_TRIG_CNTL,          0x09c0, RW) \
+  \
   /* Status Registers */ \
   X(gui_stat,                 GUI_STAT,                0x1740, RO) \
   \
@@ -477,6 +503,54 @@ enum {
 enum {
     DST_BRES_DEC_SHIFT = 0,
     DST_BRES_DEC_MASK  = (0xfffff << 0),
+};
+
+// ----------------------------------------------------------------------------
+// OVR_CLR
+// ----------------------------------------------------------------------------
+enum {
+    OVR_CLR_B_SHIFT = 0,
+    OVR_CLR_B_MASK  = (0xff <<  0),
+    OVR_CLR_G_SHIFT = 8,
+    OVR_CLR_G_MASK  = (0xff <<  8),
+    OVR_CLR_R_SHIFT = 16,
+    OVR_CLR_R_MASK  = (0xff << 16),
+};
+
+// ----------------------------------------------------------------------------
+// OVR_WID_LEFT_RIGHT
+// ----------------------------------------------------------------------------
+enum {
+    OVR_WID_RIGHT_SHIFT = 0,
+    OVR_WID_RIGHT_MASK  = (0x3f <<  0),
+    OVR_WID_LEFT_SHIFT  = 16,
+    OVR_WID_LEFT_MASK   = (0x3f << 16),
+};
+
+// ----------------------------------------------------------------------------
+// OVR_WID_TOP_BOTTOM
+// ----------------------------------------------------------------------------
+enum {
+    OVR_WID_BOTTOM_SHIFT = 0,
+    OVR_WID_BOTTOM_MASK  = (0x1ff <<  0),
+    OVR_WID_TOP_SHIFT    = 16,
+    OVR_WID_TOP_MASK     = (0x1ff << 16),
+};
+
+// ----------------------------------------------------------------------------
+// GEN_INT_CNTL
+// ----------------------------------------------------------------------------
+enum {
+    CRTC_VBLANK_INT_EN    = (1 <<  0),
+    CRTC_VLINE_INT_EN     = (1 <<  1),
+    CRTC_VSYNC_INT_EN     = (1 <<  2),
+    SNAPSHOT_INT_EN       = (1 <<  3),
+    FP_DETECT_INT_EN      = (1 << 10),
+    BUSMASTER_EOL_INT_EN  = (1 << 16),
+    I2C_INT_EN            = (1 << 17),
+    MPP_GP_INT_EN         = (1 << 18),
+    GUI_IDLE_INT_EN       = (1 << 19),
+    VIPH_INT_EN           = (1 << 24),
 };
 
 // clang-format on
