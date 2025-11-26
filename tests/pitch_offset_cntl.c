@@ -91,6 +91,8 @@ test_dst_pitch_offset_cntl_latching(ati_device_t *dev)
 void
 register_pitch_offset_cntl_tests(void)
 {
-    REGISTER_TEST(test_src_pitch_offset_cntl_latching, "SRC pitch offset latches");
-    REGISTER_TEST(test_dst_pitch_offset_cntl_latching, "DST pitch offset latches");
+    REGISTER_TEST(test_src_pitch_offset_cntl_latching,
+                  "SRC pitch offset latches");
+    REGISTER_TEST(test_dst_pitch_offset_cntl_latching,
+                  "DST pitch offset latches");
 }

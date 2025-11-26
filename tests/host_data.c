@@ -158,5 +158,6 @@ void
 register_host_data_tests(void)
 {
     REGISTER_TEST(test_host_data_32x32, "host_data 32x32");
-    REGISTER_TEST(test_host_data_mono_is_bit_packed, "host_data mono is bit packed");
+    REGISTER_TEST(test_host_data_mono_is_bit_packed,
+                  "host_data mono is bit packed");
 }

@@ -441,7 +441,7 @@ platform_init(int argc, char **argv)
 
     // Args already parsed by platform_init_args() called from boot.S
     platform.argc = g_argc - 1; // Remove kernel name to match linux argc count
-    platform.argv = g_argv;
+    platform.argv = &g_argv[1]; // Skip the kernel name
 
     // Initialize PCI device
     platform.pci_dev = platform_pci_init_internal();

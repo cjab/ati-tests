@@ -431,7 +431,7 @@ ati_init_gui_engine(ati_device_t *dev)
 
     // Set default offset and pitch
     wr_default_offset(dev, 0x0);
-    wr_default_pitch(dev, (X_RES * BYPP) / 8);
+    wr_default_pitch(dev, X_RES / 8);
 
     // Disable auxiliary scissor
     wr_aux_sc_cntl(dev, 0x0);
@@ -445,9 +445,6 @@ ati_init_gui_engine(ati_device_t *dev)
     wr_sc_top_left(dev, 0x00000000);
     wr_sc_bottom_right(dev, (0x1fff << DEFAULT_SC_RIGHT_SHIFT) |
                                 (0x1fff << DEFAULT_SC_BOTTOM_SHIFT));
-
-    // Set datatype with little-endian byte order
-    wr_dp_datatype(dev, 0x0); // Little-endian, HOST_BIG_ENDIAN_EN = 0
 
     // Set blit direction to left-to-right, top-to-bottom
     wr_dp_cntl(dev, DST_X_LEFT_TO_RIGHT | DST_Y_TOP_TO_BOTTOM);
