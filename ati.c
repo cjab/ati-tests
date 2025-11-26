@@ -371,29 +371,42 @@ ati_set_display_mode(ati_device_t *dev)
                               CRTC_EXT_DISP_EN | CRTC_EN |
                               (CRTC_PIX_WIDTH_32BPP << CRTC_PIX_WIDTH_SHIFT));
 
-    uint32_t crtc_h_total_disp = rd_crtc_h_total_disp(dev);
-    uint32_t h_disp =
-        (((X_RES / 8) - 1) << CRTC_H_DISP_SHIFT) & CRTC_H_DISP_MASK;
-    // TODO: I'm not positive this is correct. It probably isn't in most cases.
-    //       There will be overscan on actual CRTs.
-    uint32_t h_total =
-        (((X_RES / 8) - 1) << CRTC_H_TOTAL_SHIFT) & CRTC_H_TOTAL_MASK;
-    wr_crtc_h_total_disp(
-        dev, (crtc_h_total_disp & ~CRTC_H_DISP_MASK & ~CRTC_H_TOTAL_MASK) |
-                 h_disp | h_total);
+    // VESA 640x480@60Hz standard timings
+    // Horizontal: 640 visible + 16 front porch + 96 sync + 48 back porch = 800
+    // total Vertical: 480 visible + 10 front porch + 2 sync + 33 back porch =
+    // 525 total Pixel clock: 25.175 MHz
 
-    uint32_t crtc_h_sync_strt_wid = rd_crtc_h_sync_strt_wid(dev);
-    // TODO: Really not sure about this one.
-    wr_crtc_h_sync_strt_wid(dev, crtc_h_sync_strt_wid);
+    // Horizontal timing (in 8-pixel characters)
+    uint32_t h_disp = ((640 / 8) - 1);  // 79 (640 pixels / 8 - 1)
+    uint32_t h_total = ((800 / 8) - 1); // 99 (800 pixels / 8 - 1)
+    wr_crtc_h_total_disp(dev, (h_disp << CRTC_H_DISP_SHIFT) |
+                                  (h_total << CRTC_H_TOTAL_SHIFT));
 
-    uint32_t crtc_v_total_disp = rd_crtc_v_total_disp(dev);
-    uint32_t v_disp = (Y_RES << CRTC_V_DISP_SHIFT) & CRTC_V_DISP_MASK;
-    // TODO: I'm not positive this is correct. It probably isn't in most cases.
-    //       There will be overscan on actual CRTs.
-    uint32_t v_total = (Y_RES << CRTC_V_TOTAL_SHIFT) & CRTC_V_TOTAL_MASK;
-    wr_crtc_v_total_disp(
-        dev, (crtc_v_total_disp & ~CRTC_V_DISP_MASK & ~CRTC_V_TOTAL_MASK) |
-                 v_disp | v_total);
+    // Horizontal sync: starts at 640 + 16 = 656, width = 96 pixels
+    uint32_t h_sync_strt = (640 + 16) / 8; // 82 characters
+    uint32_t h_sync_wid = 96 / 8;          // 12 characters
+    // Negative sync polarity for 640x480@60Hz
+    wr_crtc_h_sync_strt_wid(dev, (h_sync_strt << CRTC_H_SYNC_STRT_CHAR_SHIFT) |
+                                     (h_sync_wid << CRTC_H_SYNC_WID_SHIFT) |
+                                     CRTC_H_SYNC_POL);
+
+    // Vertical timing (in lines)
+    uint32_t v_disp = 480 - 1;  // 479
+    uint32_t v_total = 525 - 1; // 524
+    wr_crtc_v_total_disp(dev, (v_disp << CRTC_V_DISP_SHIFT) |
+                                  (v_total << CRTC_V_TOTAL_SHIFT));
+
+    // Vertical sync: starts at 480 + 10 = 490, width = 2 lines
+    uint32_t v_sync_strt = 480 + 10; // 490
+    uint32_t v_sync_wid = 2;         // 2 lines
+    // Negative sync polarity for 640x480@60Hz
+    wr_crtc_v_sync_strt_wid(dev, (v_sync_strt << CRTC_V_SYNC_STRT_SHIFT) |
+                                     (v_sync_wid << CRTC_V_SYNC_WID_SHIFT) |
+                                     CRTC_V_SYNC_POL);
+
+    wr_crtc_offset(dev, 0x0);
+    wr_crtc_offset_cntl(dev, 0x0);
+    wr_crtc_pitch(dev, X_RES / 8);
 
     // Re-enable the display
     crtc_ext_cntl = rd_crtc_ext_cntl(dev);
@@ -407,8 +420,8 @@ ati_set_display_mode(ati_device_t *dev)
 void
 ati_init_gui_engine(ati_device_t *dev)
 {
-    wr_default_offset(dev, 0x0 & DEFAULT_OFFSET_MASK);
-    wr_default_pitch(dev, (X_RES * BYPP) & DEFAULT_PITCH_MASK);
+    wr_default_offset(dev, 0x0);
+    wr_default_pitch(dev, (X_RES * BYPP) / 8);
     // Set scissor clipping to the max.
     // Range is -8192 to +8191 which is why these aren't just set to the mask.
     wr_default_sc_bottom_right(dev, (0x1fff << DEFAULT_SC_RIGHT_SHIFT) |
