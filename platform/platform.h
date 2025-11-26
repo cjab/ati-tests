@@ -5,33 +5,13 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+// IWYU pragma: begin_exports
 #ifdef PLATFORM_BAREMETAL
-#include "tinyprintf.h"
-#include <stdint.h>
-typedef void FILE;
-#define stdin ((FILE *)0)
-#define stdout ((FILE *)1)
-#define stderr ((FILE *)2)
-int fprintf(FILE *stream, const char *format, ...);
-int fflush(FILE *stream);
-char *fgets(char *s, int n, FILE *stream);
-void exit(int status);
-int snprintf(char *str, size_t size, const char *format, ...);
-int strcmp(const char *s1, const char *s2);
-void *memcpy(void *dest, const void *src, size_t n);
-void *memset(void *s, int c, size_t n);
-void serial_init(void);
-void serial_putc(void* p, char c);
-
-// Forward declaration for multiboot info
-struct multiboot_info;
-void platform_init_args(uint32_t magic, struct multiboot_info *mbi);
+#include "platform_baremetal.h"
 #else
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
+#include "platform_linux.h"
 #endif
+// IWYU pragma: end_exports
 
 #define ATI_VENDOR_ID 0x1002
 
@@ -55,7 +35,7 @@ void platform_pci_unmap_bar(platform_pci_device_t *dev, void *addr,
 size_t platform_pci_get_bar_size(platform_pci_device_t *dev, int bar_idx);
 
 /* File I/O */
-void* platform_read_file(const char *path, size_t *size_out);
+void *platform_read_file(const char *path, size_t *size_out);
 void platform_free_file(void *data);
 size_t platform_write_file(const char *path, const void *data, size_t size);
 
