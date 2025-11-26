@@ -95,10 +95,32 @@ main(int argc, char **argv)
     return 0;
 }
 
+// Multiboot v1 information
+typedef struct {
+    uint32_t flags;
+    uint32_t mem_lower;
+    uint32_t mem_upper;
+    uint32_t boot_device;
+    uint32_t cmdline;
+    // And more... See:
+    // https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#Boot-information-format
+} multiboot_info_t;
+
 void
-kernel_main()
+kernel_main(uint32_t magic, multiboot_info_t *mbi)
 {
     platform_init();
+
+    if (magic != 0x2BADB002) {
+        printf("Invalid multiboot magic\n");
+        return;
+    }
+
+    // Bit 2 of flags determines if cmdline string is present.
+    if (mbi->flags & (1 << 2)) {
+        char *cmdline = (char *) (uintptr_t) mbi->cmdline;
+        printf("Kernel cmdline: %s\n", cmdline);
+    }
 
     ati_device_t *dev = ati_device_init();
     ati_set_display_mode(dev);

@@ -30,6 +30,7 @@ stack_top:
 
 /* The actual entry point */
 .section .text
+.code32
 .global _start
 .type _start, @function
 
@@ -37,6 +38,9 @@ _start:
     cli              /* Disable interrupts */
     /* Set up stack pointer */
     mov $stack_top, %esp
+
+    push %ebx   /* Second argument to kernel_main: multiboot info */
+    push %eax   /* First argument to kernel_main: magic number */
 
     /* Call the main C function */
     call kernel_main
