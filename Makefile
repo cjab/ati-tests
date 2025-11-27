@@ -49,7 +49,7 @@ fixtures/%.o: fixtures/%.bin
 endif
 
 clean:
-	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests fixtures/*.o fixtures/fixtures_registry.c
+	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests boot.o platform/*.o fixtures/*.o fixtures/fixtures_registry.c
 
 compile_commands.json:
 	bear -- $(MAKE) clean
