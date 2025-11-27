@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "platform.h"
+#include "serial.h"
 #include "tinyprintf.h"
 
 // clang-format off
@@ -28,7 +29,6 @@
 // clang-format on
 
 #define NUM_BARS 8
-#define SERIAL_PORT 0x3f8
 
 struct platform_pci_device {
     uint8_t bus;
@@ -59,48 +59,6 @@ inl(uint16_t port)
     uint32_t ret;
     __asm__ volatile("inl %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
-}
-
-static inline void
-outb(uint16_t port, uint8_t val)
-{
-    __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port));
-}
-static inline uint8_t
-inb(uint16_t port)
-{
-    uint8_t ret;
-    __asm__ volatile("inb %1, %0" : "=a"(ret) : "Nd"(port));
-    return ret;
-}
-
-// Serial
-void
-serial_init(void)
-{
-    outb(SERIAL_PORT + 1, 0x00); // Disable interrupts
-    outb(SERIAL_PORT + 3, 0x80); // Enable DLAB
-    outb(SERIAL_PORT + 0, 0x03); // Divisor low (38400 baud)
-    outb(SERIAL_PORT + 1, 0x00); // Divisor high
-    outb(SERIAL_PORT + 3, 0x03); // 8N1
-    outb(SERIAL_PORT + 2, 0xC7); // Enable FIFO
-}
-
-void
-serial_putc(void *p, char c)
-{
-    (void) p;
-    while (!(inb(SERIAL_PORT + 5) & 0x20))
-        ; // Wait for ready
-    outb(SERIAL_PORT, c);
-}
-
-void
-serial_puts(const char *s)
-{
-    while (*s) {
-        serial_putc(NULL, *s++);
-    }
 }
 
 // PCI
@@ -313,11 +271,7 @@ platform_free_fixture(const uint8_t *data)
 size_t
 platform_write_file(const char *path, const void *data, size_t size)
 {
-    // TODO: How to handle this? Possibly send across serial?
-    (void) path;
-    (void) data;
-    (void) size;
-    return 0;
+    return send_file_to_serial(path, data, size);
 }
 
 int
