@@ -19,6 +19,7 @@ Usage:
 
 import argparse
 import os
+import signal
 import sys
 
 FILE_START_MARKER = b"===FILE_START===\n"
@@ -210,4 +211,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # Handle SIGPIPE (e.g., when piped to head) - exit silently
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Ctrl+C - exit silently
+        sys.stderr.write("\n")
+        sys.exit(0)
+    except BrokenPipeError:
+        # Upstream process died - exit silently
+        sys.exit(0)
