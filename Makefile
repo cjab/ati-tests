@@ -7,6 +7,7 @@ ifeq ($(PLATFORM),baremetal)
 	LDFLAGS = -nostdlib -T linker.ld -m32 -no-pie
 	PLATFORM_SRC = platform/platform_baremetal.c platform/serial.c boot.S platform/tinyprintf.c
 	TARGET = ati_tests.elf
+	ISO = ati_tests.iso
 	
 	# Fixture handling for baremetal
 	FIXTURE_BINS := $(wildcard fixtures/*.bin)
@@ -35,6 +36,22 @@ $(TARGET): $(OBJS)
 %.o: %.S
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# Bootable ISO target (baremetal only, requires grub-mkrescue, xorriso)
+ifeq ($(PLATFORM),baremetal)
+iso: $(TARGET)
+	mkdir -p iso/boot/grub
+	cp $(TARGET) iso/boot/
+	echo 'set timeout=0' > iso/boot/grub/grub.cfg
+	echo 'set default=0' >> iso/boot/grub/grub.cfg
+	echo 'menuentry "ATI Tests" {' >> iso/boot/grub/grub.cfg
+	echo '    multiboot /boot/$(TARGET)' >> iso/boot/grub/grub.cfg
+	echo '}' >> iso/boot/grub/grub.cfg
+	mkdir -p /tmp/grub-iso
+	TMPDIR=/tmp/grub-iso grub-mkrescue -o $(ISO) iso
+	rm -rf iso
+	@echo "Created $(ISO) - write to USB with: sudo dd if=$(ISO) of=/dev/sdX bs=4M status=progress"
+endif
+
 # Fixture build rules (baremetal only)
 ifeq ($(PLATFORM),baremetal)
 fixtures/fixtures_registry.c: $(FIXTURE_BINS) scripts/generate_fixture_registry.sh
@@ -51,10 +68,11 @@ fixtures/%.o: fixtures/%.bin
 endif
 
 clean:
-	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests boot.o platform/*.o fixtures/*.o fixtures/fixtures_registry.c
+	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests boot.o platform/*.o fixtures/*.o fixtures/fixtures_registry.c ati_tests.iso
+	rm -rf iso
 
 compile_commands.json:
 	bear -- $(MAKE) clean
 	bear -- $(MAKE)
 
-.PHONY: all clean
+.PHONY: all clean iso

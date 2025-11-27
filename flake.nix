@@ -19,6 +19,10 @@
             pkgs.pciutils
             pkgs.clang-tools
             pkgs.bear
+            # baremetal boot image
+            pkgs.libisoburn
+            pkgs.mtools
+            pkgs.grub2
           ];
         };
       });
