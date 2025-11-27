@@ -55,3 +55,6 @@ halt_loop:
     jmp halt_loop    /* Jump back in case of spurious wakeup */
 
 .size _start, . - _start
+
+/* Mark stack as non-executable */
+.section .note.GNU-stack, "", @progbits

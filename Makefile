@@ -45,6 +45,8 @@ fixtures/%.o: fixtures/%.bin
 	    --rename-section .data=.rodata.fixtures,alloc,load,readonly,data,contents \
 	    --redefine-sym _binary_fixtures_$(subst -,_,$(notdir $*))_bin_start=fixture_$(subst -,_,$(notdir $*))_start \
 	    --redefine-sym _binary_fixtures_$(subst -,_,$(notdir $*))_bin_end=fixture_$(subst -,_,$(notdir $*))_end \
+	    --add-section .note.GNU-stack=/dev/null \
+	    --set-section-flags .note.GNU-stack=contents,readonly \
 	    $< $@
 endif
 
