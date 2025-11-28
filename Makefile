@@ -5,7 +5,7 @@ PLATFORM ?= linux
 ifeq ($(PLATFORM),baremetal)
 	CFLAGS += -ffreestanding -fno-stack-protector -fno-pic -no-pie -m32 -DPLATFORM_BAREMETAL
 	LDFLAGS = -nostdlib -T linker.ld -m32 -no-pie
-	PLATFORM_SRC = platform/platform_baremetal.c platform/serial.c boot.S platform/tinyprintf.c
+	PLATFORM_SRC = platform/baremetal/baremetal.c platform/baremetal/serial.c boot.S platform/baremetal/tinyprintf.c
 	TARGET = ati_tests.elf
 	ISO = ati_tests.iso
 	
@@ -15,7 +15,7 @@ ifeq ($(PLATFORM),baremetal)
 	FIXTURE_REGISTRY = fixtures/fixtures_registry.o
 else
 	LDFLAGS = -lpci
-	PLATFORM_SRC = platform/platform_linux.c
+	PLATFORM_SRC = platform/linux/linux.c
 	TARGET = run-tests
 	FIXTURE_OBJS =
 	FIXTURE_REGISTRY =
@@ -68,7 +68,7 @@ fixtures/%.o: fixtures/%.bin
 endif
 
 clean:
-	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests boot.o platform/*.o fixtures/*.o fixtures/fixtures_registry.c ati_tests.iso
+	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests boot.o platform/*/*.o fixtures/*.o fixtures/fixtures_registry.c ati_tests.iso
 	rm -rf iso
 
 compile_commands.json:

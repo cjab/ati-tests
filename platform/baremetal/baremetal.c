@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "platform.h"
+#include "../platform.h"
 #include "serial.h"
 #include "tinyprintf.h"
 

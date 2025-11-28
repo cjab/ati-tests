@@ -8,9 +8,9 @@
 
 // IWYU pragma: begin_exports
 #ifdef PLATFORM_BAREMETAL
-#include "platform_baremetal.h"
+#include "baremetal/baremetal.h"
 #else
-#include "platform_linux.h"
+#include "linux/linux.h"
 #endif
 // IWYU pragma: end_exports
 

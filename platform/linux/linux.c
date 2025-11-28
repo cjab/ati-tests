@@ -7,7 +7,7 @@
 #include <string.h>
 #include <sys/mman.h>
 
-#include "platform.h"
+#include "../platform.h"
 
 struct platform_pci_device {
     struct pci_access *pacc;
