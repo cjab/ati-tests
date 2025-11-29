@@ -21,6 +21,7 @@ import argparse
 import os
 import signal
 import sys
+import zlib
 
 FILE_START_MARKER = b"===FILE_START===\n"
 FILE_END_MARKER = b"===FILE_END===\n"
@@ -28,17 +29,18 @@ RLE_ESCAPE = 0xFF
 
 
 def parse_header(header_line):
-    """Parse header line: filename:rle:original_size"""
+    """Parse header line: filename:rle:original_size:crc32_hex"""
     parts = header_line.decode("utf-8").strip().split(":")
-    if len(parts) != 3:
-        return None, None, None
+    if len(parts) != 4:
+        return None, None, None, None
     filename = parts[0]
     encoding = parts[1]
     try:
         original_size = int(parts[2])
+        expected_crc = int(parts[3], 16)
     except ValueError:
-        return None, None, None
-    return filename, encoding, original_size
+        return None, None, None, None
+    return filename, encoding, original_size, expected_crc
 
 
 def rle_decode(data):
@@ -121,9 +123,9 @@ def capture_files(input_stream, output_dir):
                 break
 
             header_line = buffer[header_start:header_end]
-            filename, encoding, original_size = parse_header(header_line)
+            filename, encoding, original_size, expected_crc = parse_header(header_line)
 
-            if filename is None or encoding is None or original_size is None:
+            if filename is None or encoding is None or original_size is None or expected_crc is None:
                 # Invalid header - output marker and continue
                 sys.stdout.buffer.write(FILE_START_MARKER)
                 sys.stdout.buffer.flush()
@@ -162,6 +164,14 @@ def capture_files(input_stream, output_dir):
                 sys.stderr.write(
                     f"Warning: Size mismatch for {filename}: "
                     f"expected {original_size}, got {len(decoded_data)}\n"
+                )
+
+            # Verify CRC
+            actual_crc = zlib.crc32(decoded_data) & 0xFFFFFFFF
+            if actual_crc != expected_crc:
+                sys.stderr.write(
+                    f"ERROR: CRC mismatch for {filename}: "
+                    f"expected {expected_crc:08x}, got {actual_crc:08x}\n"
                 )
 
             # Write file
