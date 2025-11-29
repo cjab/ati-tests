@@ -397,8 +397,6 @@ ati_set_display_mode(ati_device_t *dev)
     wr_crtc_ext_cntl(dev, (crtc_ext_cntl & ~CRTC_HSYNC_DIS & ~CRTC_VSYNC_DIS &
                            ~CRTC_DISPLAY_DIS) |
                               VGA_ATI_LINEAR | VGA_XCRT_CNT_EN);
-
-    printf("MODESET COMPLETE\n");
 }
 
 void
