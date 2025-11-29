@@ -502,6 +502,15 @@ ati_engine_reset(ati_device_t *dev)
 }
 
 void
+ati_reset_for_test(ati_device_t *dev)
+{
+    ati_engine_reset(dev);
+    ati_wait_for_idle(dev);
+    ati_screen_clear(dev);
+    ati_init_gui_engine(dev);
+}
+
+void
 ati_wait_for_fifo(ati_device_t *dev, uint32_t entries)
 {
     uint32_t timeout = 1000000;

@@ -35,6 +35,7 @@ register_test(const char *id, const char *display_name,
 void
 run_test(ati_device_t *dev, const test_case_t *test)
 {
+    ati_reset_for_test(dev);
     printf("  %s ... ", test->display_name);
     fflush(stdout);
     if (test->func(dev)) {
