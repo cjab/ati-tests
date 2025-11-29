@@ -37,11 +37,10 @@ SECTIONS
     /* Read-only data - align to page boundary */
     . = ALIGN(4K);
     .rodata : {
-        *(.rodata*)
+        *(EXCLUDE_FILE(*fixtures*.o) .rodata*)
     } :rodata
 
     /* Fixture data - embedded binary files */
-    . = ALIGN(4K);
     .rodata.fixtures : {
         __fixtures_section_start = .;
         *(.rodata.fixtures)
@@ -66,5 +65,6 @@ SECTIONS
         *(.eh_frame)
         *(.note.GNU-stack)
         *(.note.gnu.property)
+        *(.note.gnu.build-id)
     }
 }
