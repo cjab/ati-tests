@@ -2,6 +2,13 @@ CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra
 PLATFORM ?= linux
 
+# Auto-clean when platform changes
+-include .platform
+ifneq ($(LAST_PLATFORM),$(PLATFORM))
+$(shell rm -f *.o tests/*.o platform/*/*.o fixtures/*.o .platform)
+endif
+$(shell echo "LAST_PLATFORM=$(PLATFORM)" > .platform)
+
 ifeq ($(PLATFORM),baremetal)
 	CFLAGS += -ffreestanding -fno-stack-protector -fno-pic -no-pie -m32 -DPLATFORM_BAREMETAL
 	LDFLAGS = -nostdlib -T linker.ld -m32 -no-pie
@@ -68,7 +75,7 @@ fixtures/%.o: fixtures/%.bin
 endif
 
 clean:
-	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests boot.o platform/*/*.o fixtures/*.o fixtures/fixtures_registry.c ati_tests.iso
+	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests boot.o platform/*/*.o fixtures/*.o fixtures/fixtures_registry.c ati_tests.iso .platform
 	rm -rf iso
 
 compile_commands.json:

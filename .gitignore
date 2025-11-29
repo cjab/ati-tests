@@ -7,3 +7,4 @@ run-tests
 compile_commands.json
 .nvim.lua
 fixtures/fixtures_registry.c
+.platform
