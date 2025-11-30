@@ -17,8 +17,10 @@
             pkgs.gcc
             pkgs.gnumake
             pkgs.pciutils
+            # dev tools
             pkgs.clang-tools
             pkgs.bear
+            pkgs.picocom
             # baremetal boot image
             pkgs.libisoburn
             pkgs.mtools
