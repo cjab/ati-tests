@@ -23,8 +23,8 @@ import signal
 import sys
 import zlib
 
-FILE_START_MARKER = b"===FILE_START===\n"
-FILE_END_MARKER = b"===FILE_END===\n"
+FILE_START_MARKER = b"===FILE_START===\r\n"
+FILE_END_MARKER = b"===FILE_END===\r\n"
 RLE_ESCAPE = 0xFF
 
 

@@ -38,21 +38,47 @@ inb(uint16_t port)
 void
 serial_init(void)
 {
+    // Drain pending data
+    while (inb(SERIAL_PORT + 5) & 0x01)
+        inb(SERIAL_PORT);
+
+    // Disable and reset FIFO
+    outb(SERIAL_PORT + 2, 0x00); // Disable FIFO
+    outb(SERIAL_PORT + 2, 0x07); // Enable and clear FIFO
+
+    // Clear interrupts
+    inb(SERIAL_PORT + 2); // Read IIR
+    inb(SERIAL_PORT + 5); // Read LSR
+    inb(SERIAL_PORT + 6); // Read MSR
+    inb(SERIAL_PORT);     // Read RBR
+
     outb(SERIAL_PORT + 1, 0x00); // Disable interrupts
     outb(SERIAL_PORT + 3, 0x80); // Enable DLAB
-    outb(SERIAL_PORT + 0, 0x03); // Divisor low (38400 baud)
+    outb(SERIAL_PORT + 0, 0x01); // Divisor low (115200 baud)
     outb(SERIAL_PORT + 1, 0x00); // Divisor high
     outb(SERIAL_PORT + 3, 0x03); // 8N1
     outb(SERIAL_PORT + 2, 0xC7); // Enable FIFO
+    outb(SERIAL_PORT + 4, 0x03); // DTR + RTS (maybe needed for null modem?)
+}
+
+void
+serial_raw_putc(void *p, char c)
+{
+    (void) p;
+    while (!(inb(SERIAL_PORT + 5) & 0x20))
+        ; // Wait for ready
+    outb(SERIAL_PORT, c);
 }
 
 void
 serial_putc(void *p, char c)
 {
     (void) p;
-    while (!(inb(SERIAL_PORT + 5) & 0x20))
-        ; // Wait for ready
-    outb(SERIAL_PORT, c);
+    if (c == '\n') {
+        // Translate \n to \r\n
+        serial_raw_putc(p, '\r');
+    }
+    serial_raw_putc(p, c);
 }
 
 void
@@ -85,14 +111,14 @@ rle_encode_to_serial(const uint8_t *data, size_t len)
 
         if (count >= 3 || byte == RLE_ESCAPE) {
             // Encode as: <escape> <count> <byte>
-            serial_putc(NULL, RLE_ESCAPE);
-            serial_putc(NULL, count);
-            serial_putc(NULL, byte);
+            serial_raw_putc(NULL, RLE_ESCAPE);
+            serial_raw_putc(NULL, count);
+            serial_raw_putc(NULL, byte);
             encoded_size += 3;
         } else {
             // Output bytes directly
             for (uint8_t j = 0; j < count; j++) {
-                serial_putc(NULL, byte);
+                serial_raw_putc(NULL, byte);
             }
             encoded_size += count;
         }
