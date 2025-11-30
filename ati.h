@@ -266,6 +266,7 @@ enum {
     CRTC_SYNC_TRISTATE     = (1 << 11),
     CRTC_HSYNC_TRISTATE    = (1 << 12),
     CRTC_VSYNC_TRISTATE    = (1 << 13),
+    CRTC_CRT_ON            = (1 << 15), // Undocumented but used in r128 xorg driver
     VGA_CUR_B_TEST         = (1 << 17),
     VGA_PACK_DIS           = (1 << 18),
     VGA_MEM_PS_EN          = (1 << 19),
