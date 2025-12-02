@@ -89,6 +89,44 @@ serial_puts(const char *s)
     }
 }
 
+int
+serial_data_ready(void)
+{
+    return inb(SERIAL_PORT + 5) & 0x01;
+}
+
+char
+serial_getc(void)
+{
+    while (!serial_data_ready())
+        ;
+    return inb(SERIAL_PORT);
+}
+
+int
+serial_gets(char *buf, int maxlen)
+{
+    int i = 0;
+    while (i < maxlen - 1) {
+        char c = serial_getc();
+        if (c == '\r' || c == '\n') {
+            serial_putc(NULL, '\n');
+            break;
+        }
+        if (c == 127 || c == '\b') {
+            if (i > 0) {
+                i--;
+                serial_puts("\b \b");
+            }
+            continue;
+        }
+        serial_putc(NULL, c);
+        buf[i++] = c;
+    }
+    buf[i] = '\0';
+    return i;
+}
+
 // RLE encode data and stream directly to serial.
 // Format: runs of 3+ identical bytes become <0xFF> <count> <byte>
 //         0xFF itself becomes <0xFF> <0x01> <0xFF>

@@ -61,6 +61,24 @@ inl(uint16_t port)
     return ret;
 }
 
+static inline void
+outb(uint16_t port, uint8_t val)
+{
+    __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port));
+}
+
+static void
+platform_reboot(void)
+{
+    // Keyboard controller reset - pulse the reset line
+    outb(0x64, 0xFE);
+
+    // If that doesn't work, halt (shouldn't get here)
+    while (1) {
+        __asm__ volatile("hlt");
+    }
+}
+
 // PCI
 static uint32_t
 pci_config_address(uint8_t bus, uint8_t device, uint8_t function,
@@ -436,10 +454,21 @@ platform_destroy(platform_t *platform)
 {
     (void) platform;
 
-    printf("\n\nTests complete. Halting.\n");
+    printf("\n\nTests complete.\n");
+    printf("Commands: reboot\n");
+    printf("> ");
 
-    // Halt the CPU
+    char buf[64];
     while (1) {
-        __asm__ volatile("hlt");
+        serial_gets(buf, sizeof(buf));
+
+        if (strcmp(buf, "reboot") == 0) {
+            printf("Rebooting...\n");
+            platform_reboot();
+        } else if (buf[0] != '\0') {
+            printf("Unknown command: %s\n", buf);
+        }
+
+        printf("> ");
     }
 }
