@@ -67,7 +67,7 @@ outb(uint16_t port, uint8_t val)
     __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port));
 }
 
-static void
+void
 platform_reboot(void)
 {
     // Keyboard controller reset - pulse the reset line
@@ -355,11 +355,9 @@ strcmp(const char *s1, const char *s2)
 char *
 fgets(char *s, int size, FILE *stream)
 {
-    // TODO: stubbed
-    (void) s;
-    (void) size;
     (void) stream;
-    return NULL;
+    serial_gets(s, size);
+    return s;
 }
 
 // Multiboot v1 information structure
@@ -454,21 +452,8 @@ platform_destroy(platform_t *platform)
 {
     (void) platform;
 
-    printf("\n\nTests complete.\n");
-    printf("Commands: reboot\n");
-    printf("> ");
-
-    char buf[64];
+    // Halt the CPU
     while (1) {
-        serial_gets(buf, sizeof(buf));
-
-        if (strcmp(buf, "reboot") == 0) {
-            printf("Rebooting...\n");
-            platform_reboot();
-        } else if (buf[0] != '\0') {
-            printf("Unknown command: %s\n", buf);
-        }
-
-        printf("> ");
+        __asm__ volatile("hlt");
     }
 }

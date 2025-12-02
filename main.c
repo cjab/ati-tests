@@ -6,6 +6,7 @@
 
 #include "ati.h"
 #include "common.h"
+#include "repl.h"
 
 #define MAX_TESTS 100
 
@@ -96,6 +97,8 @@ main(int argc, char **argv)
     } else {
         run_all_tests(dev);
     }
+
+    repl(dev);
 
     ati_device_destroy(dev);
     platform_destroy(platform);

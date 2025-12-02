@@ -196,3 +196,10 @@ platform_destroy(platform_t *platform)
     // Nothing to do on Linux
     (void) platform;
 }
+
+void
+platform_reboot(void)
+{
+    // On Linux, just exit cleanly
+    exit(0);
+}
