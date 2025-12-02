@@ -21,6 +21,7 @@
             pkgs.clang-tools
             pkgs.bear
             pkgs.picocom
+            pkgs.ffmpeg
             # baremetal boot image
             pkgs.libisoburn
             pkgs.mtools
