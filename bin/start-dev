@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Start development environment services for Rage 128 testing
+# Launches picocom with logging so serial output is captured
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TESTS_DIR="$(dirname "$SCRIPT_DIR")"
+
+SERIAL_LOG="$TESTS_DIR/tmp/serial.log"
+SERIAL_DEV=/dev/ttyUSB0
+
+# Ensure tmp directory exists and truncate log
+mkdir -p "$TESTS_DIR/tmp"
+> "$SERIAL_LOG"
+
+exec picocom -b 115200 --logfile "$SERIAL_LOG" "$SERIAL_DEV"

@@ -26,6 +26,9 @@
             pkgs.mtools
             pkgs.grub2
           ];
+          shellHook = ''
+            export PATH="$PWD/bin:$PATH"
+          '';
         };
       });
 }

@@ -61,8 +61,8 @@ endif
 
 # Fixture build rules (baremetal only)
 ifeq ($(PLATFORM),baremetal)
-fixtures/fixtures_registry.c: $(FIXTURE_BINS) scripts/generate_fixture_registry.sh
-	bash scripts/generate_fixture_registry.sh $(FIXTURE_BINS) > $@
+fixtures/fixtures_registry.c: $(FIXTURE_BINS) bin/generate_fixture_registry.sh
+	bash bin/generate_fixture_registry.sh $(FIXTURE_BINS) > $@
 
 fixtures/%.o: fixtures/%.bin
 	objcopy -I binary -O elf32-i386 -B i386 \
