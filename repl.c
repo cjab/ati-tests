@@ -2,6 +2,47 @@
 #include "platform/platform.h"
 #include "ati.h"
 
+// Generate register name lookup table from X-macro
+typedef struct {
+    const char *name;
+    uint32_t offset;
+} reg_entry_t;
+
+#define X(func_name, const_name, offset, mode) { #const_name, offset },
+static const reg_entry_t reg_table[] = {
+    ATI_REGISTERS
+    { NULL, 0 }
+};
+#undef X
+
+static int
+strcasecmp_simple(const char *s1, const char *s2)
+{
+    while (*s1 && *s2) {
+        char c1 = *s1++;
+        char c2 = *s2++;
+        if (c1 >= 'a' && c1 <= 'z')
+            c1 -= 32;
+        if (c2 >= 'a' && c2 <= 'z')
+            c2 -= 32;
+        if (c1 != c2)
+            return c1 - c2;
+    }
+    return *s1 - *s2;
+}
+
+static int
+lookup_reg(const char *name, uint32_t *out)
+{
+    for (int i = 0; reg_table[i].name != NULL; i++) {
+        if (strcasecmp_simple(name, reg_table[i].name) == 0) {
+            *out = reg_table[i].offset;
+            return 0;
+        }
+    }
+    return -1;
+}
+
 static int
 parse_hex(const char *s, uint32_t *out)
 {
@@ -30,6 +71,17 @@ parse_hex(const char *s, uint32_t *out)
 
     *out = val;
     return 0;
+}
+
+static int
+parse_addr(const char *s, uint32_t *out)
+{
+    // Try hex first
+    if (parse_hex(s, out) == 0) {
+        return 0;
+    }
+    // Fall back to register name lookup
+    return lookup_reg(s, out);
 }
 
 void
@@ -83,20 +135,20 @@ repl(ati_device_t *dev)
             platform_reboot();
         } else if (strcmp(cmd, "r") == 0) {
             uint32_t addr;
-            if (arg1 && parse_hex(arg1, &addr) == 0) {
+            if (arg1 && parse_addr(arg1, &addr) == 0) {
                 uint32_t val = ati_reg_read(dev, addr);
                 printf("0x%04x = 0x%08x\n", addr, val);
             } else {
-                printf("Usage: r <addr>\n");
+                printf("Usage: r <addr|reg_name>\n");
             }
         } else if (strcmp(cmd, "w") == 0) {
             uint32_t addr, val;
-            if (arg1 && arg2 && parse_hex(arg1, &addr) == 0 &&
+            if (arg1 && arg2 && parse_addr(arg1, &addr) == 0 &&
                 parse_hex(arg2, &val) == 0) {
                 ati_reg_write(dev, addr, val);
                 printf("0x%04x <- 0x%08x\n", addr, val);
             } else {
-                printf("Usage: w <addr> <val>\n");
+                printf("Usage: w <addr|reg_name> <val>\n");
             }
         } else if (cmd[0] != '\0') {
             printf("Unknown command: %s\n", cmd);
