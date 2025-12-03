@@ -84,6 +84,83 @@ parse_addr(const char *s, uint32_t *out)
     return lookup_reg(s, out);
 }
 
+// Print a single color swatch using ANSI 24-bit color
+static void
+print_swatch(uint8_t r, uint8_t g, uint8_t b)
+{
+    printf("\x1b[48;2;%d;%d;%dm  \x1b[0m", r, g, b);
+}
+
+// Get bytes per pixel for current CRTC mode
+static uint32_t
+get_bytes_per_pixel(ati_device_t *dev)
+{
+    uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
+    uint32_t pix_width = (crtc_gen_cntl & CRTC_PIX_WIDTH_MASK) >> CRTC_PIX_WIDTH_SHIFT;
+
+    switch (pix_width) {
+    case CRTC_PIX_WIDTH_8BPP:
+        return 1;
+    case CRTC_PIX_WIDTH_15BPP:
+    case CRTC_PIX_WIDTH_16BPP:
+        return 2;
+    case CRTC_PIX_WIDTH_24BPP:
+        return 3;
+    case CRTC_PIX_WIDTH_32BPP:
+        return 4;
+    default:
+        return 1;
+    }
+}
+
+// Print pixel value and color swatch based on current pixel format
+static void
+print_pixel(ati_device_t *dev, uint32_t pixel_idx)
+{
+    uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
+    uint32_t pix_width = (crtc_gen_cntl & CRTC_PIX_WIDTH_MASK) >> CRTC_PIX_WIDTH_SHIFT;
+    uint32_t bpp = get_bytes_per_pixel(dev);
+    uint32_t byte_offset = pixel_idx * bpp;
+    uint32_t val = ati_vram_read(dev, byte_offset & ~3);  // Align to dword
+    uint32_t shift = (byte_offset & 3) * 8;
+
+    switch (pix_width) {
+    case CRTC_PIX_WIDTH_32BPP: {
+        // aRGB 8888: 0xAARRGGBB
+        uint8_t r = (val >> 16) & 0xff;
+        uint8_t g = (val >> 8) & 0xff;
+        uint8_t b = val & 0xff;
+        printf("0x%08x ", val);
+        print_swatch(r, g, b);
+        break;
+    }
+    case CRTC_PIX_WIDTH_16BPP: {
+        // RGB 565
+        uint16_t pixel = (val >> shift) & 0xffff;
+        uint8_t r = ((pixel >> 11) & 0x1f) << 3;
+        uint8_t g = ((pixel >> 5) & 0x3f) << 2;
+        uint8_t b = (pixel & 0x1f) << 3;
+        printf("0x%04x ", pixel);
+        print_swatch(r, g, b);
+        break;
+    }
+    case CRTC_PIX_WIDTH_15BPP: {
+        // aRGB 1555
+        uint16_t pixel = (val >> shift) & 0xffff;
+        uint8_t r = ((pixel >> 10) & 0x1f) << 3;
+        uint8_t g = ((pixel >> 5) & 0x1f) << 3;
+        uint8_t b = (pixel & 0x1f) << 3;
+        printf("0x%04x ", pixel);
+        print_swatch(r, g, b);
+        break;
+    }
+    default:
+        // Unsupported format - just print raw value
+        printf("0x%08x", val);
+        break;
+    }
+}
+
 void
 repl(ati_device_t *dev)
 {
@@ -93,6 +170,7 @@ repl(ati_device_t *dev)
     printf("\n\nTests complete.\n");
     printf("Commands: reboot, r <addr>, w <addr> <val>\n");
     printf("          vr <offset> [count], vw <offset> <val> [count]\n");
+    printf("          pr <pixel> [count], pw <pixel> <val> [count]\n");
     printf("> ");
     fflush(stdout);
 
@@ -167,11 +245,7 @@ repl(ati_device_t *dev)
                 for (uint32_t i = 0; i < count; i++) {
                     uint32_t addr = offset + i * 4;
                     uint32_t val = ati_vram_read(dev, addr);
-                    uint8_t r = (val >> 16) & 0xff;
-                    uint8_t g = (val >> 8) & 0xff;
-                    uint8_t b = val & 0xff;
-                    printf("0x%08x: 0x%08x \x1b[48;2;%d;%d;%dm  \x1b[0m\n",
-                           addr, val, r, g, b);
+                    printf("0x%08x: 0x%08x\n", addr, val);
                 }
             } else {
                 printf("Usage: vr <offset> [count]\n");
@@ -188,6 +262,51 @@ repl(ati_device_t *dev)
                 printf("0x%08x <- 0x%08x (x%d)\n", offset, val, count);
             } else {
                 printf("Usage: vw <offset> <val> [count]\n");
+            }
+        } else if (strcmp(cmd, "pr") == 0) {
+            uint32_t pixel, count = 1;
+            if (arg1 && parse_hex(arg1, &pixel) == 0) {
+                if (arg2)
+                    parse_hex(arg2, &count);
+                for (uint32_t i = 0; i < count; i++) {
+                    printf("pixel %d: ", pixel + i);
+                    print_pixel(dev, pixel + i);
+                    printf("\n");
+                }
+            } else {
+                printf("Usage: pr <pixel> [count]\n");
+            }
+        } else if (strcmp(cmd, "pw") == 0) {
+            uint32_t pixel, val, count = 1;
+            if (arg1 && arg2 && parse_hex(arg1, &pixel) == 0 &&
+                parse_hex(arg2, &val) == 0) {
+                if (arg3)
+                    parse_hex(arg3, &count);
+                uint32_t bpp = get_bytes_per_pixel(dev);
+                for (uint32_t i = 0; i < count; i++) {
+                    uint32_t byte_offset = (pixel + i) * bpp;
+                    // Write pixel value at appropriate size
+                    if (bpp == 4) {
+                        ati_vram_write(dev, byte_offset, val);
+                    } else if (bpp == 2) {
+                        uint32_t aligned = byte_offset & ~3;
+                        uint32_t shift = (byte_offset & 2) * 8;
+                        uint32_t mask = 0xffff << shift;
+                        uint32_t cur = ati_vram_read(dev, aligned);
+                        cur = (cur & ~mask) | ((val & 0xffff) << shift);
+                        ati_vram_write(dev, aligned, cur);
+                    } else if (bpp == 1) {
+                        uint32_t aligned = byte_offset & ~3;
+                        uint32_t shift = (byte_offset & 3) * 8;
+                        uint32_t mask = 0xff << shift;
+                        uint32_t cur = ati_vram_read(dev, aligned);
+                        cur = (cur & ~mask) | ((val & 0xff) << shift);
+                        ati_vram_write(dev, aligned, cur);
+                    }
+                }
+                printf("pixel %d <- 0x%x (x%d)\n", pixel, val, count);
+            } else {
+                printf("Usage: pw <pixel> <val> [count]\n");
             }
         } else if (cmd[0] != '\0') {
             printf("Unknown command: %s\n", cmd);
