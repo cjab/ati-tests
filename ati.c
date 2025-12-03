@@ -107,6 +107,8 @@ ati_vram_memcpy(ati_device_t *dev, uint32_t dst_offset, const void *src,
 bool
 ati_screen_compare_fixture(ati_device_t *dev, const char *fixture_name)
 {
+    ati_wait_for_idle(dev);
+
     size_t fixture_size;
     const uint8_t *fixture = platform_get_fixture(fixture_name, &fixture_size);
 
