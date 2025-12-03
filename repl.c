@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#include "platform/platform.h"
 #include "ati.h"
+#include "platform/platform.h"
 
 // Generate register name lookup table from X-macro
 typedef struct {
@@ -8,11 +8,8 @@ typedef struct {
     uint32_t offset;
 } reg_entry_t;
 
-#define X(func_name, const_name, offset, mode) { #const_name, offset },
-static const reg_entry_t reg_table[] = {
-    ATI_REGISTERS
-    { NULL, 0 }
-};
+#define X(func_name, const_name, offset, mode) {#const_name, offset},
+static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0}};
 #undef X
 
 static int
@@ -96,7 +93,8 @@ static uint32_t
 get_bytes_per_pixel(ati_device_t *dev)
 {
     uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
-    uint32_t pix_width = (crtc_gen_cntl & CRTC_PIX_WIDTH_MASK) >> CRTC_PIX_WIDTH_SHIFT;
+    uint32_t pix_width =
+        (crtc_gen_cntl & CRTC_PIX_WIDTH_MASK) >> CRTC_PIX_WIDTH_SHIFT;
 
     switch (pix_width) {
     case CRTC_PIX_WIDTH_8BPP:
@@ -118,10 +116,11 @@ static void
 print_pixel(ati_device_t *dev, uint32_t pixel_idx)
 {
     uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
-    uint32_t pix_width = (crtc_gen_cntl & CRTC_PIX_WIDTH_MASK) >> CRTC_PIX_WIDTH_SHIFT;
+    uint32_t pix_width =
+        (crtc_gen_cntl & CRTC_PIX_WIDTH_MASK) >> CRTC_PIX_WIDTH_SHIFT;
     uint32_t bpp = get_bytes_per_pixel(dev);
     uint32_t byte_offset = pixel_idx * bpp;
-    uint32_t val = ati_vram_read(dev, byte_offset & ~3);  // Align to dword
+    uint32_t val = ati_vram_read(dev, byte_offset & ~3); // Align to dword
     uint32_t shift = (byte_offset & 3) * 8;
 
     switch (pix_width) {
@@ -167,12 +166,19 @@ repl(ati_device_t *dev)
     char buf[64];
     char *cmd, *arg1, *arg2, *arg3, *p;
 
+    // clang-format off
     printf("\n\nTests complete.\n");
-    printf("Commands: reboot, r <addr>, w <addr> <val>\n");
-    printf("          vr <offset> [count], vw <offset> <val> [count]\n");
-    printf("          pr <pixel> [count], pw <pixel> <val> [count]\n");
+    printf("Commands: reboot                     - reboot system (baremetal)\n");
+    printf("          r <addr|reg_name>          - register read\n");
+    printf("          w <addr|reg_name> <val>    - register write\n");
+    printf("          vr <offset> [count]        - vram read\n");
+    printf("          vw <offset> <val> [count]  - vram write\n");
+    printf("          pr <pixel> [count]         - pixel read\n");
+    printf("          pw <pixel> <val> [count]   - pixel write\n");
+    printf("          mr <addr> [count]          - system memory read\n");
     printf("> ");
     fflush(stdout);
+    // clang-format on
 
     while (fgets(buf, sizeof(buf), stdin)) {
         // Strip trailing newline
@@ -307,6 +313,19 @@ repl(ati_device_t *dev)
                 printf("pixel %d <- 0x%x (x%d)\n", pixel, val, count);
             } else {
                 printf("Usage: pw <pixel> <val> [count]\n");
+            }
+        } else if (strcmp(cmd, "mr") == 0) {
+            uint32_t addr, count = 1;
+            if (arg1 && parse_hex(arg1, &addr) == 0) {
+                if (arg2)
+                    parse_hex(arg2, &count);
+                for (uint32_t i = 0; i < count; i++) {
+                    volatile uint32_t *ptr =
+                        (volatile uint32_t *) (uintptr_t) (addr + i * 4);
+                    printf("0x%08x: 0x%08x\n", addr + i * 4, *ptr);
+                }
+            } else {
+                printf("Usage: mr <addr> [count]\n");
             }
         } else if (cmd[0] != '\0') {
             printf("Unknown command: %s\n", cmd);
