@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Start test machine
-wakeonlan 00:30:1b:35:ea:3c
+
+# Boot the test machine using WOL
+# No effect if already booted
+boot-test-machine
 
 # Start video capture
 ffplay -f v4l2 -input_format bgr24 -i /dev/video2 -vf "crop=in_w:in_h-1:0:0" &> /dev/null &
