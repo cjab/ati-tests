@@ -392,6 +392,24 @@ ati_set_display_mode(ati_device_t *dev)
     wr_crtc_offset_cntl(dev, 0x0);
     wr_crtc_pitch(dev, X_RES / 8);
 
+    // Program DDA registers for display FIFO arbitration
+    // These values are calculated for:
+    //   XCLK = 134 MHz (memory clock from BIOS)
+    //   VCLK = 67 MHz (BIOS-configured pixel clock, not 25MHz)
+    //   32bpp, 640x480, FIFO depth=32, FIFO width=128 bits
+    // Using Linux's known-working values for now:
+    wr_dda_config(dev, 0x01060220);
+    wr_dda_on_off(dev, 0x05e03b80);
+
+    // Initialize linear palette for 32bpp gamma correction
+    // In 32bpp mode, each color component (R,G,B) is looked up through
+    // the palette. Entry N should map to (N,N,N) for correct colors.
+    wr_palette_index(dev, 0);  // Start at entry 0
+    for (int i = 0; i < 256; i++) {
+        uint32_t val = (i << 16) | (i << 8) | i;  // R=G=B=i
+        wr_palette_data(dev, val);
+    }
+
     // Re-enable the display
     crtc_ext_cntl = rd_crtc_ext_cntl(dev);
     wr_crtc_ext_cntl(dev, (crtc_ext_cntl & ~CRTC_HSYNC_DIS & ~CRTC_VSYNC_DIS &

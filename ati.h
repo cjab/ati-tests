@@ -124,6 +124,14 @@ void ati_wait_for_idle(ati_device_t *dev);
   /* DAC Registers */ \
   X(dac_cntl,                 DAC_CNTL,                0x0058, RW) \
   \
+  /* Palette Registers */ \
+  X(palette_index,            PALETTE_INDEX,           0x00b0, RW) \
+  X(palette_data,             PALETTE_DATA,            0x00b4, RW) \
+  \
+  /* DDA Registers (Display FIFO Arbitration) */ \
+  X(dda_config,               DDA_CONFIG,              0x02e0, RW) \
+  X(dda_on_off,               DDA_ON_OFF,              0x02e4, RW) \
+  \
   /* Overscan Registers */ \
   X(ovr_clr,                  OVR_CLR,                 0x0230, RW) \
   X(ovr_wid_left_right,       OVR_WID_LEFT_RIGHT,      0x0234, RW) \
