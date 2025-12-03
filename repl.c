@@ -88,10 +88,11 @@ void
 repl(ati_device_t *dev)
 {
     char buf[64];
-    char *cmd, *arg1, *arg2, *p;
+    char *cmd, *arg1, *arg2, *arg3, *p;
 
     printf("\n\nTests complete.\n");
     printf("Commands: reboot, r <addr>, w <addr> <val>\n");
+    printf("          vr <offset> [count], vw <offset> <val> [count]\n");
     printf("> ");
     fflush(stdout);
 
@@ -130,6 +131,14 @@ repl(ati_device_t *dev)
         if (*p)
             *p++ = '\0';
 
+        while (*p == ' ' || *p == '\t')
+            p++;
+        arg3 = *p ? p : NULL;
+        while (*p && *p != ' ' && *p != '\t')
+            p++;
+        if (*p)
+            *p++ = '\0';
+
         if (strcmp(cmd, "reboot") == 0) {
             printf("Rebooting...\n");
             platform_reboot();
@@ -149,6 +158,36 @@ repl(ati_device_t *dev)
                 printf("0x%04x <- 0x%08x\n", addr, val);
             } else {
                 printf("Usage: w <addr|reg_name> <val>\n");
+            }
+        } else if (strcmp(cmd, "vr") == 0) {
+            uint32_t offset, count = 1;
+            if (arg1 && parse_hex(arg1, &offset) == 0) {
+                if (arg2)
+                    parse_hex(arg2, &count);
+                for (uint32_t i = 0; i < count; i++) {
+                    uint32_t addr = offset + i * 4;
+                    uint32_t val = ati_vram_read(dev, addr);
+                    uint8_t r = (val >> 16) & 0xff;
+                    uint8_t g = (val >> 8) & 0xff;
+                    uint8_t b = val & 0xff;
+                    printf("0x%08x: 0x%08x \x1b[48;2;%d;%d;%dm  \x1b[0m\n",
+                           addr, val, r, g, b);
+                }
+            } else {
+                printf("Usage: vr <offset> [count]\n");
+            }
+        } else if (strcmp(cmd, "vw") == 0) {
+            uint32_t offset, val, count = 1;
+            if (arg1 && arg2 && parse_hex(arg1, &offset) == 0 &&
+                parse_hex(arg2, &val) == 0) {
+                if (arg3)
+                    parse_hex(arg3, &count);
+                for (uint32_t i = 0; i < count; i++) {
+                    ati_vram_write(dev, offset + i * 4, val);
+                }
+                printf("0x%08x <- 0x%08x (x%d)\n", offset, val, count);
+            } else {
+                printf("Usage: vw <offset> <val> [count]\n");
             }
         } else if (cmd[0] != '\0') {
             printf("Unknown command: %s\n", cmd);
