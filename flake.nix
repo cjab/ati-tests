@@ -22,6 +22,7 @@
             pkgs.bear
             pkgs.picocom
             pkgs.ffmpeg
+            pkgs.wakeonlan
             # baremetal boot image
             pkgs.libisoburn
             pkgs.mtools

@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# Start test machine
+wakeonlan 00:30:1b:35:ea:3c
+
+# Start video capture
+ffplay -f v4l2 -input_format bgr24 -i /dev/video2 -vf "crop=in_w:in_h-1:0:0" &> /dev/null &
+
 # Start development environment services for Rage 128 testing
 # Launches picocom with logging so serial output is captured
 
