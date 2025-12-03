@@ -28,6 +28,7 @@ typedef struct {
 platform_t *platform_init(int argc, char **argv);
 void platform_destroy(platform_t *platform);
 void platform_reboot(void);
+void platform_poweroff(void);
 void platform_pci_destroy(platform_pci_device_t *dev);
 void platform_pci_get_name(platform_pci_device_t *dev, char *buf, size_t len);
 

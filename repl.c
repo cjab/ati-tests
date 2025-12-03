@@ -197,6 +197,7 @@ repl(ati_device_t *dev)
     // clang-format off
     printf("\n\nTests complete.\n");
     printf("Commands: reboot                     - reboot system (baremetal)\n");
+    printf("          poweroff                   - power off system (baremetal)\n");
     printf("          r <addr|reg_name>          - register read\n");
     printf("          w <addr|reg_name> <val>    - register write\n");
     printf("          vr <offset> [count]        - vram read\n");
@@ -256,6 +257,9 @@ repl(ati_device_t *dev)
         if (strcmp(cmd, "reboot") == 0) {
             printf("Rebooting...\n");
             platform_reboot();
+        } else if (strcmp(cmd, "poweroff") == 0) {
+            printf("Powering off...\n");
+            platform_poweroff();
         } else if (strcmp(cmd, "r") == 0) {
             uint32_t addr;
             if (arg1 && parse_addr(arg1, &addr) == 0) {

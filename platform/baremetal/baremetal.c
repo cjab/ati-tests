@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "../platform.h"
+#include "acpi.h"
 #include "serial.h"
 #include "tinyprintf.h"
 
@@ -65,6 +66,20 @@ static inline void
 outb(uint16_t port, uint8_t val)
 {
     __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port));
+}
+
+void
+outw(uint16_t port, uint16_t val)
+{
+    __asm__ volatile("outw %0, %1" : : "a"(val), "Nd"(port));
+}
+
+uint16_t
+inw(uint16_t port)
+{
+    uint16_t ret;
+    __asm__ volatile("inw %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
 }
 
 void
@@ -352,6 +367,20 @@ strcmp(const char *s1, const char *s2)
     return *(unsigned char *) s1 - *(unsigned char *) s2;
 }
 
+int
+memcmp(const void *s1, const void *s2, size_t n)
+{
+    const unsigned char *p1 = s1;
+    const unsigned char *p2 = s2;
+    while (n--) {
+        if (*p1 != *p2)
+            return *p1 - *p2;
+        p1++;
+        p2++;
+    }
+    return 0;
+}
+
 char *
 fgets(char *s, int size, FILE *stream)
 {
@@ -420,6 +449,9 @@ platform_init(int argc, char **argv)
     serial_init();
     init_printf(NULL, serial_putc);
 
+    // Initialize ACPI (for poweroff support)
+    acpi_init();
+
     // Args already parsed by platform_init_args() called from boot.S
     platform.argc = g_argc - 1; // Remove kernel name to match linux argc count
     platform.argv = &g_argv[1]; // Skip the kernel name
@@ -456,4 +488,10 @@ platform_destroy(platform_t *platform)
     while (1) {
         __asm__ volatile("hlt");
     }
+}
+
+void
+platform_poweroff(void)
+{
+    acpi_poweroff();
 }

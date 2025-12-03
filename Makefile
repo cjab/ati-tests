@@ -12,7 +12,7 @@ $(shell echo "LAST_PLATFORM=$(PLATFORM)" > .platform)
 ifeq ($(PLATFORM),baremetal)
 	CFLAGS += -ffreestanding -fno-stack-protector -fno-pic -no-pie -m32 -DPLATFORM_BAREMETAL
 	LDFLAGS = -nostdlib -T linker.ld -m32 -no-pie
-	PLATFORM_SRC = platform/baremetal/baremetal.c platform/baremetal/serial.c boot.S platform/baremetal/tinyprintf.c
+	PLATFORM_SRC = platform/baremetal/baremetal.c platform/baremetal/serial.c platform/baremetal/acpi.c boot.S platform/baremetal/tinyprintf.c
 	TARGET = ati_tests.elf
 	ISO = ati_tests.iso
 	

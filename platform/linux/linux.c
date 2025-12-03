@@ -203,3 +203,10 @@ platform_reboot(void)
     // On Linux, just exit cleanly
     exit(0);
 }
+
+void
+platform_poweroff(void)
+{
+    // On Linux, just exit cleanly
+    exit(0);
+}
