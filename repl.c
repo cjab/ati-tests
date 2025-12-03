@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "ati.h"
+#include "common.h"
 #include "platform/platform.h"
 
 // Generate register name lookup table from X-macro
@@ -203,6 +204,8 @@ repl(ati_device_t *dev)
     printf("          pr <pixel> [count]         - pixel read\n");
     printf("          pw <pixel> <val> [count]   - pixel write\n");
     printf("          mr <addr> [count]          - system memory read\n");
+    printf("          t [test_name]              - run test(s)\n");
+    printf("          tl                         - list tests\n");
     printf("> ");
     fflush(stdout);
     // clang-format on
@@ -354,6 +357,14 @@ repl(ati_device_t *dev)
             } else {
                 printf("Usage: mr <addr> [count]\n");
             }
+        } else if (strcmp(cmd, "t") == 0) {
+            if (arg1) {
+                run_test_by_name(dev, arg1);
+            } else {
+                run_all_tests(dev);
+            }
+        } else if (strcmp(cmd, "tl") == 0) {
+            list_tests();
         } else if (cmd[0] != '\0') {
             printf("Unknown command: %s\n", cmd);
         }

@@ -61,7 +61,18 @@ run_test_by_name(ati_device_t *dev, char *name)
     for (int i = 0; i < test_count; i++) {
         if (!strcmp(name, tests[i].id)) {
             run_test(dev, &tests[i]);
+            return;
         }
+    }
+    printf("Unknown test: %s\n", name);
+}
+
+void
+list_tests(void)
+{
+    printf("Available tests:\n");
+    for (int i = 0; i < test_count; i++) {
+        printf("  %-35s - %s\n", tests[i].id, tests[i].display_name);
     }
 }
 

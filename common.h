@@ -49,5 +49,7 @@ void register_test(const char *id, const char *display_name,
 
 void register_all_tests(void);
 void run_all_tests(ati_device_t *dev);
+void run_test_by_name(ati_device_t *dev, char *name);
+void list_tests(void);
 
 #endif
