@@ -70,6 +70,33 @@ parse_hex(const char *s, uint32_t *out)
     return 0;
 }
 
+// Parse integer: decimal by default, hex with 0x prefix
+static int
+parse_int(const char *s, uint32_t *out)
+{
+    // If it starts with 0x, parse as hex
+    if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
+        return parse_hex(s, out);
+    }
+
+    // Otherwise parse as decimal
+    uint32_t val = 0;
+
+    if (*s == '\0')
+        return -1;
+
+    while (*s) {
+        char c = *s++;
+        if (c >= '0' && c <= '9')
+            val = val * 10 + (c - '0');
+        else
+            return -1;
+    }
+
+    *out = val;
+    return 0;
+}
+
 static int
 parse_addr(const char *s, uint32_t *out)
 {
@@ -271,9 +298,9 @@ repl(ati_device_t *dev)
             }
         } else if (strcmp(cmd, "pr") == 0) {
             uint32_t pixel, count = 1;
-            if (arg1 && parse_hex(arg1, &pixel) == 0) {
+            if (arg1 && parse_int(arg1, &pixel) == 0) {
                 if (arg2)
-                    parse_hex(arg2, &count);
+                    parse_int(arg2, &count);
                 for (uint32_t i = 0; i < count; i++) {
                     printf("pixel %d: ", pixel + i);
                     print_pixel(dev, pixel + i);
@@ -284,10 +311,10 @@ repl(ati_device_t *dev)
             }
         } else if (strcmp(cmd, "pw") == 0) {
             uint32_t pixel, val, count = 1;
-            if (arg1 && arg2 && parse_hex(arg1, &pixel) == 0 &&
+            if (arg1 && arg2 && parse_int(arg1, &pixel) == 0 &&
                 parse_hex(arg2, &val) == 0) {
                 if (arg3)
-                    parse_hex(arg3, &count);
+                    parse_int(arg3, &count);
                 uint32_t bpp = get_bytes_per_pixel(dev);
                 for (uint32_t i = 0; i < count; i++) {
                     uint32_t byte_offset = (pixel + i) * bpp;
