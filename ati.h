@@ -47,6 +47,8 @@ void ati_engine_reset(ati_device_t *dev);
 void ati_reset_for_test(ati_device_t *dev);
 void ati_wait_for_fifo(ati_device_t *dev, uint32_t entries);
 void ati_wait_for_idle(ati_device_t *dev);
+void ati_init_cce_engine(ati_device_t *dev);
+void ati_top_cce_engine(ati_device_t *dev);
 
 // clang-format off
 #define DUMP_REGISTERS(dev, ...) \
@@ -175,7 +177,24 @@ void ati_wait_for_idle(ati_device_t *dev);
   X(host_data_last,           HOST_DATA_LAST,          0x17e0, WO) \
   \
   /* 3D Registers */ \
-  X(scale_3d_cntl,            SCALE_3D_CNTL,           0x1a00, RW)
+  X(scale_3d_cntl,            SCALE_3D_CNTL,           0x1a00, RW) \
+  \
+  /* PM4/CCE Registers */ \
+  X(pm4_buffer_offset,        PM4_BUFFER_OFFSET,       0x0700, RW) \
+  X(pm4_buffer_cntl,          PM4_BUFFER_CNTL,         0x0704, RW) \
+  X(pm4_buffer_wm_cntl,       PM4_BUFFER_WM_CNTL,      0x0708, RW) \
+  X(pm4_buffer_dl_rptr_addr,  PM4_BUFFER_DL_RPTR_ADDR, 0x070c, RW) \
+  X(pm4_buffer_dl_rptr,       PM4_BUFFER_DL_RPTR,      0x0710, RW) \
+  X(pm4_buffer_dl_wptr,       PM4_BUFFER_DL_WPTR,      0x0714, RW) \
+  X(pm4_buffer_dl_wptr_delay, PM4_BUFFER_DL_WPTR_DELAY,0x0718, RW) \
+  X(pm4_micro_cntl,           PM4_MICRO_CNTL,          0x07fc, RW) \
+  X(pm4_fifo_data_even,       PM4_FIFO_DATA_EVEN,      0x1000, WO) \
+  X(pm4_fifo_data_odd,        PM4_FIFO_DATA_ODD,       0x1004, WO) \
+  X(pm4_microcode_addr,       PM4_MICROCODE_ADDR,      0x07d4, RW) \
+  X(pm4_microcode_raddr,      PM4_MICROCODE_RADDR,     0x07d8, RW) \
+  X(pm4_microcode_datah,      PM4_MICROCODE_DATAH,     0x07dc, RW) \
+  X(pm4_microcode_datal,      PM4_MICROCODE_DATAL,     0x07e0, RW) \
+  X(pm4_stat,                 PM4_STAT,                0x07b8, RO)
 
 // Register offset enum
 #define X(func_name, const_name, offset, mode) const_name = offset,
@@ -545,6 +564,36 @@ enum {
     SOURCE_MEMORY            = 2,
     SOURCE_HOST_DATA         = 3,
     SOURCE_HOST_DATA_ALIGNED = 4,
+};
+
+// ----------------------------------------------------------------------------
+// PM4_MICRO_CNTL
+// ----------------------------------------------------------------------------
+enum {
+    PM4_MICRO_FREERUN = (1 << 30),
+};
+
+// ----------------------------------------------------------------------------
+// PM4_BUFFER_CNTL
+// ----------------------------------------------------------------------------
+enum {
+    PM4_BUFFER_CNTL_NOUPDATE       = (1   << 27),
+    PM4_BUFFER_MODE_SHIFT          = 28,
+    PM4_BUFFER_MODE_MASK           = (0xf << 28),
+};
+
+// PM4_BUFFER_CNTL mode values
+enum {
+    PM4_NONPM4                 = 0, // CCE disabled, direct PIO
+    PM4_192PIO                 = 1, // 192 DWORD CCE PIO FIFO
+    PM4_192BM                  = 2, // 192 DWORD bus master
+    PM4_128PIO_64INDBM         = 3,
+    PM4_128BM_64INDBM          = 4,
+    PM4_64PIO_128INDBM         = 5,
+    PM4_64BM_128INDBM          = 6,
+    PM4_64PIO_64VCBM_64INDBM   = 7,
+    PM4_64BM_64VCBM_64INDBM    = 8,
+    PM4_64PIO_64VCPIO_64INDPIO = 15,
 };
 
 // ----------------------------------------------------------------------------
