@@ -33,6 +33,8 @@ void ati_vram_dump(ati_device_t *dev, const char *filename);
 void ati_screen_dump(ati_device_t *dev, const char *filename);
 void ati_vram_memcpy(ati_device_t *dev, uint32_t dst_offset, const void *src,
                      size_t size);
+bool ati_screen_async_compare_fixture(ati_device_t *dev,
+                                      const char *fixture_name);
 bool ati_screen_compare_fixture(ati_device_t *dev, const char *fixture_name);
 void ati_dump_mode(ati_device_t *dev);
 

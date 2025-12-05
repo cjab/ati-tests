@@ -53,50 +53,50 @@ test_host_data_32x32(ati_device_t *dev)
     wr_host_data1(dev, 0x00000000);
     wr_host_data2(dev, 0x00000000);
     wr_host_data3(dev, 0x00000000);
-    ASSERT_TRUE(
-        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_1"));
+    ASSERT_TRUE(ati_screen_async_compare_fixture(
+        dev, "host_data_mono_32x32_partial_1"));
 
     wr_host_data4(dev, 0x0ffffff0);
     wr_host_data5(dev, 0x0ffffff0);
     wr_host_data6(dev, 0x0ffffff0);
     wr_host_data7(dev, 0x0ffffff0);
-    ASSERT_TRUE(
-        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_2"));
+    ASSERT_TRUE(ati_screen_async_compare_fixture(
+        dev, "host_data_mono_32x32_partial_2"));
 
     wr_host_data0(dev, 0x0ffffff0);
     wr_host_data1(dev, 0x0ffffff0);
     wr_host_data2(dev, 0x0ffffff0);
     wr_host_data3(dev, 0x0ffffff0);
-    ASSERT_TRUE(
-        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_3"));
+    ASSERT_TRUE(ati_screen_async_compare_fixture(
+        dev, "host_data_mono_32x32_partial_3"));
 
     wr_host_data4(dev, 0x0ffffff0);
     wr_host_data5(dev, 0x0ffffff0);
     wr_host_data6(dev, 0x0ffffff0);
     wr_host_data7(dev, 0x0ffffff0);
-    ASSERT_TRUE(
-        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_4"));
+    ASSERT_TRUE(ati_screen_async_compare_fixture(
+        dev, "host_data_mono_32x32_partial_4"));
 
     wr_host_data0(dev, 0x0ffffff0);
     wr_host_data1(dev, 0x0ffffff0);
     wr_host_data2(dev, 0x0ffffff0);
     wr_host_data3(dev, 0x0ffffff0);
-    ASSERT_TRUE(
-        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_5"));
+    ASSERT_TRUE(ati_screen_async_compare_fixture(
+        dev, "host_data_mono_32x32_partial_5"));
 
     wr_host_data4(dev, 0x0ffffff0);
     wr_host_data5(dev, 0x0ffffff0);
     wr_host_data6(dev, 0x0ffffff0);
     wr_host_data7(dev, 0x0ffffff0);
-    ASSERT_TRUE(
-        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_6"));
+    ASSERT_TRUE(ati_screen_async_compare_fixture(
+        dev, "host_data_mono_32x32_partial_6"));
 
     wr_host_data0(dev, 0x0ffffff0);
     wr_host_data1(dev, 0x0ffffff0);
     wr_host_data2(dev, 0x0ffffff0);
     wr_host_data3(dev, 0x0ffffff0);
-    ASSERT_TRUE(
-        ati_screen_compare_fixture(dev, "host_data_mono_32x32_partial_7"));
+    ASSERT_TRUE(ati_screen_async_compare_fixture(
+        dev, "host_data_mono_32x32_partial_7"));
 
     wr_host_data4(dev, 0x00000000);
     wr_host_data5(dev, 0x00000000);

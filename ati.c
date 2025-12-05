@@ -105,10 +105,8 @@ ati_vram_memcpy(ati_device_t *dev, uint32_t dst_offset, const void *src,
 }
 
 bool
-ati_screen_compare_fixture(ati_device_t *dev, const char *fixture_name)
+ati_screen_async_compare_fixture(ati_device_t *dev, const char *fixture_name)
 {
-    ati_wait_for_idle(dev);
-
     size_t fixture_size;
     const uint8_t *fixture = platform_get_fixture(fixture_name, &fixture_size);
 
@@ -154,6 +152,13 @@ ati_screen_compare_fixture(ati_device_t *dev, const char *fixture_name)
     }
     platform_free_fixture(fixture);
     return match;
+}
+
+bool
+ati_screen_compare_fixture(ati_device_t *dev, const char *fixture_name)
+{
+    ati_wait_for_idle(dev);
+    return ati_screen_async_compare_fixture(dev, fixture_name);
 }
 
 void
@@ -406,9 +411,9 @@ ati_set_display_mode(ati_device_t *dev)
     // Initialize linear palette for 32bpp gamma correction
     // In 32bpp mode, each color component (R,G,B) is looked up through
     // the palette. Entry N should map to (N,N,N) for correct colors.
-    wr_palette_index(dev, 0);  // Start at entry 0
+    wr_palette_index(dev, 0); // Start at entry 0
     for (int i = 0; i < 256; i++) {
-        uint32_t val = (i << 16) | (i << 8) | i;  // R=G=B=i
+        uint32_t val = (i << 16) | (i << 8) | i; // R=G=B=i
         wr_palette_data(dev, val);
     }
 
