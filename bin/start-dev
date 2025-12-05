@@ -1,23 +1,17 @@
 #!/usr/bin/env bash
-
-# Boot the test machine using WOL
-# No effect if already booted
-boot-test-machine
-
-# Start video capture
-ffplay -f v4l2 -input_format bgr24 -i /dev/video2 -vf "crop=in_w:in_h-1:0:0" &> /dev/null &
-
-# Start development environment services for Rage 128 testing
-# Launches picocom with logging so serial output is captured
+set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TESTS_DIR="$(dirname "$SCRIPT_DIR")"
-
 SERIAL_LOG="$TESTS_DIR/tmp/serial.log"
-SERIAL_DEV=/dev/ttyUSB0
 
-# Ensure tmp directory exists and truncate log
 mkdir -p "$TESTS_DIR/tmp"
-> "$SERIAL_LOG"
 
-exec picocom -b 115200 --logfile "$SERIAL_LOG" "$SERIAL_DEV"
+# Start video capture
+vcap &> /dev/null &
+
+# Boot the test machine using WOL
+boot-test-machine
+
+# Launches picocom with logging so serial output is captured
+serial-remote
