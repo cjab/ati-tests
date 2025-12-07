@@ -4,6 +4,7 @@
 #include "platform/platform.h"
 
 #include "ati.h"
+#include "cce.h"
 #include "common.h"
 
 #define NUM_BARS 8
@@ -529,6 +530,9 @@ ati_engine_reset(ati_device_t *dev)
 void
 ati_reset_for_test(ati_device_t *dev)
 {
+    // Stop CCE engine if it was running (restores standard PIO mode)
+    ati_stop_cce_engine(dev);
+
     ati_engine_reset(dev);
     ati_wait_for_idle(dev);
     ati_screen_clear(dev);

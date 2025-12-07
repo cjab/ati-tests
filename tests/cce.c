@@ -5,20 +5,23 @@
 bool
 test_cce(ati_device_t *dev)
 {
-    printf("test_cce: start\n");
-    uint32_t packets[] = {
-        CCE_PKT0(GUI_SCRATCH_REG0, 5),
-        0xdeadbeef,
-        0xdeadbabe,
-        0xdeadc0de,
-        0xdeadf00d,
-        0xdeadface,
-        0xdeadcafe,
-    };
-    size_t count = sizeof(packets) / sizeof(packets[0]);
-    printf("test_cce: calling submit with %zu dwords\n", count);
-    ati_cce_pio_submit(dev, packets, count);
-    printf("test_cce: submitted\n");
+    // Initialize CCE engine for this test
+    ati_init_cce_engine(dev);
+
+    uint32_t packets[] = {CCE_PKT0(GUI_SCRATCH_REG0, 0), 0xcafebabe};
+    ati_cce_pio_submit(dev, packets, 2);
+
+    ati_wait_for_idle(dev);
+    ASSERT_EQ(rd_gui_scratch_reg0(dev), packets[1]);
+
+    uint32_t packets2[] = {CCE_PKT0(GUI_SCRATCH_REG0, 1), 0xdeadbeef,
+                           0xbeefc0de};
+    ati_cce_pio_submit(dev, packets2, 3);
+
+    ati_wait_for_idle(dev);
+    ASSERT_EQ(rd_gui_scratch_reg0(dev), packets2[1]);
+    ASSERT_EQ(rd_gui_scratch_reg1(dev), packets2[2]);
+
     return true;
 }
 

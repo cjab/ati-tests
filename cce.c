@@ -71,21 +71,35 @@ void
 ati_init_cce_engine(ati_device_t *dev)
 {
     ati_wait_for_idle(dev);
+
     // Load CCE microcode
     wr_pm4_microcode_addr(dev, 0);
     for (int i = 0; i < 256; i += 1) {
         wr_pm4_microcode_datah(dev, r128_cce_microcode[i * 2]);
         wr_pm4_microcode_datal(dev, r128_cce_microcode[i * 2 + 1]);
     }
-    // Reset engine after loading microcode
-    ati_engine_reset(dev);
+
     // Set to PIO-based CCE mode with 192 entries
     wr_pm4_buffer_cntl(dev, (PM4_192PIO << PM4_BUFFER_MODE_SHIFT) |
                                 PM4_BUFFER_CNTL_NOUPDATE);
+
     // Read as per sample code (may be required for mode change to take effect)
     (void) rd_pm4_buffer_addr(dev);
+
     // Start the CCE engine
     wr_pm4_micro_cntl(dev, PM4_MICRO_FREERUN);
+}
+
+void
+ati_stop_cce_engine(ati_device_t *dev)
+{
+    // Wait for CCE to finish processing
+    ati_wait_for_idle(dev);
+    // Stop the microengine (clear FREERUN bit)
+    wr_pm4_micro_cntl(dev, 0);
+    ati_engine_reset(dev);
+    // Set back to non-PM4 (standard PIO) mode
+    wr_pm4_buffer_cntl(dev, PM4_NONPM4 << PM4_BUFFER_MODE_SHIFT);
 }
 
 static void
@@ -100,7 +114,7 @@ void
 ati_cce_pio_submit(ati_device_t *dev, uint32_t *packets, size_t dwords)
 {
     for (size_t i = 0; i < dwords; i += 2) {
-        ati_cce_wait_for_fifo(dev, 2); // Temporarily disabled for debugging
+        ati_cce_wait_for_fifo(dev, 2);
         wr_pm4_fifo_data_even(dev, packets[i]);
         if (i + 1 < dwords) {
             wr_pm4_fifo_data_odd(dev, packets[i + 1]);

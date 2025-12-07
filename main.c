@@ -100,7 +100,6 @@ main(int argc, char **argv)
 
     ati_set_display_mode(dev);
     ati_init_gui_engine(dev);
-    ati_init_cce_engine(dev);
 
     register_all_tests();
 
