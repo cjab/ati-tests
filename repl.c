@@ -102,7 +102,7 @@ static int
 parse_addr(const char *s, uint32_t *out)
 {
     // Try hex first
-    if (parse_hex(s, out) == 0) {
+    if (parse_int(s, out) == 0) {
         return 0;
     }
     // Fall back to register name lookup
@@ -271,7 +271,7 @@ repl(ati_device_t *dev)
         } else if (strcmp(cmd, "w") == 0) {
             uint32_t addr, val;
             if (arg1 && arg2 && parse_addr(arg1, &addr) == 0 &&
-                parse_hex(arg2, &val) == 0) {
+                parse_int(arg2, &val) == 0) {
                 ati_reg_write(dev, addr, val);
                 printf("0x%04x <- 0x%08x\n", addr, val);
             } else {
@@ -279,9 +279,9 @@ repl(ati_device_t *dev)
             }
         } else if (strcmp(cmd, "vr") == 0) {
             uint32_t offset, count = 1;
-            if (arg1 && parse_hex(arg1, &offset) == 0) {
+            if (arg1 && parse_int(arg1, &offset) == 0) {
                 if (arg2)
-                    parse_hex(arg2, &count);
+                    parse_int(arg2, &count);
                 for (uint32_t i = 0; i < count; i++) {
                     uint32_t addr = offset + i * 4;
                     uint32_t val = ati_vram_read(dev, addr);
@@ -292,10 +292,10 @@ repl(ati_device_t *dev)
             }
         } else if (strcmp(cmd, "vw") == 0) {
             uint32_t offset, val, count = 1;
-            if (arg1 && arg2 && parse_hex(arg1, &offset) == 0 &&
-                parse_hex(arg2, &val) == 0) {
+            if (arg1 && arg2 && parse_int(arg1, &offset) == 0 &&
+                parse_int(arg2, &val) == 0) {
                 if (arg3)
-                    parse_hex(arg3, &count);
+                    parse_int(arg3, &count);
                 for (uint32_t i = 0; i < count; i++) {
                     ati_vram_write(dev, offset + i * 4, val);
                 }
@@ -319,7 +319,7 @@ repl(ati_device_t *dev)
         } else if (strcmp(cmd, "pw") == 0) {
             uint32_t pixel, val, count = 1;
             if (arg1 && arg2 && parse_int(arg1, &pixel) == 0 &&
-                parse_hex(arg2, &val) == 0) {
+                parse_int(arg2, &val) == 0) {
                 if (arg3)
                     parse_int(arg3, &count);
                 uint32_t bpp = get_bytes_per_pixel(dev);
@@ -350,9 +350,9 @@ repl(ati_device_t *dev)
             }
         } else if (strcmp(cmd, "mr") == 0) {
             uint32_t addr, count = 1;
-            if (arg1 && parse_hex(arg1, &addr) == 0) {
+            if (arg1 && parse_int(arg1, &addr) == 0) {
                 if (arg2)
-                    parse_hex(arg2, &count);
+                    parse_int(arg2, &count);
                 for (uint32_t i = 0; i < count; i++) {
                     volatile uint32_t *ptr =
                         (volatile uint32_t *) (uintptr_t) (addr + i * 4);
