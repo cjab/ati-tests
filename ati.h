@@ -71,6 +71,14 @@ void ati_top_cce_engine(ati_device_t *dev);
   X(dp_src_bkgd_clr,          DP_SRC_BKGD_CLR,         0x15dc, RW) \
   X(dp_src_frgd_clr,          DP_SRC_FRGD_CLR,         0x15d8, RW) \
   \
+  /* GUI Scratch Registers */ \
+  X(gui_scratch_reg0,         GUI_SCRATCH_REG0,        0x15e0, RW) \
+  X(gui_scratch_reg1,         GUI_SCRATCH_REG1,        0x15e4, RW) \
+  X(gui_scratch_reg2,         GUI_SCRATCH_REG2,        0x15e8, RW) \
+  X(gui_scratch_reg3,         GUI_SCRATCH_REG3,        0x15ec, RW) \
+  X(gui_scratch_reg4,         GUI_SCRATCH_REG4,        0x15f0, RW) \
+  X(gui_scratch_reg5,         GUI_SCRATCH_REG5,        0x15f4, RW) \
+  \
   /* Scissor / Clipping Registers */ \
   X(sc_left,                  SC_LEFT,                 0x1640, RW) \
   X(sc_top,                   SC_TOP,                  0x1648, RW) \
@@ -187,6 +195,7 @@ void ati_top_cce_engine(ati_device_t *dev);
   X(pm4_buffer_dl_rptr,       PM4_BUFFER_DL_RPTR,      0x0710, RW) \
   X(pm4_buffer_dl_wptr,       PM4_BUFFER_DL_WPTR,      0x0714, RW) \
   X(pm4_buffer_dl_wptr_delay, PM4_BUFFER_DL_WPTR_DELAY,0x0718, RW) \
+  X(pm4_buffer_addr,          PM4_BUFFER_ADDR,         0x07f0, RW) \
   X(pm4_micro_cntl,           PM4_MICRO_CNTL,          0x07fc, RW) \
   X(pm4_fifo_data_even,       PM4_FIFO_DATA_EVEN,      0x1000, WO) \
   X(pm4_fifo_data_odd,        PM4_FIFO_DATA_ODD,       0x1004, WO) \
@@ -564,6 +573,13 @@ enum {
     SOURCE_MEMORY            = 2,
     SOURCE_HOST_DATA         = 3,
     SOURCE_HOST_DATA_ALIGNED = 4,
+};
+
+// ----------------------------------------------------------------------------
+// PM4_STAT
+// ----------------------------------------------------------------------------
+enum {
+    PM4_FIFOCNT_MASK = 0x0fff,
 };
 
 // ----------------------------------------------------------------------------
