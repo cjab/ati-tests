@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+HOST=chomposaur
+PORT=9001
+
+if [ -t 0 ] && [ $# -eq 0 ]; then
+    # Interactive mode
+    rlwrap nc "$HOST" "$PORT"
+elif [ $# -gt 0 ]; then
+    # Args provided: send as command
+    echo "$*" | nc -N "$HOST" "$PORT" > /dev/null
+else
+    # Stdin provided: pipe through
+    nc -N "$HOST" "$PORT" > /dev/null
+fi

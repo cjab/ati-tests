@@ -20,7 +20,8 @@
             # dev tools
             pkgs.clang-tools
             pkgs.bear
-            pkgs.picocom
+            pkgs.netcat
+            pkgs.rlwrap
             pkgs.ffmpeg
             pkgs.wakeonlan
             # baremetal boot image
