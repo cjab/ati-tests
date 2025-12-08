@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-echo "" | nc chomposaur 9002

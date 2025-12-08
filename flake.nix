@@ -14,17 +14,14 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = [
+            # build
             pkgs.gcc
             pkgs.gnumake
+            # real hardware
             pkgs.pciutils
             # dev tools
-            pkgs.ruby
             pkgs.clang-tools
             pkgs.bear
-            pkgs.netcat
-            pkgs.rlwrap
-            pkgs.ffmpeg
-            pkgs.wakeonlan
             # baremetal boot image
             pkgs.libisoburn
             pkgs.mtools
