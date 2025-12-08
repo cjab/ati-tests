@@ -123,3 +123,15 @@ ati_cce_pio_submit(ati_device_t *dev, uint32_t *packets, size_t dwords)
         }
     }
 }
+
+void
+ati_cce_load_microcode(ati_device_t *dev)
+{
+    // Load CCE microcode from static array
+    // Note: Engine should be stopped before calling this
+    wr_pm4_microcode_addr(dev, 0);
+    for (int i = 0; i < 256; i++) {
+        wr_pm4_microcode_datah(dev, r128_cce_microcode[i * 2]);
+        wr_pm4_microcode_datal(dev, r128_cce_microcode[i * 2 + 1]);
+    }
+}
