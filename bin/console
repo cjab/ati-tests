@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+SCRIPT_DIR="$(dirname "$0")"
 HOST=chomposaur
 PORT=9001
 
@@ -7,9 +8,9 @@ if [ -t 0 ] && [ $# -eq 0 ]; then
     # Interactive mode
     rlwrap nc "$HOST" "$PORT"
 elif [ $# -gt 0 ]; then
-    # Args provided: send as command
-    echo "$*" | nc -N "$HOST" "$PORT" > /dev/null
+    # Args provided: send as command, wait for response
+    "$SCRIPT_DIR/console-exec" "$*"
 else
-    # Stdin provided: pipe through
-    nc -N "$HOST" "$PORT" > /dev/null
+    # Stdin provided: pipe through, wait for response
+    "$SCRIPT_DIR/console-exec" "$(cat)"
 fi

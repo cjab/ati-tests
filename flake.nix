@@ -18,6 +18,7 @@
             pkgs.gnumake
             pkgs.pciutils
             # dev tools
+            pkgs.ruby
             pkgs.clang-tools
             pkgs.bear
             pkgs.netcat
