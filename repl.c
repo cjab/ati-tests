@@ -18,6 +18,32 @@ typedef struct {
 static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0, RW}};
 #undef X
 
+// Simple tokenizer: returns next whitespace-delimited token, advances *p
+static char *
+next_token(char **p)
+{
+    char *start;
+
+    // Skip leading whitespace
+    while (**p == ' ' || **p == '\t')
+        (*p)++;
+
+    if (**p == '\0')
+        return NULL;
+
+    start = *p;
+
+    // Find end of token
+    while (**p && **p != ' ' && **p != '\t')
+        (*p)++;
+
+    // Null-terminate if not at end of string
+    if (**p)
+        *(*p)++ = '\0';
+
+    return start;
+}
+
 static int
 lookup_reg(const char *name, uint32_t *out, reg_mode_t *mode_out)
 {
@@ -227,45 +253,18 @@ repl(ati_device_t *dev)
 
         // Parse command and arguments
         p = buf;
-        while (*p == ' ' || *p == '\t')
-            p++;
-        cmd = p;
-        while (*p && *p != ' ' && *p != '\t')
-            p++;
-        if (*p)
-            *p++ = '\0';
+        cmd = next_token(&p);
+        arg1 = next_token(&p);
+        arg2 = next_token(&p);
+        arg3 = next_token(&p);
+        arg4 = next_token(&p);
 
-        while (*p == ' ' || *p == '\t')
-            p++;
-        arg1 = *p ? p : NULL;
-        while (*p && *p != ' ' && *p != '\t')
-            p++;
-        if (*p)
-            *p++ = '\0';
-
-        while (*p == ' ' || *p == '\t')
-            p++;
-        arg2 = *p ? p : NULL;
-        while (*p && *p != ' ' && *p != '\t')
-            p++;
-        if (*p)
-            *p++ = '\0';
-
-        while (*p == ' ' || *p == '\t')
-            p++;
-        arg3 = *p ? p : NULL;
-        while (*p && *p != ' ' && *p != '\t')
-            p++;
-        if (*p)
-            *p++ = '\0';
-
-        while (*p == ' ' || *p == '\t')
-            p++;
-        arg4 = *p ? p : NULL;
-        while (*p && *p != ' ' && *p != '\t')
-            p++;
-        if (*p)
-            *p++ = '\0';
+        if (cmd == NULL) {
+            // Empty line
+            printf("> ");
+            fflush(stdout);
+            continue;
+        }
 
         if (strcmp(cmd, "reboot") == 0) {
             printf("Rebooting...\n");
@@ -279,14 +278,16 @@ repl(ati_device_t *dev)
             if (arg1 && parse_addr(arg1, &addr, &mode) == 0) {
                 if (mode == WO) {
                     const char *name = lookup_reg_name(addr);
-                    printf("\x1b[31mWARNING: %s (0x%04x) is write-only\x1b[0m\n",
-                           name ? name : "register", addr);
+                    printf(
+                        "\x1b[31mWARNING: %s (0x%04x) is write-only\x1b[0m\n",
+                        name ? name : "register", addr);
                 }
                 uint32_t val = ati_reg_read(dev, addr);
                 const char *name = lookup_reg_name(addr);
                 if (name) {
                     printf("\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m: "
-                           "\x1b[33m0x%08x\x1b[0m\n", name, addr, val);
+                           "\x1b[33m0x%08x\x1b[0m\n",
+                           name, addr, val);
                 } else {
                     printf("0x%04x: \x1b[33m0x%08x\x1b[0m\n", addr, val);
                 }
@@ -307,7 +308,8 @@ repl(ati_device_t *dev)
                 const char *name = lookup_reg_name(addr);
                 if (name) {
                     printf("\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m = "
-                           "\x1b[33m0x%08x\x1b[0m\n", name, addr, val);
+                           "\x1b[33m0x%08x\x1b[0m\n",
+                           name, addr, val);
                 } else {
                     printf("0x%04x = \x1b[33m0x%08x\x1b[0m\n", addr, val);
                 }
@@ -409,13 +411,17 @@ repl(ati_device_t *dev)
         } else if (strcmp(cmd, "cce") == 0) {
             if (arg1 == NULL) {
                 printf("Usage: cce <init|start|stop|mode|reload|r|w>\n");
-                printf("  cce init            - full CCE init (load + mode + start)\n");
+                printf("  cce init            - full CCE init (load + mode + "
+                       "start)\n");
                 printf("  cce start           - start microengine\n");
                 printf("  cce stop            - stop microengine\n");
-                printf("  cce mode            - set PM4 PIO mode (no microcode load)\n");
-                printf("  cce reload          - load microcode (no start/stop)\n");
+                printf("  cce mode            - set PM4 PIO mode (no microcode "
+                       "load)\n");
+                printf(
+                    "  cce reload          - load microcode (no start/stop)\n");
                 printf("  cce r <addr>        - read instruction (0-255)\n");
-                printf("  cce w <addr> <h> <l> - write instruction (no start/stop)\n");
+                printf("  cce w <addr> <h> <l> - write instruction (no "
+                       "start/stop)\n");
             } else if (strcmp(arg1, "init") == 0) {
                 ati_init_cce_engine(dev);
                 printf("CCE initialized\n");
@@ -429,7 +435,7 @@ repl(ati_device_t *dev)
             } else if (strcmp(arg1, "mode") == 0) {
                 // Set PM4 PIO mode without loading microcode
                 wr_pm4_buffer_cntl(dev, (PM4_192PIO << PM4_BUFFER_MODE_SHIFT) |
-                                        PM4_BUFFER_CNTL_NOUPDATE);
+                                            PM4_BUFFER_CNTL_NOUPDATE);
                 (void) rd_pm4_buffer_addr(dev);
                 printf("PM4 PIO mode set\n");
             } else if (strcmp(arg1, "reload") == 0) {
@@ -450,9 +456,8 @@ repl(ati_device_t *dev)
                 }
             } else if (strcmp(arg1, "w") == 0) {
                 uint32_t addr, high, low;
-                if (arg2 && arg3 && arg4 &&
-                    parse_int(arg2, &addr) == 0 && addr < 256 &&
-                    parse_int(arg3, &high) == 0 &&
+                if (arg2 && arg3 && arg4 && parse_int(arg2, &addr) == 0 &&
+                    addr < 256 && parse_int(arg3, &high) == 0 &&
                     parse_int(arg4, &low) == 0) {
                     // Just write instruction, no start/stop
                     // Must wait for idle before writing microcode
@@ -465,8 +470,10 @@ repl(ati_device_t *dev)
                     uint32_t read_high = rd_pm4_microcode_datah(dev);
                     uint32_t read_low = rd_pm4_microcode_datal(dev);
                     // Print results
-                    printf("[%d] wrote HIGH=0x%08x LOW=0x%08x\n", addr, high, low);
-                    printf("[%d] read  HIGH=0x%08x LOW=0x%08x\n", addr, read_high, read_low);
+                    printf("[%d] wrote HIGH=0x%08x LOW=0x%08x\n", addr, high,
+                           low);
+                    printf("[%d] read  HIGH=0x%08x LOW=0x%08x\n", addr,
+                           read_high, read_low);
                     if (high != read_high || low != read_low) {
                         printf("ERROR: write verification failed!\n");
                     }
@@ -476,7 +483,7 @@ repl(ati_device_t *dev)
             } else {
                 printf("Unknown cce command: %s\n", arg1);
             }
-        } else if (cmd[0] != '\0') {
+        } else {
             printf("Unknown command: %s\n", cmd);
         }
 
