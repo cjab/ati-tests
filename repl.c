@@ -21,7 +21,6 @@ static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0, RW}};
 // Command enum for dispatch
 typedef enum {
     CMD_REBOOT,
-    CMD_POWEROFF,
     CMD_R,
     CMD_W,
     CMD_VR,
@@ -44,7 +43,6 @@ static const struct {
     const char *desc;
 } cmd_table[] = {
     {"reboot",   CMD_REBOOT,   NULL,                     "reboot system (baremetal)"},
-    {"poweroff", CMD_POWEROFF, NULL,                     "power off system (baremetal)"},
     {"r",        CMD_R,        "<addr|reg>",             "register read"},
     {"w",        CMD_W,        "<addr|reg> <val>",       "register write"},
     {"vr",       CMD_VR,       "<offset> [count]",       "vram read"},
@@ -337,13 +335,6 @@ cmd_reboot(void)
 }
 
 static void
-cmd_poweroff(void)
-{
-    printf("Powering off...\n");
-    platform_poweroff();
-}
-
-static void
 cmd_reg_read(ati_device_t *dev, int argc, char **args)
 {
     uint32_t addr;
@@ -630,9 +621,6 @@ repl(ati_device_t *dev)
         switch (lookup_cmd(args[0])) {
         case CMD_REBOOT:
             cmd_reboot();
-            break;
-        case CMD_POWEROFF:
-            cmd_poweroff();
             break;
         case CMD_R:
             cmd_reg_read(dev, argc, args);

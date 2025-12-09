@@ -3,7 +3,6 @@
 #include <stdint.h>
 
 #include "../platform.h"
-#include "acpi.h"
 #include "serial.h"
 #include "tinyprintf.h"
 
@@ -465,9 +464,6 @@ platform_init(int argc, char **argv)
     serial_init();
     init_printf(NULL, serial_putc);
 
-    // Initialize ACPI (for poweroff support)
-    acpi_init();
-
     // Args already parsed by platform_init_args() called from boot.S
     platform.argc = g_argc - 1; // Remove kernel name to match linux argc count
     platform.argv = &g_argv[1]; // Skip the kernel name
@@ -506,8 +502,4 @@ platform_destroy(platform_t *platform)
     }
 }
 
-void
-platform_poweroff(void)
-{
-    acpi_poweroff();
-}
+
