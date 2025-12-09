@@ -71,6 +71,20 @@ lookup_cmd(const char *name)
     return CMD_UNKNOWN;
 }
 
+static void
+print_usage(cmd_t cmd)
+{
+    for (int i = 0; cmd_table[i].name != NULL; i++) {
+        if (cmd_table[i].cmd == cmd && cmd_table[i].desc != NULL) {
+            if (cmd_table[i].usage)
+                printf("Usage: %s %s\n", cmd_table[i].name, cmd_table[i].usage);
+            else
+                printf("Usage: %s\n", cmd_table[i].name);
+            return;
+        }
+    }
+}
+
 // Simple tokenizer: returns next whitespace-delimited token, advances *p
 static char *
 next_token(char **p)
@@ -311,23 +325,25 @@ cmd_reg_read(ati_device_t *dev, int argc, char **args)
 {
     uint32_t addr;
     reg_mode_t mode;
-    if (argc >= 2 && parse_addr(args[1], &addr, &mode) == 0) {
-        if (mode == WO) {
-            const char *name = lookup_reg_name(addr);
-            printf("\x1b[31mWARNING: %s (0x%04x) is write-only\x1b[0m\n",
-                   name ? name : "register", addr);
-        }
-        uint32_t val = ati_reg_read(dev, addr);
+
+    if (argc < 2 || parse_addr(args[1], &addr, &mode) != 0) {
+        print_usage(CMD_R);
+        return;
+    }
+
+    if (mode == WO) {
         const char *name = lookup_reg_name(addr);
-        if (name) {
-            printf("\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m: "
-                   "\x1b[33m0x%08x\x1b[0m\n",
-                   name, addr, val);
-        } else {
-            printf("0x%04x: \x1b[33m0x%08x\x1b[0m\n", addr, val);
-        }
+        printf("\x1b[31mWARNING: %s (0x%04x) is write-only\x1b[0m\n",
+               name ? name : "register", addr);
+    }
+    uint32_t val = ati_reg_read(dev, addr);
+    const char *name = lookup_reg_name(addr);
+    if (name) {
+        printf("\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m: "
+               "\x1b[33m0x%08x\x1b[0m\n",
+               name, addr, val);
     } else {
-        printf("Usage: r <addr|reg_name>\n");
+        printf("0x%04x: \x1b[33m0x%08x\x1b[0m\n", addr, val);
     }
 }
 
@@ -336,24 +352,26 @@ cmd_reg_write(ati_device_t *dev, int argc, char **args)
 {
     uint32_t addr, val;
     reg_mode_t mode;
-    if (argc >= 3 && parse_addr(args[1], &addr, &mode) == 0 &&
-        parse_int(args[2], &val) == 0) {
-        if (mode == RO) {
-            const char *name = lookup_reg_name(addr);
-            printf("\x1b[31mWARNING: %s (0x%04x) is read-only\x1b[0m\n",
-                   name ? name : "register", addr);
-        }
-        ati_reg_write(dev, addr, val);
+
+    if (argc < 3 || parse_addr(args[1], &addr, &mode) != 0 ||
+        parse_int(args[2], &val) != 0) {
+        print_usage(CMD_W);
+        return;
+    }
+
+    if (mode == RO) {
         const char *name = lookup_reg_name(addr);
-        if (name) {
-            printf("\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m = "
-                   "\x1b[33m0x%08x\x1b[0m\n",
-                   name, addr, val);
-        } else {
-            printf("0x%04x = \x1b[33m0x%08x\x1b[0m\n", addr, val);
-        }
+        printf("\x1b[31mWARNING: %s (0x%04x) is read-only\x1b[0m\n",
+               name ? name : "register", addr);
+    }
+    ati_reg_write(dev, addr, val);
+    const char *name = lookup_reg_name(addr);
+    if (name) {
+        printf("\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m = "
+               "\x1b[33m0x%08x\x1b[0m\n",
+               name, addr, val);
     } else {
-        printf("Usage: w <addr|reg_name> <val>\n");
+        printf("0x%04x = \x1b[33m0x%08x\x1b[0m\n", addr, val);
     }
 }
 
@@ -361,16 +379,18 @@ static void
 cmd_vram_read(ati_device_t *dev, int argc, char **args)
 {
     uint32_t offset, count = 1;
-    if (argc >= 2 && parse_int(args[1], &offset) == 0) {
-        if (argc >= 3)
-            parse_int(args[2], &count);
-        for (uint32_t i = 0; i < count; i++) {
-            uint32_t addr = offset + i * 4;
-            uint32_t val = ati_vram_read(dev, addr);
-            printf("0x%08x: 0x%08x\n", addr, val);
-        }
-    } else {
-        printf("Usage: vr <offset> [count]\n");
+
+    if (argc < 2 || parse_int(args[1], &offset) != 0) {
+        print_usage(CMD_VR);
+        return;
+    }
+
+    if (argc >= 3)
+        parse_int(args[2], &count);
+    for (uint32_t i = 0; i < count; i++) {
+        uint32_t addr = offset + i * 4;
+        uint32_t val = ati_vram_read(dev, addr);
+        printf("0x%08x: 0x%08x\n", addr, val);
     }
 }
 
@@ -378,33 +398,37 @@ static void
 cmd_vram_write(ati_device_t *dev, int argc, char **args)
 {
     uint32_t offset, val, count = 1;
-    if (argc >= 3 && parse_int(args[1], &offset) == 0 &&
-        parse_int(args[2], &val) == 0) {
-        if (argc >= 4)
-            parse_int(args[3], &count);
-        for (uint32_t i = 0; i < count; i++) {
-            ati_vram_write(dev, offset + i * 4, val);
-        }
-        printf("0x%08x <- 0x%08x (x%d)\n", offset, val, count);
-    } else {
-        printf("Usage: vw <offset> <val> [count]\n");
+
+    if (argc < 3 || parse_int(args[1], &offset) != 0 ||
+        parse_int(args[2], &val) != 0) {
+        print_usage(CMD_VW);
+        return;
     }
+
+    if (argc >= 4)
+        parse_int(args[3], &count);
+    for (uint32_t i = 0; i < count; i++) {
+        ati_vram_write(dev, offset + i * 4, val);
+    }
+    printf("0x%08x <- 0x%08x (x%d)\n", offset, val, count);
 }
 
 static void
 cmd_pixel_read(ati_device_t *dev, int argc, char **args)
 {
     uint32_t pixel, count = 1;
-    if (argc >= 2 && parse_int(args[1], &pixel) == 0) {
-        if (argc >= 3)
-            parse_int(args[2], &count);
-        for (uint32_t i = 0; i < count; i++) {
-            printf("pixel %d: ", pixel + i);
-            print_pixel(dev, pixel + i);
-            printf("\n");
-        }
-    } else {
-        printf("Usage: pr <pixel> [count]\n");
+
+    if (argc < 2 || parse_int(args[1], &pixel) != 0) {
+        print_usage(CMD_PR);
+        return;
+    }
+
+    if (argc >= 3)
+        parse_int(args[2], &count);
+    for (uint32_t i = 0; i < count; i++) {
+        printf("pixel %d: ", pixel + i);
+        print_pixel(dev, pixel + i);
+        printf("\n");
     }
 }
 
@@ -412,52 +436,56 @@ static void
 cmd_pixel_write(ati_device_t *dev, int argc, char **args)
 {
     uint32_t pixel, val, count = 1;
-    if (argc >= 3 && parse_int(args[1], &pixel) == 0 &&
-        parse_int(args[2], &val) == 0) {
-        if (argc >= 4)
-            parse_int(args[3], &count);
-        uint32_t bpp = get_bytes_per_pixel(dev);
-        for (uint32_t i = 0; i < count; i++) {
-            uint32_t byte_offset = (pixel + i) * bpp;
-            // Write pixel value at appropriate size
-            if (bpp == 4) {
-                ati_vram_write(dev, byte_offset, val);
-            } else if (bpp == 2) {
-                uint32_t aligned = byte_offset & ~3;
-                uint32_t shift = (byte_offset & 2) * 8;
-                uint32_t mask = 0xffff << shift;
-                uint32_t cur = ati_vram_read(dev, aligned);
-                cur = (cur & ~mask) | ((val & 0xffff) << shift);
-                ati_vram_write(dev, aligned, cur);
-            } else if (bpp == 1) {
-                uint32_t aligned = byte_offset & ~3;
-                uint32_t shift = (byte_offset & 3) * 8;
-                uint32_t mask = 0xff << shift;
-                uint32_t cur = ati_vram_read(dev, aligned);
-                cur = (cur & ~mask) | ((val & 0xff) << shift);
-                ati_vram_write(dev, aligned, cur);
-            }
-        }
-        printf("pixel %d <- 0x%x (x%d)\n", pixel, val, count);
-    } else {
-        printf("Usage: pw <pixel> <val> [count]\n");
+
+    if (argc < 3 || parse_int(args[1], &pixel) != 0 ||
+        parse_int(args[2], &val) != 0) {
+        print_usage(CMD_PW);
+        return;
     }
+
+    if (argc >= 4)
+        parse_int(args[3], &count);
+    uint32_t bpp = get_bytes_per_pixel(dev);
+    for (uint32_t i = 0; i < count; i++) {
+        uint32_t byte_offset = (pixel + i) * bpp;
+        // Write pixel value at appropriate size
+        if (bpp == 4) {
+            ati_vram_write(dev, byte_offset, val);
+        } else if (bpp == 2) {
+            uint32_t aligned = byte_offset & ~3;
+            uint32_t shift = (byte_offset & 2) * 8;
+            uint32_t mask = 0xffff << shift;
+            uint32_t cur = ati_vram_read(dev, aligned);
+            cur = (cur & ~mask) | ((val & 0xffff) << shift);
+            ati_vram_write(dev, aligned, cur);
+        } else if (bpp == 1) {
+            uint32_t aligned = byte_offset & ~3;
+            uint32_t shift = (byte_offset & 3) * 8;
+            uint32_t mask = 0xff << shift;
+            uint32_t cur = ati_vram_read(dev, aligned);
+            cur = (cur & ~mask) | ((val & 0xff) << shift);
+            ati_vram_write(dev, aligned, cur);
+        }
+    }
+    printf("pixel %d <- 0x%x (x%d)\n", pixel, val, count);
 }
 
 static void
 cmd_mem_read(int argc, char **args)
 {
     uint32_t addr, count = 1;
-    if (argc >= 2 && parse_int(args[1], &addr) == 0) {
-        if (argc >= 3)
-            parse_int(args[2], &count);
-        for (uint32_t i = 0; i < count; i++) {
-            volatile uint32_t *ptr =
-                (volatile uint32_t *) (uintptr_t) (addr + i * 4);
-            printf("0x%08x: 0x%08x\n", addr + i * 4, *ptr);
-        }
-    } else {
-        printf("Usage: mr <addr> [count]\n");
+
+    if (argc < 2 || parse_int(args[1], &addr) != 0) {
+        print_usage(CMD_MR);
+        return;
+    }
+
+    if (argc >= 3)
+        parse_int(args[2], &count);
+    for (uint32_t i = 0; i < count; i++) {
+        volatile uint32_t *ptr =
+            (volatile uint32_t *) (uintptr_t) (addr + i * 4);
+        printf("0x%08x: 0x%08x\n", addr + i * 4, *ptr);
     }
 }
 
@@ -481,14 +509,15 @@ static void
 cmd_cce(ati_device_t *dev, int argc, char **args)
 {
     if (argc < 2) {
-        printf("Usage: cce <init|start|stop|mode|reload|r|w>\n");
-        printf("  cce init            - full CCE init (load + mode + start)\n");
-        printf("  cce start           - start microengine\n");
-        printf("  cce stop            - stop microengine\n");
+        print_usage(CMD_CCE);
         printf(
-            "  cce mode            - set PM4 PIO mode (no microcode load)\n");
-        printf("  cce reload          - load microcode (no start/stop)\n");
-        printf("  cce r <addr>        - read instruction (0-255)\n");
+            "  cce init             - full CCE init (load + mode + start)\n");
+        printf("  cce start            - start microengine\n");
+        printf("  cce stop             - stop microengine\n");
+        printf(
+            "  cce mode             - set PM4 PIO mode (no microcode load)\n");
+        printf("  cce reload           - load microcode (no start/stop)\n");
+        printf("  cce r <addr>         - read instruction (0-255)\n");
         printf("  cce w <addr> <h> <l> - write instruction (no start/stop)\n");
         return;
     }
@@ -517,37 +546,36 @@ cmd_cce(ati_device_t *dev, int argc, char **args)
         printf("CCE microcode loaded\n");
     } else if (strcmp(args[1], "r") == 0) {
         uint32_t addr;
-        if (argc >= 3 && parse_int(args[2], &addr) == 0 && addr < 256) {
-            wr_pm4_microcode_raddr(dev, addr);
-            uint32_t high = rd_pm4_microcode_datah(dev);
-            uint32_t low = rd_pm4_microcode_datal(dev);
-            printf("[%d] HIGH=0x%08x LOW=0x%08x\n", addr, high, low);
-        } else {
-            printf("Usage: cce r <addr>  (addr 0-255)\n");
+        if (argc < 3 || parse_int(args[2], &addr) != 0 || addr >= 256) {
+            printf("Usage: cce r <addr> (addr 0-255)\n");
+            return;
         }
+        wr_pm4_microcode_raddr(dev, addr);
+        uint32_t high = rd_pm4_microcode_datah(dev);
+        uint32_t low = rd_pm4_microcode_datal(dev);
+        printf("[%d] HIGH=0x%08x LOW=0x%08x\n", addr, high, low);
     } else if (strcmp(args[1], "w") == 0) {
         uint32_t addr, high, low;
-        if (argc >= 5 && parse_int(args[2], &addr) == 0 && addr < 256 &&
-            parse_int(args[3], &high) == 0 && parse_int(args[4], &low) == 0) {
-            // Just write instruction, no start/stop
-            // Must wait for idle before writing microcode
-            ati_wait_for_idle(dev);
-            wr_pm4_microcode_addr(dev, addr);
-            wr_pm4_microcode_datah(dev, high);
-            wr_pm4_microcode_datal(dev, low);
-            // Read back to verify
-            wr_pm4_microcode_raddr(dev, addr);
-            uint32_t read_high = rd_pm4_microcode_datah(dev);
-            uint32_t read_low = rd_pm4_microcode_datal(dev);
-            // Print results
-            printf("[%d] wrote HIGH=0x%08x LOW=0x%08x\n", addr, high, low);
-            printf("[%d] read  HIGH=0x%08x LOW=0x%08x\n", addr, read_high,
-                   read_low);
-            if (high != read_high || low != read_low) {
-                printf("ERROR: write verification failed!\n");
-            }
-        } else {
-            printf("Usage: cce w <addr> <high> <low>  (addr 0-255)\n");
+        if (argc < 5 || parse_int(args[2], &addr) != 0 || addr >= 256 ||
+            parse_int(args[3], &high) != 0 || parse_int(args[4], &low) != 0) {
+            printf("Usage: cce w <addr> <high> <low> (addr 0-255)\n");
+            return;
+        }
+        // Must wait for idle before writing microcode
+        ati_wait_for_idle(dev);
+        wr_pm4_microcode_addr(dev, addr);
+        wr_pm4_microcode_datah(dev, high);
+        wr_pm4_microcode_datal(dev, low);
+        // Read back to verify
+        wr_pm4_microcode_raddr(dev, addr);
+        uint32_t read_high = rd_pm4_microcode_datah(dev);
+        uint32_t read_low = rd_pm4_microcode_datal(dev);
+        // Print results
+        printf("[%d] wrote HIGH=0x%08x LOW=0x%08x\n", addr, high, low);
+        printf("[%d] read  HIGH=0x%08x LOW=0x%08x\n", addr, read_high,
+               read_low);
+        if (high != read_high || low != read_low) {
+            printf("ERROR: write verification failed!\n");
         }
     } else {
         printf("Unknown cce command: %s\n", args[1]);
