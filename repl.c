@@ -32,19 +32,34 @@ typedef enum {
     CMD_T,
     CMD_TL,
     CMD_CCE,
+    CMD_HELP,
     CMD_UNKNOWN
 } cmd_t;
 
+// clang-format off
 static const struct {
     const char *name;
     cmd_t cmd;
-} cmd_table[] = {{"reboot", CMD_REBOOT}, {"poweroff", CMD_POWEROFF},
-                 {"r", CMD_R},           {"w", CMD_W},
-                 {"vr", CMD_VR},         {"vw", CMD_VW},
-                 {"pr", CMD_PR},         {"pw", CMD_PW},
-                 {"mr", CMD_MR},         {"t", CMD_T},
-                 {"tl", CMD_TL},         {"cce", CMD_CCE},
-                 {NULL, CMD_UNKNOWN}};
+    const char *usage;
+    const char *desc;
+} cmd_table[] = {
+    {"reboot",   CMD_REBOOT,   NULL,                     "reboot system (baremetal)"},
+    {"poweroff", CMD_POWEROFF, NULL,                     "power off system (baremetal)"},
+    {"r",        CMD_R,        "<addr|reg>",             "register read"},
+    {"w",        CMD_W,        "<addr|reg> <val>",       "register write"},
+    {"vr",       CMD_VR,       "<offset> [count]",       "vram read"},
+    {"vw",       CMD_VW,       "<offset> <val> [count]", "vram write"},
+    {"pr",       CMD_PR,       "<pixel> [count]",        "pixel read"},
+    {"pw",       CMD_PW,       "<pixel> <val> [count]",  "pixel write"},
+    {"mr",       CMD_MR,       "<addr> [count]",         "system memory read"},
+    {"t",        CMD_T,        "[test_name]",            "run test(s)"},
+    {"tl",       CMD_TL,       NULL,                     "list tests"},
+    {"cce",      CMD_CCE,      "<cmd>",                  "CCE control (init/start/stop/r/w)"},
+    {"help",     CMD_HELP,     NULL,                     NULL},
+    {"?",        CMD_HELP,     NULL,                     NULL},
+    {NULL,       CMD_UNKNOWN,  NULL,                     NULL}
+};
+// clang-format on
 
 static cmd_t
 lookup_cmd(const char *name)
@@ -261,6 +276,23 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx)
 // Command handlers
 
 static void
+cmd_help(void)
+{
+    char buf[32];
+    for (int i = 0; cmd_table[i].name != NULL; i++) {
+        if (cmd_table[i].desc == NULL)
+            continue;
+        if (cmd_table[i].usage) {
+            snprintf(buf, sizeof(buf), "%s %s", cmd_table[i].name,
+                     cmd_table[i].usage);
+        } else {
+            snprintf(buf, sizeof(buf), "%s", cmd_table[i].name);
+        }
+        printf("  %-30s - %s\n", buf, cmd_table[i].desc);
+    }
+}
+
+static void
 cmd_reboot(void)
 {
     printf("Rebooting...\n");
@@ -453,7 +485,8 @@ cmd_cce(ati_device_t *dev, int argc, char **args)
         printf("  cce init            - full CCE init (load + mode + start)\n");
         printf("  cce start           - start microengine\n");
         printf("  cce stop            - stop microengine\n");
-        printf("  cce mode            - set PM4 PIO mode (no microcode load)\n");
+        printf(
+            "  cce mode            - set PM4 PIO mode (no microcode load)\n");
         printf("  cce reload          - load microcode (no start/stop)\n");
         printf("  cce r <addr>        - read instruction (0-255)\n");
         printf("  cce w <addr> <h> <l> - write instruction (no start/stop)\n");
@@ -531,22 +564,8 @@ repl(ati_device_t *dev)
     int argc;
     char *p;
 
-    // clang-format off
-    printf("Commands: reboot                     - reboot system (baremetal)\n");
-    printf("          poweroff                   - power off system (baremetal)\n");
-    printf("          r <addr|reg_name>          - register read\n");
-    printf("          w <addr|reg_name> <val>    - register write\n");
-    printf("          vr <offset> [count]        - vram read\n");
-    printf("          vw <offset> <val> [count]  - vram write\n");
-    printf("          pr <pixel> [count]         - pixel read\n");
-    printf("          pw <pixel> <val> [count]   - pixel write\n");
-    printf("          mr <addr> [count]          - system memory read\n");
-    printf("          t [test_name]              - run test(s)\n");
-    printf("          tl                         - list tests\n");
-    printf("          cce <cmd>                  - CCE control (start/stop/reload/r/w)\n");
-    printf("> ");
+    printf("Type ? for help\n> ");
     fflush(stdout);
-    // clang-format on
 
     while (fgets(buf, sizeof(buf), stdin)) {
         // Strip trailing newline
@@ -571,18 +590,45 @@ repl(ati_device_t *dev)
         }
 
         switch (lookup_cmd(args[0])) {
-        case CMD_REBOOT:    cmd_reboot();                       break;
-        case CMD_POWEROFF:  cmd_poweroff();                     break;
-        case CMD_R:         cmd_reg_read(dev, argc, args);      break;
-        case CMD_W:         cmd_reg_write(dev, argc, args);     break;
-        case CMD_VR:        cmd_vram_read(dev, argc, args);     break;
-        case CMD_VW:        cmd_vram_write(dev, argc, args);    break;
-        case CMD_PR:        cmd_pixel_read(dev, argc, args);    break;
-        case CMD_PW:        cmd_pixel_write(dev, argc, args);   break;
-        case CMD_MR:        cmd_mem_read(argc, args);           break;
-        case CMD_T:         cmd_test(dev, argc, args);          break;
-        case CMD_TL:        cmd_test_list();                    break;
-        case CMD_CCE:       cmd_cce(dev, argc, args);           break;
+        case CMD_REBOOT:
+            cmd_reboot();
+            break;
+        case CMD_POWEROFF:
+            cmd_poweroff();
+            break;
+        case CMD_R:
+            cmd_reg_read(dev, argc, args);
+            break;
+        case CMD_W:
+            cmd_reg_write(dev, argc, args);
+            break;
+        case CMD_VR:
+            cmd_vram_read(dev, argc, args);
+            break;
+        case CMD_VW:
+            cmd_vram_write(dev, argc, args);
+            break;
+        case CMD_PR:
+            cmd_pixel_read(dev, argc, args);
+            break;
+        case CMD_PW:
+            cmd_pixel_write(dev, argc, args);
+            break;
+        case CMD_MR:
+            cmd_mem_read(argc, args);
+            break;
+        case CMD_T:
+            cmd_test(dev, argc, args);
+            break;
+        case CMD_TL:
+            cmd_test_list();
+            break;
+        case CMD_CCE:
+            cmd_cce(dev, argc, args);
+            break;
+        case CMD_HELP:
+            cmd_help();
+            break;
         case CMD_UNKNOWN:
             printf("Unknown command: %s\n", args[0]);
             break;
