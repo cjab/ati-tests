@@ -10,6 +10,7 @@ typedef enum {
     CCE_CMD_STOP,
     CCE_CMD_MODE,
     CCE_CMD_RELOAD,
+    CCE_CMD_DUMP,
     CCE_CMD_R,
     CCE_CMD_W,
     CCE_CMD_UNKNOWN
@@ -27,7 +28,8 @@ static const struct {
     {"stop",   CCE_CMD_STOP,    NULL,              "stop microengine"},
     {"mode",   CCE_CMD_MODE,    NULL,              "set PM4 PIO mode (no microcode load)"},
     {"reload", CCE_CMD_RELOAD,  NULL,              "load microcode (no start/stop)"},
-    {"r",      CCE_CMD_R,       "<addr>",          "read instruction (0-255)"},
+    {"dump",   CCE_CMD_DUMP,    NULL,              "dump all 256 instructions"},
+    {"r",      CCE_CMD_R,       "<addr> [count]",  "read instruction(s) (0-255)"},
     {"w",      CCE_CMD_W,       "<addr> <h> <l>",  "write instruction"},
     {NULL,     CCE_CMD_UNKNOWN, NULL,              NULL}
 };
@@ -143,19 +145,39 @@ cce_reload(ati_device_t *dev)
 }
 
 static void
+cce_dump(ati_device_t *dev)
+{
+    for (uint32_t addr = 0; addr < 256; addr++) {
+        wr_pm4_microcode_raddr(dev, addr);
+        uint32_t high = rd_pm4_microcode_datah(dev);
+        uint32_t low = rd_pm4_microcode_datal(dev);
+        print_instruction(addr, high, low);
+    }
+}
+
+static void
 cce_read(ati_device_t *dev, int argc, char **args)
 {
-    uint32_t addr;
+    uint32_t addr, count = 1;
 
     if (argc < 3 || parse_int(args[2], &addr) != 0 || addr >= 256) {
-        printf("Usage: cce r <addr> (addr 0-255)\n");
+        printf("Usage: cce r <addr> [count] (addr 0-255)\n");
         return;
     }
 
-    wr_pm4_microcode_raddr(dev, addr);
-    uint32_t high = rd_pm4_microcode_datah(dev);
-    uint32_t low = rd_pm4_microcode_datal(dev);
-    print_instruction(addr, high, low);
+    if (argc >= 4)
+        parse_int(args[3], &count);
+
+    // Clamp count to not exceed 256 instructions
+    if (addr + count > 256)
+        count = 256 - addr;
+
+    for (uint32_t i = 0; i < count; i++) {
+        wr_pm4_microcode_raddr(dev, addr + i);
+        uint32_t high = rd_pm4_microcode_datah(dev);
+        uint32_t low = rd_pm4_microcode_datal(dev);
+        print_instruction(addr + i, high, low);
+    }
 }
 
 static void
@@ -237,6 +259,9 @@ cmd_cce(ati_device_t *dev, int argc, char **args)
         break;
     case CCE_CMD_RELOAD:
         cce_reload(dev);
+        break;
+    case CCE_CMD_DUMP:
+        cce_dump(dev);
         break;
     case CCE_CMD_R:
         cce_read(dev, argc, args);
