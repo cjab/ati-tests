@@ -136,6 +136,19 @@ lookup_reg_name(uint32_t offset)
     return NULL;
 }
 
+static void
+print_reg(uint32_t addr, uint32_t val, char separator)
+{
+    const char *name = lookup_reg_name(addr);
+    if (name) {
+        printf("\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m %c \x1b[33m0x%08x\x1b[0m\n",
+               name, addr, separator, val);
+    } else {
+        printf("\x1b[90m0x%04x\x1b[0m %c \x1b[33m0x%08x\x1b[0m\n",
+               addr, separator, val);
+    }
+}
+
 static int
 parse_hex(const char *s, uint32_t *out)
 {
@@ -333,18 +346,12 @@ cmd_reg_read(ati_device_t *dev, int argc, char **args)
 
     if (mode == WO) {
         const char *name = lookup_reg_name(addr);
-        printf("\x1b[31mWARNING: %s (0x%04x) is write-only\x1b[0m\n",
+        printf("\x1b[31mWARNING: %s (\x1b[90m0x%04x\x1b[31m) is write-only\x1b[0m\n",
                name ? name : "register", addr);
     }
+
     uint32_t val = ati_reg_read(dev, addr);
-    const char *name = lookup_reg_name(addr);
-    if (name) {
-        printf("\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m: "
-               "\x1b[33m0x%08x\x1b[0m\n",
-               name, addr, val);
-    } else {
-        printf("0x%04x: \x1b[33m0x%08x\x1b[0m\n", addr, val);
-    }
+    print_reg(addr, val, ':');
 }
 
 static void
@@ -361,18 +368,12 @@ cmd_reg_write(ati_device_t *dev, int argc, char **args)
 
     if (mode == RO) {
         const char *name = lookup_reg_name(addr);
-        printf("\x1b[31mWARNING: %s (0x%04x) is read-only\x1b[0m\n",
+        printf("\x1b[31mWARNING: %s (\x1b[90m0x%04x\x1b[31m) is read-only\x1b[0m\n",
                name ? name : "register", addr);
     }
+
     ati_reg_write(dev, addr, val);
-    const char *name = lookup_reg_name(addr);
-    if (name) {
-        printf("\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m = "
-               "\x1b[33m0x%08x\x1b[0m\n",
-               name, addr, val);
-    } else {
-        printf("0x%04x = \x1b[33m0x%08x\x1b[0m\n", addr, val);
-    }
+    print_reg(addr, val, '=');
 }
 
 static void
