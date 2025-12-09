@@ -4,14 +4,18 @@
 #include "common.h"
 #include "platform/platform.h"
 
+// Access mode enum
+typedef enum { RW, WO, RO } reg_mode_t;
+
 // Generate register name lookup table from X-macro
 typedef struct {
     const char *name;
     uint32_t offset;
+    reg_mode_t mode;
 } reg_entry_t;
 
-#define X(func_name, const_name, offset, mode) {#const_name, offset},
-static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0}};
+#define X(func_name, const_name, offset, mode) {#const_name, offset, mode},
+static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0, RW}};
 #undef X
 
 static int
@@ -31,11 +35,13 @@ strcasecmp_simple(const char *s1, const char *s2)
 }
 
 static int
-lookup_reg(const char *name, uint32_t *out)
+lookup_reg(const char *name, uint32_t *out, reg_mode_t *mode_out)
 {
     for (int i = 0; reg_table[i].name != NULL; i++) {
         if (strcasecmp_simple(name, reg_table[i].name) == 0) {
             *out = reg_table[i].offset;
+            if (mode_out)
+                *mode_out = reg_table[i].mode;
             return 0;
         }
     }
@@ -111,14 +117,16 @@ parse_int(const char *s, uint32_t *out)
 }
 
 static int
-parse_addr(const char *s, uint32_t *out)
+parse_addr(const char *s, uint32_t *out, reg_mode_t *mode_out)
 {
     // Try hex first
     if (parse_int(s, out) == 0) {
+        if (mode_out)
+            *mode_out = RW; // Unknown register, assume RW
         return 0;
     }
     // Fall back to register name lookup
-    return lookup_reg(s, out);
+    return lookup_reg(s, out, mode_out);
 }
 
 // Print a single color swatch using ANSI 24-bit color
@@ -283,7 +291,13 @@ repl(ati_device_t *dev)
             platform_poweroff();
         } else if (strcmp(cmd, "r") == 0) {
             uint32_t addr;
-            if (arg1 && parse_addr(arg1, &addr) == 0) {
+            reg_mode_t mode;
+            if (arg1 && parse_addr(arg1, &addr, &mode) == 0) {
+                if (mode == WO) {
+                    const char *name = lookup_reg_name(addr);
+                    printf("\x1b[31mWARNING: %s (0x%04x) is write-only\x1b[0m\n",
+                           name ? name : "register", addr);
+                }
                 uint32_t val = ati_reg_read(dev, addr);
                 const char *name = lookup_reg_name(addr);
                 if (name) {
@@ -297,8 +311,14 @@ repl(ati_device_t *dev)
             }
         } else if (strcmp(cmd, "w") == 0) {
             uint32_t addr, val;
-            if (arg1 && arg2 && parse_addr(arg1, &addr) == 0 &&
+            reg_mode_t mode;
+            if (arg1 && arg2 && parse_addr(arg1, &addr, &mode) == 0 &&
                 parse_int(arg2, &val) == 0) {
+                if (mode == RO) {
+                    const char *name = lookup_reg_name(addr);
+                    printf("\x1b[31mWARNING: %s (0x%04x) is read-only\x1b[0m\n",
+                           name ? name : "register", addr);
+                }
                 ati_reg_write(dev, addr, val);
                 const char *name = lookup_reg_name(addr);
                 if (name) {
