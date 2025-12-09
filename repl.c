@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "ati.h"
-#include "cce.h"
+#include "cce_cmd.h"
 #include "common.h"
 #include "platform/platform.h"
 
@@ -154,7 +154,7 @@ print_mem(uint32_t addr, uint32_t val, char separator)
            addr, separator, val);
 }
 
-static int
+int
 parse_hex(const char *s, uint32_t *out)
 {
     uint32_t val = 0;
@@ -185,7 +185,7 @@ parse_hex(const char *s, uint32_t *out)
 }
 
 // Parse integer: decimal by default, hex with 0x prefix
-static int
+int
 parse_int(const char *s, uint32_t *out)
 {
     // If it starts with 0x, parse as hex
@@ -311,8 +311,18 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
 // Command handlers
 
 static void
-cmd_help(void)
+cmd_help(int argc, char **args)
 {
+    // Handle subcommand help: ? cce
+    if (argc >= 2) {
+        if (strcmp(args[1], "cce") == 0) {
+            cce_cmd_help();
+            return;
+        }
+        printf("Unknown help topic: %s\n", args[1]);
+        return;
+    }
+
     char buf[32];
     for (int i = 0; cmd_table[i].name != NULL; i++) {
         if (cmd_table[i].desc == NULL)
@@ -506,83 +516,6 @@ cmd_test_list(void)
     list_tests();
 }
 
-static void
-cmd_cce(ati_device_t *dev, int argc, char **args)
-{
-    if (argc < 2) {
-        print_usage(CMD_CCE);
-        printf(
-            "  cce init             - full CCE init (load + mode + start)\n");
-        printf("  cce start            - start microengine\n");
-        printf("  cce stop             - stop microengine\n");
-        printf(
-            "  cce mode             - set PM4 PIO mode (no microcode load)\n");
-        printf("  cce reload           - load microcode (no start/stop)\n");
-        printf("  cce r <addr>         - read instruction (0-255)\n");
-        printf("  cce w <addr> <h> <l> - write instruction (no start/stop)\n");
-        return;
-    }
-
-    if (strcmp(args[1], "init") == 0) {
-        ati_init_cce_engine(dev);
-        printf("CCE initialized\n");
-    } else if (strcmp(args[1], "start") == 0) {
-        wr_pm4_micro_cntl(dev, PM4_MICRO_FREERUN);
-        printf("CCE microengine started\n");
-    } else if (strcmp(args[1], "stop") == 0) {
-        ati_wait_for_idle(dev);
-        wr_pm4_micro_cntl(dev, 0);
-        printf("CCE microengine stopped\n");
-    } else if (strcmp(args[1], "mode") == 0) {
-        // Set PM4 PIO mode without loading microcode
-        wr_pm4_buffer_cntl(dev, (PM4_192PIO << PM4_BUFFER_MODE_SHIFT) |
-                                    PM4_BUFFER_CNTL_NOUPDATE);
-        (void) rd_pm4_buffer_addr(dev);
-        printf("PM4 PIO mode set\n");
-    } else if (strcmp(args[1], "reload") == 0) {
-        // Just load microcode, no start/stop
-        // Must wait for idle before loading microcode
-        ati_wait_for_idle(dev);
-        ati_cce_load_microcode(dev);
-        printf("CCE microcode loaded\n");
-    } else if (strcmp(args[1], "r") == 0) {
-        uint32_t addr;
-        if (argc < 3 || parse_int(args[2], &addr) != 0 || addr >= 256) {
-            printf("Usage: cce r <addr> (addr 0-255)\n");
-            return;
-        }
-        wr_pm4_microcode_raddr(dev, addr);
-        uint32_t high = rd_pm4_microcode_datah(dev);
-        uint32_t low = rd_pm4_microcode_datal(dev);
-        printf("[%d] HIGH=0x%08x LOW=0x%08x\n", addr, high, low);
-    } else if (strcmp(args[1], "w") == 0) {
-        uint32_t addr, high, low;
-        if (argc < 5 || parse_int(args[2], &addr) != 0 || addr >= 256 ||
-            parse_int(args[3], &high) != 0 || parse_int(args[4], &low) != 0) {
-            printf("Usage: cce w <addr> <high> <low> (addr 0-255)\n");
-            return;
-        }
-        // Must wait for idle before writing microcode
-        ati_wait_for_idle(dev);
-        wr_pm4_microcode_addr(dev, addr);
-        wr_pm4_microcode_datah(dev, high);
-        wr_pm4_microcode_datal(dev, low);
-        // Read back to verify
-        wr_pm4_microcode_raddr(dev, addr);
-        uint32_t read_high = rd_pm4_microcode_datah(dev);
-        uint32_t read_low = rd_pm4_microcode_datal(dev);
-        // Print results
-        printf("[%d] wrote HIGH=0x%08x LOW=0x%08x\n", addr, high, low);
-        printf("[%d] read  HIGH=0x%08x LOW=0x%08x\n", addr, read_high,
-               read_low);
-        if (high != read_high || low != read_low) {
-            printf("ERROR: write verification failed!\n");
-        }
-    } else {
-        printf("Unknown cce command: %s\n", args[1]);
-    }
-}
-
 // Main REPL
 
 void
@@ -653,7 +586,7 @@ repl(ati_device_t *dev)
             cmd_cce(dev, argc, args);
             break;
         case CMD_HELP:
-            cmd_help();
+            cmd_help(argc, args);
             break;
         case CMD_UNKNOWN:
             printf("Unknown command: %s\n", args[0]);
