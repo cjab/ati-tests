@@ -18,6 +18,44 @@ typedef struct {
 static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0, RW}};
 #undef X
 
+// Command enum for dispatch
+typedef enum {
+    CMD_REBOOT,
+    CMD_POWEROFF,
+    CMD_R,
+    CMD_W,
+    CMD_VR,
+    CMD_VW,
+    CMD_PR,
+    CMD_PW,
+    CMD_MR,
+    CMD_T,
+    CMD_TL,
+    CMD_CCE,
+    CMD_UNKNOWN
+} cmd_t;
+
+static const struct {
+    const char *name;
+    cmd_t cmd;
+} cmd_table[] = {{"reboot", CMD_REBOOT}, {"poweroff", CMD_POWEROFF},
+                 {"r", CMD_R},           {"w", CMD_W},
+                 {"vr", CMD_VR},         {"vw", CMD_VW},
+                 {"pr", CMD_PR},         {"pw", CMD_PW},
+                 {"mr", CMD_MR},         {"t", CMD_T},
+                 {"tl", CMD_TL},         {"cce", CMD_CCE},
+                 {NULL, CMD_UNKNOWN}};
+
+static cmd_t
+lookup_cmd(const char *name)
+{
+    for (int i = 0; cmd_table[i].name != NULL; i++) {
+        if (strcmp(name, cmd_table[i].name) == 0)
+            return cmd_table[i].cmd;
+    }
+    return CMD_UNKNOWN;
+}
+
 // Simple tokenizer: returns next whitespace-delimited token, advances *p
 static char *
 next_token(char **p)
@@ -218,14 +256,17 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx)
     }
 }
 
+#define MAX_ARGS 8
+
 void
 repl(ati_device_t *dev)
 {
     char buf[64];
-    char *cmd, *arg1, *arg2, *arg3, *arg4, *p;
+    char *args[MAX_ARGS];
+    int argc;
+    char *p;
 
     // clang-format off
-    printf("\n\nTests complete.\n");
     printf("Commands: reboot                     - reboot system (baremetal)\n");
     printf("          poweroff                   - power off system (baremetal)\n");
     printf("          r <addr|reg_name>          - register read\n");
@@ -253,29 +294,30 @@ repl(ati_device_t *dev)
 
         // Parse command and arguments
         p = buf;
-        cmd = next_token(&p);
-        arg1 = next_token(&p);
-        arg2 = next_token(&p);
-        arg3 = next_token(&p);
-        arg4 = next_token(&p);
+        argc = 0;
+        while (argc < MAX_ARGS && (args[argc] = next_token(&p)) != NULL)
+            argc++;
 
-        if (cmd == NULL) {
+        if (argc == 0) {
             // Empty line
             printf("> ");
             fflush(stdout);
             continue;
         }
 
-        if (strcmp(cmd, "reboot") == 0) {
+        switch (lookup_cmd(args[0])) {
+        case CMD_REBOOT:
             printf("Rebooting...\n");
             platform_reboot();
-        } else if (strcmp(cmd, "poweroff") == 0) {
+            break;
+        case CMD_POWEROFF:
             printf("Powering off...\n");
             platform_poweroff();
-        } else if (strcmp(cmd, "r") == 0) {
+            break;
+        case CMD_R: {
             uint32_t addr;
             reg_mode_t mode;
-            if (arg1 && parse_addr(arg1, &addr, &mode) == 0) {
+            if (argc >= 2 && parse_addr(args[1], &addr, &mode) == 0) {
                 if (mode == WO) {
                     const char *name = lookup_reg_name(addr);
                     printf(
@@ -294,11 +336,13 @@ repl(ati_device_t *dev)
             } else {
                 printf("Usage: r <addr|reg_name>\n");
             }
-        } else if (strcmp(cmd, "w") == 0) {
+            break;
+        }
+        case CMD_W: {
             uint32_t addr, val;
             reg_mode_t mode;
-            if (arg1 && arg2 && parse_addr(arg1, &addr, &mode) == 0 &&
-                parse_int(arg2, &val) == 0) {
+            if (argc >= 3 && parse_addr(args[1], &addr, &mode) == 0 &&
+                parse_int(args[2], &val) == 0) {
                 if (mode == RO) {
                     const char *name = lookup_reg_name(addr);
                     printf("\x1b[31mWARNING: %s (0x%04x) is read-only\x1b[0m\n",
@@ -316,11 +360,13 @@ repl(ati_device_t *dev)
             } else {
                 printf("Usage: w <addr|reg_name> <val>\n");
             }
-        } else if (strcmp(cmd, "vr") == 0) {
+            break;
+        }
+        case CMD_VR: {
             uint32_t offset, count = 1;
-            if (arg1 && parse_int(arg1, &offset) == 0) {
-                if (arg2)
-                    parse_int(arg2, &count);
+            if (argc >= 2 && parse_int(args[1], &offset) == 0) {
+                if (argc >= 3)
+                    parse_int(args[2], &count);
                 for (uint32_t i = 0; i < count; i++) {
                     uint32_t addr = offset + i * 4;
                     uint32_t val = ati_vram_read(dev, addr);
@@ -329,12 +375,14 @@ repl(ati_device_t *dev)
             } else {
                 printf("Usage: vr <offset> [count]\n");
             }
-        } else if (strcmp(cmd, "vw") == 0) {
+            break;
+        }
+        case CMD_VW: {
             uint32_t offset, val, count = 1;
-            if (arg1 && arg2 && parse_int(arg1, &offset) == 0 &&
-                parse_int(arg2, &val) == 0) {
-                if (arg3)
-                    parse_int(arg3, &count);
+            if (argc >= 3 && parse_int(args[1], &offset) == 0 &&
+                parse_int(args[2], &val) == 0) {
+                if (argc >= 4)
+                    parse_int(args[3], &count);
                 for (uint32_t i = 0; i < count; i++) {
                     ati_vram_write(dev, offset + i * 4, val);
                 }
@@ -342,11 +390,13 @@ repl(ati_device_t *dev)
             } else {
                 printf("Usage: vw <offset> <val> [count]\n");
             }
-        } else if (strcmp(cmd, "pr") == 0) {
+            break;
+        }
+        case CMD_PR: {
             uint32_t pixel, count = 1;
-            if (arg1 && parse_int(arg1, &pixel) == 0) {
-                if (arg2)
-                    parse_int(arg2, &count);
+            if (argc >= 2 && parse_int(args[1], &pixel) == 0) {
+                if (argc >= 3)
+                    parse_int(args[2], &count);
                 for (uint32_t i = 0; i < count; i++) {
                     printf("pixel %d: ", pixel + i);
                     print_pixel(dev, pixel + i);
@@ -355,12 +405,14 @@ repl(ati_device_t *dev)
             } else {
                 printf("Usage: pr <pixel> [count]\n");
             }
-        } else if (strcmp(cmd, "pw") == 0) {
+            break;
+        }
+        case CMD_PW: {
             uint32_t pixel, val, count = 1;
-            if (arg1 && arg2 && parse_int(arg1, &pixel) == 0 &&
-                parse_int(arg2, &val) == 0) {
-                if (arg3)
-                    parse_int(arg3, &count);
+            if (argc >= 3 && parse_int(args[1], &pixel) == 0 &&
+                parse_int(args[2], &val) == 0) {
+                if (argc >= 4)
+                    parse_int(args[3], &count);
                 uint32_t bpp = get_bytes_per_pixel(dev);
                 for (uint32_t i = 0; i < count; i++) {
                     uint32_t byte_offset = (pixel + i) * bpp;
@@ -387,11 +439,13 @@ repl(ati_device_t *dev)
             } else {
                 printf("Usage: pw <pixel> <val> [count]\n");
             }
-        } else if (strcmp(cmd, "mr") == 0) {
+            break;
+        }
+        case CMD_MR: {
             uint32_t addr, count = 1;
-            if (arg1 && parse_int(arg1, &addr) == 0) {
-                if (arg2)
-                    parse_int(arg2, &count);
+            if (argc >= 2 && parse_int(args[1], &addr) == 0) {
+                if (argc >= 3)
+                    parse_int(args[2], &count);
                 for (uint32_t i = 0; i < count; i++) {
                     volatile uint32_t *ptr =
                         (volatile uint32_t *) (uintptr_t) (addr + i * 4);
@@ -400,16 +454,20 @@ repl(ati_device_t *dev)
             } else {
                 printf("Usage: mr <addr> [count]\n");
             }
-        } else if (strcmp(cmd, "t") == 0) {
-            if (arg1) {
-                run_test_by_name(dev, arg1);
+            break;
+        }
+        case CMD_T:
+            if (argc >= 2) {
+                run_test_by_name(dev, args[1]);
             } else {
                 run_all_tests(dev);
             }
-        } else if (strcmp(cmd, "tl") == 0) {
+            break;
+        case CMD_TL:
             list_tests();
-        } else if (strcmp(cmd, "cce") == 0) {
-            if (arg1 == NULL) {
+            break;
+        case CMD_CCE:
+            if (argc < 2) {
                 printf("Usage: cce <init|start|stop|mode|reload|r|w>\n");
                 printf("  cce init            - full CCE init (load + mode + "
                        "start)\n");
@@ -422,31 +480,31 @@ repl(ati_device_t *dev)
                 printf("  cce r <addr>        - read instruction (0-255)\n");
                 printf("  cce w <addr> <h> <l> - write instruction (no "
                        "start/stop)\n");
-            } else if (strcmp(arg1, "init") == 0) {
+            } else if (strcmp(args[1], "init") == 0) {
                 ati_init_cce_engine(dev);
                 printf("CCE initialized\n");
-            } else if (strcmp(arg1, "start") == 0) {
+            } else if (strcmp(args[1], "start") == 0) {
                 wr_pm4_micro_cntl(dev, PM4_MICRO_FREERUN);
                 printf("CCE microengine started\n");
-            } else if (strcmp(arg1, "stop") == 0) {
+            } else if (strcmp(args[1], "stop") == 0) {
                 ati_wait_for_idle(dev);
                 wr_pm4_micro_cntl(dev, 0);
                 printf("CCE microengine stopped\n");
-            } else if (strcmp(arg1, "mode") == 0) {
+            } else if (strcmp(args[1], "mode") == 0) {
                 // Set PM4 PIO mode without loading microcode
                 wr_pm4_buffer_cntl(dev, (PM4_192PIO << PM4_BUFFER_MODE_SHIFT) |
                                             PM4_BUFFER_CNTL_NOUPDATE);
                 (void) rd_pm4_buffer_addr(dev);
                 printf("PM4 PIO mode set\n");
-            } else if (strcmp(arg1, "reload") == 0) {
+            } else if (strcmp(args[1], "reload") == 0) {
                 // Just load microcode, no start/stop
                 // Must wait for idle before loading microcode
                 ati_wait_for_idle(dev);
                 ati_cce_load_microcode(dev);
                 printf("CCE microcode loaded\n");
-            } else if (strcmp(arg1, "r") == 0) {
+            } else if (strcmp(args[1], "r") == 0) {
                 uint32_t addr;
-                if (arg2 && parse_int(arg2, &addr) == 0 && addr < 256) {
+                if (argc >= 3 && parse_int(args[2], &addr) == 0 && addr < 256) {
                     wr_pm4_microcode_raddr(dev, addr);
                     uint32_t high = rd_pm4_microcode_datah(dev);
                     uint32_t low = rd_pm4_microcode_datal(dev);
@@ -454,11 +512,11 @@ repl(ati_device_t *dev)
                 } else {
                     printf("Usage: cce r <addr>  (addr 0-255)\n");
                 }
-            } else if (strcmp(arg1, "w") == 0) {
+            } else if (strcmp(args[1], "w") == 0) {
                 uint32_t addr, high, low;
-                if (arg2 && arg3 && arg4 && parse_int(arg2, &addr) == 0 &&
-                    addr < 256 && parse_int(arg3, &high) == 0 &&
-                    parse_int(arg4, &low) == 0) {
+                if (argc >= 5 && parse_int(args[2], &addr) == 0 && addr < 256 &&
+                    parse_int(args[3], &high) == 0 &&
+                    parse_int(args[4], &low) == 0) {
                     // Just write instruction, no start/stop
                     // Must wait for idle before writing microcode
                     ati_wait_for_idle(dev);
@@ -481,10 +539,12 @@ repl(ati_device_t *dev)
                     printf("Usage: cce w <addr> <high> <low>  (addr 0-255)\n");
                 }
             } else {
-                printf("Unknown cce command: %s\n", arg1);
+                printf("Unknown cce command: %s\n", args[1]);
             }
-        } else {
-            printf("Unknown command: %s\n", cmd);
+            break;
+        case CMD_UNKNOWN:
+            printf("Unknown command: %s\n", args[0]);
+            break;
         }
 
         printf("> ");
