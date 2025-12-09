@@ -149,6 +149,13 @@ print_reg(uint32_t addr, uint32_t val, char separator)
     }
 }
 
+static void
+print_mem(uint32_t addr, uint32_t val, char separator)
+{
+    printf("\x1b[90m0x%08x\x1b[0m %c \x1b[33m0x%08x\x1b[0m\n",
+           addr, separator, val);
+}
+
 static int
 parse_hex(const char *s, uint32_t *out)
 {
@@ -251,7 +258,7 @@ get_bytes_per_pixel(ati_device_t *dev)
 
 // Print pixel value and color swatch based on current pixel format
 static void
-print_pixel(ati_device_t *dev, uint32_t pixel_idx)
+print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
 {
     uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
     uint32_t pix_width =
@@ -261,13 +268,15 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx)
     uint32_t val = ati_vram_read(dev, byte_offset & ~3); // Align to dword
     uint32_t shift = (byte_offset & 3) * 8;
 
+    printf("\x1b[90mpixel %d\x1b[0m %c ", pixel_idx, separator);
+
     switch (pix_width) {
     case CRTC_PIX_WIDTH_32BPP: {
         // aRGB 8888: 0xAARRGGBB
         uint8_t r = (val >> 16) & 0xff;
         uint8_t g = (val >> 8) & 0xff;
         uint8_t b = val & 0xff;
-        printf("0x%08x ", val);
+        printf("\x1b[33m0x%08x\x1b[0m ", val);
         print_swatch(r, g, b);
         break;
     }
@@ -277,7 +286,7 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx)
         uint8_t r = ((pixel >> 11) & 0x1f) << 3;
         uint8_t g = ((pixel >> 5) & 0x3f) << 2;
         uint8_t b = (pixel & 0x1f) << 3;
-        printf("0x%04x ", pixel);
+        printf("\x1b[33m0x%04x\x1b[0m ", pixel);
         print_swatch(r, g, b);
         break;
     }
@@ -287,15 +296,16 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx)
         uint8_t r = ((pixel >> 10) & 0x1f) << 3;
         uint8_t g = ((pixel >> 5) & 0x1f) << 3;
         uint8_t b = (pixel & 0x1f) << 3;
-        printf("0x%04x ", pixel);
+        printf("\x1b[33m0x%04x\x1b[0m ", pixel);
         print_swatch(r, g, b);
         break;
     }
     default:
         // Unsupported format - just print raw value
-        printf("0x%08x", val);
+        printf("\x1b[33m0x%08x\x1b[0m", val);
         break;
     }
+    printf("\n");
 }
 
 #define MAX_ARGS 8
@@ -391,7 +401,7 @@ cmd_vram_read(ati_device_t *dev, int argc, char **args)
     for (uint32_t i = 0; i < count; i++) {
         uint32_t addr = offset + i * 4;
         uint32_t val = ati_vram_read(dev, addr);
-        printf("0x%08x: 0x%08x\n", addr, val);
+        print_mem(addr, val, ':');
     }
 }
 
@@ -409,9 +419,10 @@ cmd_vram_write(ati_device_t *dev, int argc, char **args)
     if (argc >= 4)
         parse_int(args[3], &count);
     for (uint32_t i = 0; i < count; i++) {
-        ati_vram_write(dev, offset + i * 4, val);
+        uint32_t addr = offset + i * 4;
+        ati_vram_write(dev, addr, val);
+        print_mem(addr, val, '=');
     }
-    printf("0x%08x <- 0x%08x (x%d)\n", offset, val, count);
 }
 
 static void
@@ -427,9 +438,7 @@ cmd_pixel_read(ati_device_t *dev, int argc, char **args)
     if (argc >= 3)
         parse_int(args[2], &count);
     for (uint32_t i = 0; i < count; i++) {
-        printf("pixel %d: ", pixel + i);
-        print_pixel(dev, pixel + i);
-        printf("\n");
+        print_pixel(dev, pixel + i, ':');
     }
 }
 
@@ -467,8 +476,8 @@ cmd_pixel_write(ati_device_t *dev, int argc, char **args)
             cur = (cur & ~mask) | ((val & 0xff) << shift);
             ati_vram_write(dev, aligned, cur);
         }
+        print_pixel(dev, pixel + i, '=');
     }
-    printf("pixel %d <- 0x%x (x%d)\n", pixel, val, count);
 }
 
 static void
@@ -484,9 +493,9 @@ cmd_mem_read(int argc, char **args)
     if (argc >= 3)
         parse_int(args[2], &count);
     for (uint32_t i = 0; i < count; i++) {
-        volatile uint32_t *ptr =
-            (volatile uint32_t *) (uintptr_t) (addr + i * 4);
-        printf("0x%08x: 0x%08x\n", addr + i * 4, *ptr);
+        uint32_t a = addr + i * 4;
+        volatile uint32_t *ptr = (volatile uint32_t *) (uintptr_t) a;
+        print_mem(a, *ptr, ':');
     }
 }
 
