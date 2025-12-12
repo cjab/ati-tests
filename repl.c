@@ -154,7 +154,7 @@ print_reg(uint32_t addr, uint32_t val, char separator)
 {
     const char *name = lookup_reg_name(addr);
     if (name) {
-        printf("\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m %c "
+        printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m %c "
                "\x1b[33m0x%08x\x1b[0m\n",
                name, addr, separator, val);
     } else {
@@ -170,38 +170,81 @@ print_mem(uint32_t addr, uint32_t val, char separator)
            val);
 }
 
+// Find field that starts at exactly 'bit', or NULL
+static const field_entry_t *
+find_field_at_bit(const field_entry_t *fields, uint8_t bit)
+{
+    if (fields == NULL)
+        return NULL;
+    for (const field_entry_t *f = fields; f->name != NULL; f++) {
+        if (f->shift == bit)
+            return f;
+    }
+    return NULL;
+}
+
+// Find the lowest field start position > after_bit, or 32 if none
+static uint8_t
+find_next_field_start(const field_entry_t *fields, uint8_t after_bit)
+{
+    uint8_t next = 32;
+    if (fields == NULL)
+        return next;
+    for (const field_entry_t *f = fields; f->name != NULL; f++) {
+        if (f->shift > after_bit && f->shift < next)
+            next = f->shift;
+    }
+    return next;
+}
+
+// Print a single field (known or unknown)
+static void
+print_field(const char *name, uint8_t shift, uint8_t width, uint32_t val)
+{
+    uint32_t mask = ((1u << width) - 1);
+    uint32_t field_val = (val >> shift) & mask;
+
+    if (width == 1) {
+        // Single bit: [16]
+        if (field_val)
+            printf("  \x1b[36m%-25s\x1b[0m [%5d]   = \x1b[33m1\x1b[0m\n", name,
+                   shift);
+        else
+            printf("  \x1b[90m%-25s [%5d]   = 0\x1b[0m\n", name, shift);
+    } else {
+        // Multi-bit: [11:0]
+        if (field_val)
+            printf("  \x1b[36m%-25s\x1b[0m [%2d:%-2d]   = \x1b[33m%-5u\x1b[0m "
+                   "(0x%x)\n",
+                   name, shift + width - 1, shift, field_val, field_val);
+        else
+            printf("  \x1b[90m%-25s [%2d:%-2d]   = 0\x1b[0m\n", name,
+                   shift + width - 1, shift);
+    }
+}
+
 static void
 print_reg_expanded(const reg_entry_t *reg, uint32_t val)
 {
     // Header line
-    printf(
-        "\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m : \x1b[33m0x%08x\x1b[0m\n",
-        reg->name, reg->offset, val);
+    printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m : \x1b[33m0x%08x\x1b[0m\n",
+           reg->name, reg->offset, val);
 
-    // Fields (if available)
-    if (reg->fields == NULL || reg->fields[0].name == NULL) {
-        printf("  \x1b[90m(no fields defined)\x1b[0m\n");
-        return;
-    }
+    uint8_t bit = 0;
+    while (bit < 32) {
+        const field_entry_t *f = find_field_at_bit(reg->fields, bit);
 
-    for (const field_entry_t *f = reg->fields; f->name != NULL; f++) {
-        uint32_t mask = ((1u << f->width) - 1) << f->shift;
-        uint32_t field_val = (val & mask) >> f->shift;
-
-        if (f->width == 1) {
-            // Single bit flag: [16]
-            if (field_val)
-                printf("  \x1b[32m%-20s [%5d]   = 1\x1b[0m\n", f->name,
-                       f->shift);
-            else
-                printf("  \x1b[90m%-20s [%5d]   = 0\x1b[0m\n", f->name,
-                       f->shift);
+        if (f) {
+            // Known field
+            print_field(f->name, f->shift, f->width, val);
+            bit += f->width;
         } else {
-            // Multi-bit field: [11:0 ]
-            printf("  \x1b[36m%-20s\x1b[0m [%2d:%2d]   = \x1b[33m%u\x1b[0m "
-                   "(0x%x)\n",
-                   f->name, f->shift + f->width - 1, f->shift, field_val,
-                   field_val);
+            // Unknown gap - find where next known field starts
+            uint8_t next_start = find_next_field_start(reg->fields, bit);
+            uint8_t gap_width = next_start - bit;
+
+            print_field("(unknown)", bit, gap_width, val);
+            bit = next_start;
         }
     }
 }

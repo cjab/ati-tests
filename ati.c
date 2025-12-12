@@ -490,8 +490,8 @@ ati_init_gui_engine(ati_device_t *dev)
 void
 ati_engine_flush(ati_device_t *dev)
 {
-    // Flush the pixel cache
-    wr_pc_ngui_ctlstat(dev, PC_FLUSH_ALL);
+    // Flush the pixel cache (write 0xff to flush all)
+    wr_pc_ngui_ctlstat(dev, PC_FLUSH_ALL_MASK);
 
     // Wait for flush to complete (PC_BUSY bit to clear)
     uint32_t timeout = 1000000;

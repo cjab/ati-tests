@@ -116,16 +116,245 @@ typedef struct {
 
 DEFINE_REG_FIELDS(gui_stat, GUI_STAT_FIELDS)
 
+// ----------------------------------------------------------------------------
+// CRTC_GEN_CNTL fields
+// ----------------------------------------------------------------------------
+#define CRTC_GEN_CNTL_FIELDS(F, X) \
+    F(CRTC_DBL_SCAN_EN,   0) \
+    F(CRTC_INTERLACE_EN,  1) \
+    F(CRTC_C_SYNC_EN,     4) \
+    X(CRTC_PIX_WIDTH,     8, 3) \
+    F(CRTC_CUR_EN,       16) \
+    X(CRTC_CUR_MODE,     17, 3) \
+    F(CRTC_EXT_DISP_EN,  24) \
+    F(CRTC_EN,           25) \
+    F(CRTC_DISP_REQ_EN_B,26)
+
+DEFINE_REG_FIELDS(crtc_gen_cntl, CRTC_GEN_CNTL_FIELDS)
+
+// ----------------------------------------------------------------------------
+// CRTC_EXT_CNTL fields
+// ----------------------------------------------------------------------------
+#define CRTC_EXT_CNTL_FIELDS(F, X) \
+    F(CRTC_VGA_XOVERSCAN,    0) \
+    X(VGA_BLINK_RATE,        1, 2) \
+    F(VGA_ATI_LINEAR,        3) \
+    F(VGA_128KAP_PAGING,     4) \
+    F(VGA_TEXT_132,          5) \
+    F(VGA_XCRT_CNT_EN,       6) \
+    F(CRTC_HSYNC_DIS,        8) \
+    F(CRTC_VSYNC_DIS,        9) \
+    F(CRTC_DISPLAY_DIS,     10) \
+    F(CRTC_SYNC_TRISTATE,   11) \
+    F(CRTC_HSYNC_TRISTATE,  12) \
+    F(CRTC_VSYNC_TRISTATE,  13) \
+    F(CRTC_CRT_ON,          15) \
+    F(VGA_CUR_B_TEST,       17) \
+    F(VGA_PACK_DIS,         18) \
+    F(VGA_MEM_PS_EN,        19) \
+    F(VGA_READ_PREFETCH_DIS,20) \
+    F(DFIFO_EXTSENSE,       21) \
+    F(FP_OUT_EN,            22) \
+    F(FP_ACTIVE,            23) \
+    X(VCRTC_IDX_MASTER,     24, 7)
+
+DEFINE_REG_FIELDS(crtc_ext_cntl, CRTC_EXT_CNTL_FIELDS)
+
+// ----------------------------------------------------------------------------
+// DAC_CNTL fields
+// ----------------------------------------------------------------------------
+#define DAC_CNTL_FIELDS(F, X) \
+    X(DAC_RANGE_CNTL,        0, 2) \
+    F(DAC_BLANKING,          2) \
+    F(DAC_CMP_EN,            3) \
+    F(DAC_CMP_OUTPUT,        7) \
+    F(DAC_8BIT_EN,           8) \
+    F(DAC_4BPP_PIX_ORDER,    9) \
+    F(DAC_TVO_EN,           10) \
+    F(DAC_TVO_OVR_EXCL,     11) \
+    F(DAC_TVO_16BPP_DITH_EN,12) \
+    F(DAC_VGA_ADR_EN,       13) \
+    F(DAC_PDWN,             15) \
+    F(DAC_CRC_EN,           19) \
+    X(DAC_MASK,             24, 8)
+
+DEFINE_REG_FIELDS(dac_cntl, DAC_CNTL_FIELDS)
+
+// ----------------------------------------------------------------------------
+// GEN_RESET_CNTL fields
+// ----------------------------------------------------------------------------
+#define GEN_RESET_CNTL_FIELDS(F, X) \
+    F(SOFT_RESET_GUI, 0)
+
+DEFINE_REG_FIELDS(gen_reset_cntl, GEN_RESET_CNTL_FIELDS)
+
+// ----------------------------------------------------------------------------
+// PC_NGUI_CTLSTAT fields
+// ----------------------------------------------------------------------------
+#define PC_NGUI_CTLSTAT_FIELDS(F, X) \
+    X(PC_FLUSH_ALL,  0, 8) \
+    F(PC_BUSY,      31)
+
+DEFINE_REG_FIELDS(pc_ngui_ctlstat, PC_NGUI_CTLSTAT_FIELDS)
+
+// ----------------------------------------------------------------------------
+// DP_DATATYPE fields
+// ----------------------------------------------------------------------------
+#define DP_DATATYPE_FIELDS(F, X) \
+    F(HOST_BIG_ENDIAN_EN, 29)
+
+DEFINE_REG_FIELDS(dp_datatype, DP_DATATYPE_FIELDS)
+
+// ----------------------------------------------------------------------------
+// DP_CNTL fields
+// ----------------------------------------------------------------------------
+#define DP_CNTL_FIELDS(F, X) \
+    F(DST_X_LEFT_TO_RIGHT, 0) \
+    F(DST_Y_TOP_TO_BOTTOM, 1) \
+    F(DST_Y_MAJOR,         2)
+
+DEFINE_REG_FIELDS(dp_cntl, DP_CNTL_FIELDS)
+
+// ----------------------------------------------------------------------------
+// CRTC_H_TOTAL_DISP fields
+// ----------------------------------------------------------------------------
+#define CRTC_H_TOTAL_DISP_FIELDS(F, X) \
+    X(CRTC_H_TOTAL,  0, 9) \
+    X(CRTC_H_DISP,  16, 8)
+
+DEFINE_REG_FIELDS(crtc_h_total_disp, CRTC_H_TOTAL_DISP_FIELDS)
+
+// ----------------------------------------------------------------------------
+// CRTC_H_SYNC_STRT_WID fields
+// ----------------------------------------------------------------------------
+#define CRTC_H_SYNC_STRT_WID_FIELDS(F, X) \
+    X(CRTC_H_SYNC_STRT_PIX,   0, 3) \
+    X(CRTC_H_SYNC_STRT_CHAR,  3, 9) \
+    X(CRTC_H_SYNC_WID,       16, 6) \
+    F(CRTC_H_SYNC_POL,       23)
+
+DEFINE_REG_FIELDS(crtc_h_sync_strt_wid, CRTC_H_SYNC_STRT_WID_FIELDS)
+
+// ----------------------------------------------------------------------------
+// CRTC_V_TOTAL_DISP fields
+// ----------------------------------------------------------------------------
+#define CRTC_V_TOTAL_DISP_FIELDS(F, X) \
+    X(CRTC_V_TOTAL,  0, 11) \
+    X(CRTC_V_DISP,  16, 11)
+
+DEFINE_REG_FIELDS(crtc_v_total_disp, CRTC_V_TOTAL_DISP_FIELDS)
+
+// ----------------------------------------------------------------------------
+// CRTC_V_SYNC_STRT_WID fields
+// ----------------------------------------------------------------------------
+#define CRTC_V_SYNC_STRT_WID_FIELDS(F, X) \
+    X(CRTC_V_SYNC_STRT,  0, 11) \
+    X(CRTC_V_SYNC_WID,  16, 5) \
+    F(CRTC_V_SYNC_POL,  23)
+
+DEFINE_REG_FIELDS(crtc_v_sync_strt_wid, CRTC_V_SYNC_STRT_WID_FIELDS)
+
+// ----------------------------------------------------------------------------
+// DEFAULT_OFFSET fields
+// ----------------------------------------------------------------------------
+#define DEFAULT_OFFSET_FIELDS(F, X) \
+    X(DEFAULT_OFFSET, 0, 26)
+
+DEFINE_REG_FIELDS(default_offset, DEFAULT_OFFSET_FIELDS)
+
+// ----------------------------------------------------------------------------
+// DEFAULT_PITCH fields
+// ----------------------------------------------------------------------------
+#define DEFAULT_PITCH_FIELDS(F, X) \
+    X(DEFAULT_PITCH,  0, 10) \
+    F(DEFAULT_TILE,  16)
+
+DEFINE_REG_FIELDS(default_pitch, DEFAULT_PITCH_FIELDS)
+
+// ----------------------------------------------------------------------------
+// DEFAULT_SC_BOTTOM_RIGHT fields
+// ----------------------------------------------------------------------------
+#define DEFAULT_SC_BOTTOM_RIGHT_FIELDS(F, X) \
+    X(DEFAULT_SC_RIGHT,   0, 14) \
+    X(DEFAULT_SC_BOTTOM, 16, 14)
+
+DEFINE_REG_FIELDS(default_sc_bottom_right, DEFAULT_SC_BOTTOM_RIGHT_FIELDS)
+
+// ----------------------------------------------------------------------------
+// DP_GUI_MASTER_CNTL fields
+// ----------------------------------------------------------------------------
+#define DP_GUI_MASTER_CNTL_FIELDS(F, X) \
+    F(GMC_SRC_PITCH_OFFSET_CNTL,  0) \
+    F(GMC_DST_PITCH_OFFSET_CNTL,  1) \
+    F(GMC_SRC_CLIPPING,           2) \
+    F(GMC_DST_CLIPPING,           3) \
+    X(GMC_BRUSH_DATATYPE,         4, 4) \
+    X(GMC_DST_DATATYPE,           8, 4) \
+    X(GMC_SRC_DATATYPE,          12, 2) \
+    F(GMC_BYTE_PIX_ORDER,        14) \
+    F(GMC_CONVERSION_TEMP,       15) \
+    X(GMC_ROP3,                  16, 8) \
+    X(GMC_SRC_SOURCE,            24, 3) \
+    F(GMC_3D_FCN_EN,             27) \
+    F(GMC_CLR_CMP_CNTL_DIS,      28) \
+    F(GMC_AUX_CLIP_DIS,          29) \
+    F(GMC_WR_MSK_DIS,            30) \
+    F(GMC_LD_BRUSH_Y_X,          31)
+
+DEFINE_REG_FIELDS(dp_gui_master_cntl, DP_GUI_MASTER_CNTL_FIELDS)
+
+// ----------------------------------------------------------------------------
+// PM4_STAT fields
+// ----------------------------------------------------------------------------
+#define PM4_STAT_FIELDS(F, X) \
+    X(PM4_FIFOCNT,  0, 12)
+
+DEFINE_REG_FIELDS(pm4_stat, PM4_STAT_FIELDS)
+
+// ----------------------------------------------------------------------------
+// PM4_MICRO_CNTL fields
+// ----------------------------------------------------------------------------
+#define PM4_MICRO_CNTL_FIELDS(F, X) \
+    F(PM4_MICRO_FREERUN, 30)
+
+DEFINE_REG_FIELDS(pm4_micro_cntl, PM4_MICRO_CNTL_FIELDS)
+
+// ----------------------------------------------------------------------------
+// PM4_BUFFER_CNTL fields
+// ----------------------------------------------------------------------------
+#define PM4_BUFFER_CNTL_FIELDS(F, X) \
+    F(PM4_BUFFER_CNTL_NOUPDATE, 27) \
+    X(PM4_BUFFER_MODE,         28, 4)
+
+DEFINE_REG_FIELDS(pm4_buffer_cntl, PM4_BUFFER_CNTL_FIELDS)
+
+// ----------------------------------------------------------------------------
+// GEN_INT_CNTL fields
+// ----------------------------------------------------------------------------
+#define GEN_INT_CNTL_FIELDS(F, X) \
+    F(CRTC_VBLANK_INT_EN,    0) \
+    F(CRTC_VLINE_INT_EN,     1) \
+    F(CRTC_VSYNC_INT_EN,     2) \
+    F(SNAPSHOT_INT_EN,       3) \
+    F(FP_DETECT_INT_EN,     10) \
+    F(BUSMASTER_EOL_INT_EN, 16) \
+    F(I2C_INT_EN,           17) \
+    F(MPP_GP_INT_EN,        18) \
+    F(GUI_IDLE_INT_EN,      19) \
+    F(VIPH_INT_EN,          24)
+
+DEFINE_REG_FIELDS(gen_int_cntl, GEN_INT_CNTL_FIELDS)
+
 // ============================================================================
 // Register Definitions
 // ============================================================================
 #define ATI_REGISTERS \
   /* Datapath / Drawing Engine Registers */ \
-  X(dp_gui_master_cntl,       DP_GUI_MASTER_CNTL,      0x146c, RW, NULL) \
-  X(dp_datatype,              DP_DATATYPE,             0x16c4, RW, NULL) \
+  X(dp_gui_master_cntl,       DP_GUI_MASTER_CNTL,      0x146c, RW, dp_gui_master_cntl_fields) \
+  X(dp_datatype,              DP_DATATYPE,             0x16c4, RW, dp_datatype_fields) \
   X(dp_mix,                   DP_MIX,                  0x16c8, RW, NULL) \
   X(dp_write_msk,             DP_WRITE_MSK,            0x16cc, RW, NULL) \
-  X(dp_cntl,                  DP_CNTL,                 0x16c0, RW, NULL) \
+  X(dp_cntl,                  DP_CNTL,                 0x16c0, RW, dp_cntl_fields) \
   X(dp_brush_bkgd_clr,        DP_BRUSH_BKGD_CLR,       0x15dc, RW, NULL) \
   X(dp_brush_frgd_clr,        DP_BRUSH_FRGD_CLR,       0x1578, RW, NULL) \
   X(dp_src_bkgd_clr,          DP_SRC_BKGD_CLR,         0x15dc, RW, NULL) \
@@ -149,7 +378,7 @@ DEFINE_REG_FIELDS(gui_stat, GUI_STAT_FIELDS)
   X(src_sc_bottom,            SRC_SC_BOTTOM,           0x165c, RW, NULL) \
   X(src_sc_right,             SRC_SC_RIGHT,            0x1654, RW, NULL) \
   X(src_sc_bottom_right,      SRC_SC_BOTTOM_RIGHT,     0x16f4, RW, NULL) \
-  X(default_sc_bottom_right,  DEFAULT_SC_BOTTOM_RIGHT, 0x16e8, RW, NULL) \
+  X(default_sc_bottom_right,  DEFAULT_SC_BOTTOM_RIGHT, 0x16e8, RW, default_sc_bottom_right_fields) \
   X(aux_sc_cntl,              AUX_SC_CNTL,             0x1660, RW, NULL) \
   \
   /* Destination Registers */ \
@@ -175,26 +404,26 @@ DEFINE_REG_FIELDS(gui_stat, GUI_STAT_FIELDS)
   X(src_y_x,                  SRC_Y_X,                 0x1438, WO, NULL) \
   \
   /* Default Registers */ \
-  X(default_offset,           DEFAULT_OFFSET,          0x16e0, RW, NULL) \
-  X(default_pitch,            DEFAULT_PITCH,           0x16e4, RW, NULL) \
+  X(default_offset,           DEFAULT_OFFSET,          0x16e0, RW, default_offset_fields) \
+  X(default_pitch,            DEFAULT_PITCH,           0x16e4, RW, default_pitch_fields) \
   \
   /* CRTC Registers */ \
-  X(crtc_h_total_disp,        CRTC_H_TOTAL_DISP,       0x0200, RW, NULL) \
-  X(crtc_h_sync_strt_wid,     CRTC_H_SYNC_STRT_WID,    0x0204, RW, NULL) \
-  X(crtc_v_total_disp,        CRTC_V_TOTAL_DISP,       0x0208, RW, NULL) \
-  X(crtc_v_sync_strt_wid,     CRTC_V_SYNC_STRT_WID,    0x020c, RW, NULL) \
-  X(crtc_gen_cntl,            CRTC_GEN_CNTL,           0x0050, RW, NULL) \
-  X(crtc_ext_cntl,            CRTC_EXT_CNTL,           0x0054, RW, NULL) \
+  X(crtc_h_total_disp,        CRTC_H_TOTAL_DISP,       0x0200, RW, crtc_h_total_disp_fields) \
+  X(crtc_h_sync_strt_wid,     CRTC_H_SYNC_STRT_WID,    0x0204, RW, crtc_h_sync_strt_wid_fields) \
+  X(crtc_v_total_disp,        CRTC_V_TOTAL_DISP,       0x0208, RW, crtc_v_total_disp_fields) \
+  X(crtc_v_sync_strt_wid,     CRTC_V_SYNC_STRT_WID,    0x020c, RW, crtc_v_sync_strt_wid_fields) \
+  X(crtc_gen_cntl,            CRTC_GEN_CNTL,           0x0050, RW, crtc_gen_cntl_fields) \
+  X(crtc_ext_cntl,            CRTC_EXT_CNTL,           0x0054, RW, crtc_ext_cntl_fields) \
   X(crtc_offset,              CRTC_OFFSET,             0x0224, RW, NULL) \
   X(crtc_offset_cntl,         CRTC_OFFSET_CNTL,        0x0228, RW, NULL) \
   X(crtc_pitch,               CRTC_PITCH,              0x022c, RW, NULL) \
   \
   /* Reset & Engine Control Registers */ \
-  X(gen_reset_cntl,           GEN_RESET_CNTL,          0x00f0, RW, NULL) \
-  X(pc_ngui_ctlstat,          PC_NGUI_CTLSTAT,         0x0184, RW, NULL) \
+  X(gen_reset_cntl,           GEN_RESET_CNTL,          0x00f0, RW, gen_reset_cntl_fields) \
+  X(pc_ngui_ctlstat,          PC_NGUI_CTLSTAT,         0x0184, RW, pc_ngui_ctlstat_fields) \
   \
   /* DAC Registers */ \
-  X(dac_cntl,                 DAC_CNTL,                0x0058, RW, NULL) \
+  X(dac_cntl,                 DAC_CNTL,                0x0058, RW, dac_cntl_fields) \
   \
   /* Palette Registers */ \
   X(palette_index,            PALETTE_INDEX,           0x00b0, RW, NULL) \
@@ -210,7 +439,7 @@ DEFINE_REG_FIELDS(gui_stat, GUI_STAT_FIELDS)
   X(ovr_wid_top_bottom,       OVR_WID_TOP_BOTTOM,      0x0238, RW, NULL) \
   \
   /* Interrupt & Control Registers */ \
-  X(gen_int_cntl,             GEN_INT_CNTL,            0x0040, RW, NULL) \
+  X(gen_int_cntl,             GEN_INT_CNTL,            0x0040, RW, gen_int_cntl_fields) \
   \
   /* Overlay & Video Registers */ \
   X(ov0_scale_cntl,           OV0_SCALE_CNTL,          0x0420, RW, NULL) \
@@ -249,21 +478,21 @@ DEFINE_REG_FIELDS(gui_stat, GUI_STAT_FIELDS)
   \
   /* PM4/CCE Registers */ \
   X(pm4_buffer_offset,        PM4_BUFFER_OFFSET,       0x0700, RW, NULL) \
-  X(pm4_buffer_cntl,          PM4_BUFFER_CNTL,         0x0704, RW, NULL) \
+  X(pm4_buffer_cntl,          PM4_BUFFER_CNTL,         0x0704, RW, pm4_buffer_cntl_fields) \
   X(pm4_buffer_wm_cntl,       PM4_BUFFER_WM_CNTL,      0x0708, RW, NULL) \
   X(pm4_buffer_dl_rptr_addr,  PM4_BUFFER_DL_RPTR_ADDR, 0x070c, RW, NULL) \
   X(pm4_buffer_dl_rptr,       PM4_BUFFER_DL_RPTR,      0x0710, RW, NULL) \
   X(pm4_buffer_dl_wptr,       PM4_BUFFER_DL_WPTR,      0x0714, RW, NULL) \
   X(pm4_buffer_dl_wptr_delay, PM4_BUFFER_DL_WPTR_DELAY,0x0718, RW, NULL) \
   X(pm4_buffer_addr,          PM4_BUFFER_ADDR,         0x07f0, RW, NULL) \
-  X(pm4_micro_cntl,           PM4_MICRO_CNTL,          0x07fc, RW, NULL) \
+  X(pm4_micro_cntl,           PM4_MICRO_CNTL,          0x07fc, RW, pm4_micro_cntl_fields) \
   X(pm4_fifo_data_even,       PM4_FIFO_DATA_EVEN,      0x1000, WO, NULL) \
   X(pm4_fifo_data_odd,        PM4_FIFO_DATA_ODD,       0x1004, WO, NULL) \
   X(pm4_microcode_addr,       PM4_MICROCODE_ADDR,      0x07d4, RW, NULL) \
   X(pm4_microcode_raddr,      PM4_MICROCODE_RADDR,     0x07d8, RW, NULL) \
   X(pm4_microcode_datah,      PM4_MICROCODE_DATAH,     0x07dc, RW, NULL) \
   X(pm4_microcode_datal,      PM4_MICROCODE_DATAL,     0x07e0, RW, NULL) \
-  X(pm4_stat,                 PM4_STAT,                0x07b8, RO, NULL)
+  X(pm4_stat,                 PM4_STAT,                0x07b8, RO, pm4_stat_fields)
 
 // Register offset enum
 #define X(func_name, const_name, offset, mode, fields) const_name = offset,
@@ -309,27 +538,12 @@ DEFINE_REG_FIELDS(gui_stat, GUI_STAT_FIELDS)
 #undef X_RO_WRITE_DECL
 
 // ============================================================================
-// Register Fields
+// Field Value Enumerations
+// (Register field constants are generated by DEFINE_REG_FIELDS above,
+//  these are specific values that can be assigned to multi-bit fields)
 // ============================================================================
 
-// ----------------------------------------------------------------------------
-// CRTC_GEN_CNTL
-// ----------------------------------------------------------------------------
-enum {
-    CRTC_DBL_SCAN_EN      = (1 <<  0),
-    CRTC_INTERLACE_EN     = (1 <<  1),
-    CRTC_C_SYNC_EN        = (1 <<  4),
-    CRTC_PIX_WIDTH_SHIFT  = 8,
-    CRTC_PIX_WIDTH_MASK   = (7 <<  8),
-    CRTC_CUR_EN           = (1 << 16),
-    CRTC_CUR_MODE_SHIFT   = 17,
-    CRTC_CUR_MODE_MASK    = (7 << 17),
-    CRTC_EXT_DISP_EN      = (1 << 24),
-    CRTC_EN               = (1 << 25),
-    CRTC_DISP_REQ_EN_B    = (1 << 26),
-};
-
-// Pix width values
+// CRTC_GEN_CNTL: CRTC_PIX_WIDTH values
 enum {
     CRTC_PIX_WIDTH_4BPP  = 1,
     CRTC_PIX_WIDTH_8BPP  = 2,
@@ -339,202 +553,10 @@ enum {
     CRTC_PIX_WIDTH_32BPP = 6,
 };
 
-// Cursor mode values
+// CRTC_GEN_CNTL: CRTC_CUR_MODE values
 enum {
     CRTC_CUR_MODE_64X64_MONO = 0,
-    // All others reserved, the register guide unfortunately seems to have
-    // an error here that confusingly lists unrelated (I think) values.
-};
-
-
-// ----------------------------------------------------------------------------
-// CRTC_EXT_CNTL
-// ----------------------------------------------------------------------------
-enum {
-    CRTC_VGA_XOVERSCAN     = (1 << 0),
-    VGA_BLINK_RATE_SHIFT   = 1,
-    VGA_BLINK_RATE_MASK    = (3 <<  1),
-    VGA_ATI_LINEAR         = (1 <<  3),
-    VGA_128KAP_PAGING      = (1 <<  4),
-    VGA_TEXT_132           = (1 <<  5),
-    VGA_XCRT_CNT_EN        = (1 <<  6),
-    CRTC_HSYNC_DIS         = (1 <<  8),
-    CRTC_VSYNC_DIS         = (1 <<  9),
-    CRTC_DISPLAY_DIS       = (1 << 10),
-    CRTC_SYNC_TRISTATE     = (1 << 11),
-    CRTC_HSYNC_TRISTATE    = (1 << 12),
-    CRTC_VSYNC_TRISTATE    = (1 << 13),
-    CRTC_CRT_ON            = (1 << 15), // Undocumented but used in r128 xorg driver
-    VGA_CUR_B_TEST         = (1 << 17),
-    VGA_PACK_DIS           = (1 << 18),
-    VGA_MEM_PS_EN          = (1 << 19),
-    VGA_READ_PREFETCH_DIS  = (1 << 20),
-    DFIFO_EXTSENSE         = (1 << 21),
-    FP_OUT_EN              = (1 << 22),
-    FP_ACTIVE              = (1 << 23),
-    VCRTC_IDX_MASTER_SHIFT = 24,
-    VCRTC_IDX_MASTER_MASK  = (0x7f << 24),
-};
-
-// ----------------------------------------------------------------------------
-// DAC_CNTL
-// ----------------------------------------------------------------------------
-enum {
-    DAC_RANGE_CNTL_SHIFT   = 0,
-    DAC_RANGE_CNTL_MASK    = (3 <<  0),
-    DAC_BLANKING           = (1 <<  2),
-    DAC_CMP_EN             = (1 <<  3),
-    DAC_CMP_OUTPUT         = (1 <<  7),
-    DAC_8BIT_EN            = (1 <<  8),
-    DAC_4BPP_PIX_ORDER     = (1 <<  9),
-    DAC_TVO_EN             = (1 << 10),
-    DAC_TVO_OVR_EXCL       = (1 << 11),
-    DAC_TVO_16BPP_DITH_EN  = (1 << 12),
-    DAC_VGA_ADR_EN         = (1 << 13),
-    DAC_PDWN               = (1 << 15),
-    DAC_CRC_EN             = (1 << 19),
-    DAC_MASK_SHIFT         = 24,
-    DAC_MASK_MASK          = (0xff << 24),
-};
-
-// ----------------------------------------------------------------------------
-// GEN_RESET_CNTL
-// ----------------------------------------------------------------------------
-enum {
-    SOFT_RESET_GUI = (1 << 0),
-};
-
-// ----------------------------------------------------------------------------
-// PC_NGUI_CTLSTAT
-// ----------------------------------------------------------------------------
-enum {
-    PC_FLUSH_ALL = 0x00ff,
-    PC_BUSY      = (1u << 31),
-};
-
-// ----------------------------------------------------------------------------
-// DP_DATATYPE
-// ----------------------------------------------------------------------------
-enum {
-    HOST_BIG_ENDIAN_EN = (1 << 29),
-};
-
-// ----------------------------------------------------------------------------
-// DP_CNTL
-// ----------------------------------------------------------------------------
-enum {
-    DST_X_LEFT_TO_RIGHT = (1 << 0),
-    DST_Y_TOP_TO_BOTTOM = (1 << 1),
-    DST_Y_MAJOR         = (1 << 2),
-};
-
-// ----------------------------------------------------------------------------
-// CRTC_H_TOTAL_DISP
-// ----------------------------------------------------------------------------
-enum {
-    CRTC_H_TOTAL_SHIFT = 0,
-    CRTC_H_TOTAL_MASK  = (0x1ff <<  0),
-    CRTC_H_DISP_SHIFT  = 16,
-    CRTC_H_DISP_MASK   = (0xff  << 16),
-};
-
-// ----------------------------------------------------------------------------
-// CRTC_H_SYNC_STRT_WID
-// ----------------------------------------------------------------------------
-enum {
-    CRTC_H_SYNC_STRT_PIX_SHIFT  = 0,
-    CRTC_H_SYNC_STRT_PIX_MASK   = (    7 <<  0),
-    CRTC_H_SYNC_STRT_CHAR_SHIFT = 3,
-    CRTC_H_SYNC_STRT_CHAR_MASK  = (0x1ff <<  3),
-    CRTC_H_SYNC_WID_SHIFT       = 16,
-    CRTC_H_SYNC_WID_MASK        = ( 0x3f << 16),
-    CRTC_H_SYNC_POL             = (    1 << 23)
-};
-
-// ----------------------------------------------------------------------------
-// CRTC_V_TOTAL_DISP
-// ----------------------------------------------------------------------------
-enum {
-    CRTC_V_TOTAL_SHIFT = 0,
-    CRTC_V_TOTAL_MASK  = (0x7ff <<  0),
-    CRTC_V_DISP_SHIFT  = 16,
-    CRTC_V_DISP_MASK   = (0x7ff  << 16),
-};
-
-// ----------------------------------------------------------------------------
-// CRTC_V_SYNC_STRT_WID
-// ----------------------------------------------------------------------------
-enum {
-    CRTC_V_SYNC_STRT_SHIFT = 0,
-    CRTC_V_SYNC_STRT_MASK  = (0x7ff <<  0),
-    CRTC_V_SYNC_WID_SHIFT  = 16,
-    CRTC_V_SYNC_WID_MASK   = ( 0x1f << 16),
-    CRTC_V_SYNC_POL        = (    1 << 23),
-};
-
-// ----------------------------------------------------------------------------
-// DEFAULT_OFFSET
-// ----------------------------------------------------------------------------
-enum {
-    DEFAULT_OFFSET_SHIFT = 0,
-    DEFAULT_OFFSET_MASK  = (0x3ffffff << 0),
-};
-
-// ----------------------------------------------------------------------------
-// DEFAULT_PITCH
-// ----------------------------------------------------------------------------
-enum {
-    DEFAULT_PITCH_SHIFT = 0,
-    DEFAULT_PITCH_MASK  = (0x3ff <<  0),
-    DEFAULT_TILE_SHIFT  = 16,
-    DEFAULT_TILE_MASK   = (    1 << 16),
-};
-
-// ----------------------------------------------------------------------------
-// DEFAULT_SC_BOTTOM_RIGHT
-// ----------------------------------------------------------------------------
-enum {
-    DEFAULT_SC_RIGHT_SHIFT  = 0,
-    DEFAULT_SC_RIGHT_MASK   = (0x3fff << 0),
-    DEFAULT_SC_BOTTOM_SHIFT = 16,
-    DEFAULT_SC_BOTTOM_MASK  = (0x3fff << 16),
-};
-
-// ----------------------------------------------------------------------------
-// DEFAULT_SC_TOP_LEFT
-// ----------------------------------------------------------------------------
-enum {
-    DEFAULT_SC_LEFT_SHIFT  = 0,
-    DEFAULT_SC_LEFT_MASK   = (0x3fff << 0),
-    DEFAULT_SC_TOP_SHIFT   = 16,
-    DEFAULT_SC_TOP_MASK    = (0x3fff << 16),
-};
-
-// ----------------------------------------------------------------------------
-// DP_GUI_MASTER_CNTL
-// ----------------------------------------------------------------------------
-enum {
-    GMC_SRC_PITCH_OFFSET_CNTL = (   1 <<  0),
-    GMC_DST_PITCH_OFFSET_CNTL = (   1 <<  1),
-    GMC_SRC_CLIPPING          = (   1 <<  2),
-    GMC_DST_CLIPPING          = (   1 <<  3),
-    GMC_BRUSH_DATATYPE_SHIFT  = 4,
-    GMC_BRUSH_DATATYPE_MASK   = ( 0xf <<  4),
-    GMC_DST_DATATYPE_SHIFT    = 8,
-    GMC_DST_DATATYPE_MASK     = ( 0xf <<  8),
-    GMC_SRC_DATATYPE_SHIFT    = 12,
-    GMC_SRC_DATATYPE_MASK     = ( 0x3 << 12),
-    GMC_BYTE_PIX_ORDER        = (   1 << 14),
-    GMC_CONVERSION_TEMP       = (   1 << 15),
-    GMC_ROP3_SHIFT            = 16,
-    GMC_ROP3_MASK             = (0xff << 16),
-    GMC_SRC_SOURCE_SHIFT      = 24,
-    GMC_SRC_SOURCE_MASK       = ( 0x7 << 24),
-    GMC_3D_FCN_EN             = (   1 << 27),
-    GMC_CLR_CMP_CNTL_DIS      = (   1 << 28),
-    GMC_AUX_CLIP_DIS          = (   1 << 29),
-    GMC_WR_MSK_DIS            = (   1 << 30),
-    GMC_LD_BRUSH_Y_X          = (  1u << 31),
+    // All others reserved
 };
 
 // Brush datatype values
@@ -612,33 +634,7 @@ enum {
     SOURCE_HOST_DATA_ALIGNED = 4,
 };
 
-// ----------------------------------------------------------------------------
-// PM4_STAT
-// ----------------------------------------------------------------------------
-enum {
-    PM4_FIFOCNT_SHIFT = 0,
-    PM4_FIFOCNT_MASK  = (0x0fff <<  0),
-    // PM4_BUSY = Also defined by GUI_STAT (bit 16)
-    // GUI_ACTIVE = Also defined by GUI_STAT (bit 31)
-};
-
-// ----------------------------------------------------------------------------
-// PM4_MICRO_CNTL
-// ----------------------------------------------------------------------------
-enum {
-    PM4_MICRO_FREERUN = (1 << 30),
-};
-
-// ----------------------------------------------------------------------------
-// PM4_BUFFER_CNTL
-// ----------------------------------------------------------------------------
-enum {
-    PM4_BUFFER_CNTL_NOUPDATE       = (1   << 27),
-    PM4_BUFFER_MODE_SHIFT          = 28,
-    PM4_BUFFER_MODE_MASK           = (0xf << 28),
-};
-
-// PM4_BUFFER_CNTL mode values
+// PM4_BUFFER_CNTL: PM4_BUFFER_MODE values
 enum {
     PM4_NONPM4                 = 0, // CCE disabled, direct PIO
     PM4_192PIO                 = 1, // 192 DWORD CCE PIO FIFO
@@ -650,78 +646,6 @@ enum {
     PM4_64PIO_64VCBM_64INDBM   = 7,
     PM4_64BM_64VCBM_64INDBM    = 8,
     PM4_64PIO_64VCPIO_64INDPIO = 15,
-};
-
-// ----------------------------------------------------------------------------
-// DST_BRES_ERR
-// ----------------------------------------------------------------------------
-enum {
-    DST_BRES_ERR_SHIFT = 0,
-    DST_BRES_ERR_MASK  = (0xfffff << 0),
-};
-
-// ----------------------------------------------------------------------------
-// DST_BRES_INC
-// ----------------------------------------------------------------------------
-enum {
-    DST_BRES_INC_SHIFT = 0,
-    DST_BRES_INC_MASK  = (0xfffff << 0),
-};
-
-// ----------------------------------------------------------------------------
-// DST_BRES_DEC
-// ----------------------------------------------------------------------------
-enum {
-    DST_BRES_DEC_SHIFT = 0,
-    DST_BRES_DEC_MASK  = (0xfffff << 0),
-};
-
-// ----------------------------------------------------------------------------
-// OVR_CLR
-// ----------------------------------------------------------------------------
-enum {
-    OVR_CLR_B_SHIFT = 0,
-    OVR_CLR_B_MASK  = (0xff <<  0),
-    OVR_CLR_G_SHIFT = 8,
-    OVR_CLR_G_MASK  = (0xff <<  8),
-    OVR_CLR_R_SHIFT = 16,
-    OVR_CLR_R_MASK  = (0xff << 16),
-};
-
-// ----------------------------------------------------------------------------
-// OVR_WID_LEFT_RIGHT
-// ----------------------------------------------------------------------------
-enum {
-    OVR_WID_RIGHT_SHIFT = 0,
-    OVR_WID_RIGHT_MASK  = (0x3f <<  0),
-    OVR_WID_LEFT_SHIFT  = 16,
-    OVR_WID_LEFT_MASK   = (0x3f << 16),
-};
-
-// ----------------------------------------------------------------------------
-// OVR_WID_TOP_BOTTOM
-// ----------------------------------------------------------------------------
-enum {
-    OVR_WID_BOTTOM_SHIFT = 0,
-    OVR_WID_BOTTOM_MASK  = (0x1ff <<  0),
-    OVR_WID_TOP_SHIFT    = 16,
-    OVR_WID_TOP_MASK     = (0x1ff << 16),
-};
-
-// ----------------------------------------------------------------------------
-// GEN_INT_CNTL
-// ----------------------------------------------------------------------------
-enum {
-    CRTC_VBLANK_INT_EN    = (1 <<  0),
-    CRTC_VLINE_INT_EN     = (1 <<  1),
-    CRTC_VSYNC_INT_EN     = (1 <<  2),
-    SNAPSHOT_INT_EN       = (1 <<  3),
-    FP_DETECT_INT_EN      = (1 << 10),
-    BUSMASTER_EOL_INT_EN  = (1 << 16),
-    I2C_INT_EN            = (1 << 17),
-    MPP_GP_INT_EN         = (1 << 18),
-    GUI_IDLE_INT_EN       = (1 << 19),
-    VIPH_INT_EN           = (1 << 24),
 };
 
 // clang-format on
