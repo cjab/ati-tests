@@ -12,16 +12,19 @@ typedef struct {
     const char *name;
     uint32_t offset;
     reg_mode_t mode;
+    const field_entry_t *fields;
 } reg_entry_t;
 
-#define X(func_name, const_name, offset, mode) {#const_name, offset, mode},
-static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0, RW}};
+#define X(func_name, const_name, offset, mode, fields)                         \
+    {#const_name, offset, mode, fields},
+static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0, RW, NULL}};
 #undef X
 
 // Command enum for dispatch
 typedef enum {
     CMD_REBOOT,
     CMD_R,
+    CMD_RX,
     CMD_W,
     CMD_VR,
     CMD_VW,
@@ -44,6 +47,7 @@ static const struct {
 } cmd_table[] = {
     {"reboot",   CMD_REBOOT,   NULL,                     "reboot system (baremetal)"},
     {"r",        CMD_R,        "<addr|reg>",             "register read"},
+    {"rx",       CMD_RX,       "<addr|reg>",             "register read (expanded)"},
     {"w",        CMD_W,        "<addr|reg> <val>",       "register write"},
     {"vr",       CMD_VR,       "<offset> [count]",       "vram read"},
     {"vw",       CMD_VW,       "<offset> <val> [count]", "vram write"},
@@ -134,24 +138,72 @@ lookup_reg_name(uint32_t offset)
     return NULL;
 }
 
+static const reg_entry_t *
+lookup_reg_entry(uint32_t offset)
+{
+    for (int i = 0; reg_table[i].name != NULL; i++) {
+        if (reg_table[i].offset == offset) {
+            return &reg_table[i];
+        }
+    }
+    return NULL;
+}
+
 static void
 print_reg(uint32_t addr, uint32_t val, char separator)
 {
     const char *name = lookup_reg_name(addr);
     if (name) {
-        printf("\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m %c \x1b[33m0x%08x\x1b[0m\n",
+        printf("\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m %c "
+               "\x1b[33m0x%08x\x1b[0m\n",
                name, addr, separator, val);
     } else {
-        printf("\x1b[90m0x%04x\x1b[0m %c \x1b[33m0x%08x\x1b[0m\n",
-               addr, separator, val);
+        printf("\x1b[90m0x%04x\x1b[0m %c \x1b[33m0x%08x\x1b[0m\n", addr,
+               separator, val);
     }
 }
 
 static void
 print_mem(uint32_t addr, uint32_t val, char separator)
 {
-    printf("\x1b[90m0x%08x\x1b[0m %c \x1b[33m0x%08x\x1b[0m\n",
-           addr, separator, val);
+    printf("\x1b[90m0x%08x\x1b[0m %c \x1b[33m0x%08x\x1b[0m\n", addr, separator,
+           val);
+}
+
+static void
+print_reg_expanded(const reg_entry_t *reg, uint32_t val)
+{
+    // Header line
+    printf(
+        "\x1b[36m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m : \x1b[33m0x%08x\x1b[0m\n",
+        reg->name, reg->offset, val);
+
+    // Fields (if available)
+    if (reg->fields == NULL || reg->fields[0].name == NULL) {
+        printf("  \x1b[90m(no fields defined)\x1b[0m\n");
+        return;
+    }
+
+    for (const field_entry_t *f = reg->fields; f->name != NULL; f++) {
+        uint32_t mask = ((1u << f->width) - 1) << f->shift;
+        uint32_t field_val = (val & mask) >> f->shift;
+
+        if (f->width == 1) {
+            // Single bit flag: [16]
+            if (field_val)
+                printf("  \x1b[32m%-20s [%5d]   = 1\x1b[0m\n", f->name,
+                       f->shift);
+            else
+                printf("  \x1b[90m%-20s [%5d]   = 0\x1b[0m\n", f->name,
+                       f->shift);
+        } else {
+            // Multi-bit field: [11:0 ]
+            printf("  \x1b[36m%-20s\x1b[0m [%2d:%2d]   = \x1b[33m%u\x1b[0m "
+                   "(0x%x)\n",
+                   f->name, f->shift + f->width - 1, f->shift, field_val,
+                   field_val);
+        }
+    }
 }
 
 int
@@ -357,12 +409,44 @@ cmd_reg_read(ati_device_t *dev, int argc, char **args)
 
     if (mode == WO) {
         const char *name = lookup_reg_name(addr);
-        printf("\x1b[31mWARNING: %s (\x1b[90m0x%04x\x1b[31m) is write-only\x1b[0m\n",
+        printf("\x1b[31mWARNING: %s (\x1b[90m0x%04x\x1b[31m) is "
+               "write-only\x1b[0m\n",
                name ? name : "register", addr);
     }
 
     uint32_t val = ati_reg_read(dev, addr);
     print_reg(addr, val, ':');
+}
+
+static void
+cmd_reg_read_expanded(ati_device_t *dev, int argc, char **args)
+{
+    uint32_t addr;
+    reg_mode_t mode;
+
+    if (argc < 2 || parse_addr(args[1], &addr, &mode) != 0) {
+        print_usage(CMD_RX);
+        return;
+    }
+
+    if (mode == WO) {
+        const char *name = lookup_reg_name(addr);
+        printf("\x1b[31mWARNING: %s (\x1b[90m0x%04x\x1b[31m) is "
+               "write-only\x1b[0m\n",
+               name ? name : "register", addr);
+    }
+
+    const reg_entry_t *reg = lookup_reg_entry(addr);
+    if (reg == NULL) {
+        // Unknown register, fall back to simple display
+        uint32_t val = ati_reg_read(dev, addr);
+        print_reg(addr, val, ':');
+        printf("  \x1b[90m(unknown register)\x1b[0m\n");
+        return;
+    }
+
+    uint32_t val = ati_reg_read(dev, addr);
+    print_reg_expanded(reg, val);
 }
 
 static void
@@ -379,7 +463,8 @@ cmd_reg_write(ati_device_t *dev, int argc, char **args)
 
     if (mode == RO) {
         const char *name = lookup_reg_name(addr);
-        printf("\x1b[31mWARNING: %s (\x1b[90m0x%04x\x1b[31m) is read-only\x1b[0m\n",
+        printf("\x1b[31mWARNING: %s (\x1b[90m0x%04x\x1b[31m) is "
+               "read-only\x1b[0m\n",
                name ? name : "register", addr);
     }
 
@@ -557,6 +642,9 @@ repl(ati_device_t *dev)
             break;
         case CMD_R:
             cmd_reg_read(dev, argc, args);
+            break;
+        case CMD_RX:
+            cmd_reg_read_expanded(dev, argc, args);
             break;
         case CMD_W:
             cmd_reg_write(dev, argc, args);

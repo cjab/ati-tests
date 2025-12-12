@@ -206,7 +206,7 @@ ati_dump_mode(ati_device_t *dev)
 /* Register accessor functions */
 
 /* Reads */
-#define X(func_name, const_name, offset, mode)                                 \
+#define X(func_name, const_name, offset, mode, fields)                         \
     X_##mode##_READ_IMPL(func_name, const_name)
 
 #define X_RW_READ_IMPL(func_name, const_name)                                  \
@@ -230,7 +230,7 @@ ATI_REGISTERS
 #undef X_WO_READ_IMPL
 
 /* Writes */
-#define X(func_name, const_name, offset, mode)                                 \
+#define X(func_name, const_name, offset, mode, fields)                         \
     X_##mode##_WRITE_IMPL(func_name, const_name)
 
 #define X_RW_WRITE_IMPL(func_name, const_name)                                 \
@@ -262,7 +262,7 @@ ati_dump_registers(ati_device_t *dev, int count, ...)
         uint32_t offset = va_arg(args, uint32_t);
         bool found = false;
 
-#define X(func_name, const_name, offset_val, mode)                             \
+#define X(func_name, const_name, offset_val, mode, fields)                     \
     X_##mode##_DUMP_IF(func_name, const_name, offset_val, offset, &found)
 
 #define X_RW_DUMP_IF(func_name, const_name, offset_val, target, found_ptr)     \
@@ -306,7 +306,7 @@ ati_dump_all_registers(ati_device_t *dev)
 {
     printf("\n============== Register State ==============\n");
 
-#define X(func_name, const_name, offset, mode)                                 \
+#define X(func_name, const_name, offset, mode, fields)                         \
     X_##mode##_DUMP(func_name, const_name)
 
 #define X_RW_DUMP(func_name, const_name)                                       \

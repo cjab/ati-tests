@@ -57,163 +57,223 @@ void ati_top_cce_engine(ati_device_t *dev);
     __VA_ARGS__)
 
 // ============================================================================
+// Register Field Infrastructure
+// ============================================================================
+
+typedef struct {
+    const char *name;
+    uint8_t shift;
+    uint8_t width;
+} field_entry_t;
+
+// ----------------------------------------------------------------------------
+// Register field  macros
+//
+// To define fields for a register:
+//   1. Define REGNAME_FIELDS(F, X) using F(name, bit) for flags and
+//      X(name, shift, width) for multi-bit fields
+//   2. Invoke DEFINE_REG_FIELDS(regname, REGNAME_FIELDS)
+//   3. Reference regname_fields in ATI_REGISTERS
+// ----------------------------------------------------------------------------
+
+// Enum generators (for constants usable in code)
+#define _ENUM_FLAG(name, bit)           name = (1u << (bit)),
+#define _ENUM_FIELD(name, shift, width) name##_SHIFT = (shift), \
+                                        name##_MASK  = (((1u << (width)) - 1) << (shift)),
+
+// Table generators (for REPL field display)
+#define _TABLE_FLAG(name, bit)           {#name, bit, 1},
+#define _TABLE_FIELD(name, shift, width) {#name, shift, width},
+
+// Generate both enum constants and field table from a FIELDS macro
+#define DEFINE_REG_FIELDS(name, fields_macro) \
+    enum { fields_macro(_ENUM_FLAG, _ENUM_FIELD) }; \
+    static const field_entry_t name##_fields[] = { \
+        fields_macro(_TABLE_FLAG, _TABLE_FIELD) \
+        {NULL, 0, 0} \
+    };
+
+// ----------------------------------------------------------------------------
+// GUI_STAT fields
+// ----------------------------------------------------------------------------
+#define GUI_STAT_FIELDS(F, X) \
+    X(GUI_FIFO_CNT,    0, 12) \
+    F(PM4_BUSY,        16) \
+    F(MICRO_BUSY,      17) \
+    F(FPU_BUSY,        18) \
+    F(VC_BUSY,         19) \
+    F(IDCT_BUSY,       20) \
+    F(ENG_EV_BUSY,     21) \
+    F(SETUP_BUSY,      22) \
+    F(EDGEWALK_BUSY,   23) \
+    F(ADDRESSING_BUSY, 24) \
+    F(ENG_3D_BUSY,     25) \
+    F(ENG_2D_SM_BUSY,  26) \
+    F(ENG_2D_BUSY,     27) \
+    F(GUI_WB_BUSY,     28) \
+    F(CACHE_BUSY,      29) \
+    F(GUI_ACTIVE,      31)
+
+DEFINE_REG_FIELDS(gui_stat, GUI_STAT_FIELDS)
+
+// ============================================================================
 // Register Definitions
 // ============================================================================
 #define ATI_REGISTERS \
   /* Datapath / Drawing Engine Registers */ \
-  X(dp_gui_master_cntl,       DP_GUI_MASTER_CNTL,      0x146c, RW) \
-  X(dp_datatype,              DP_DATATYPE,             0x16c4, RW) \
-  X(dp_mix,                   DP_MIX,                  0x16c8, RW) \
-  X(dp_write_msk,             DP_WRITE_MSK,            0x16cc, RW) \
-  X(dp_cntl,                  DP_CNTL,                 0x16c0, RW) \
-  X(dp_brush_bkgd_clr,        DP_BRUSH_BKGD_CLR,       0x15dc, RW) \
-  X(dp_brush_frgd_clr,        DP_BRUSH_FRGD_CLR,       0x1578, RW) \
-  X(dp_src_bkgd_clr,          DP_SRC_BKGD_CLR,         0x15dc, RW) \
-  X(dp_src_frgd_clr,          DP_SRC_FRGD_CLR,         0x15d8, RW) \
+  X(dp_gui_master_cntl,       DP_GUI_MASTER_CNTL,      0x146c, RW, NULL) \
+  X(dp_datatype,              DP_DATATYPE,             0x16c4, RW, NULL) \
+  X(dp_mix,                   DP_MIX,                  0x16c8, RW, NULL) \
+  X(dp_write_msk,             DP_WRITE_MSK,            0x16cc, RW, NULL) \
+  X(dp_cntl,                  DP_CNTL,                 0x16c0, RW, NULL) \
+  X(dp_brush_bkgd_clr,        DP_BRUSH_BKGD_CLR,       0x15dc, RW, NULL) \
+  X(dp_brush_frgd_clr,        DP_BRUSH_FRGD_CLR,       0x1578, RW, NULL) \
+  X(dp_src_bkgd_clr,          DP_SRC_BKGD_CLR,         0x15dc, RW, NULL) \
+  X(dp_src_frgd_clr,          DP_SRC_FRGD_CLR,         0x15d8, RW, NULL) \
   \
   /* GUI Scratch Registers */ \
-  X(gui_scratch_reg0,         GUI_SCRATCH_REG0,        0x15e0, RW) \
-  X(gui_scratch_reg1,         GUI_SCRATCH_REG1,        0x15e4, RW) \
-  X(gui_scratch_reg2,         GUI_SCRATCH_REG2,        0x15e8, RW) \
-  X(gui_scratch_reg3,         GUI_SCRATCH_REG3,        0x15ec, RW) \
-  X(gui_scratch_reg4,         GUI_SCRATCH_REG4,        0x15f0, RW) \
-  X(gui_scratch_reg5,         GUI_SCRATCH_REG5,        0x15f4, RW) \
+  X(gui_scratch_reg0,         GUI_SCRATCH_REG0,        0x15e0, RW, NULL) \
+  X(gui_scratch_reg1,         GUI_SCRATCH_REG1,        0x15e4, RW, NULL) \
+  X(gui_scratch_reg2,         GUI_SCRATCH_REG2,        0x15e8, RW, NULL) \
+  X(gui_scratch_reg3,         GUI_SCRATCH_REG3,        0x15ec, RW, NULL) \
+  X(gui_scratch_reg4,         GUI_SCRATCH_REG4,        0x15f0, RW, NULL) \
+  X(gui_scratch_reg5,         GUI_SCRATCH_REG5,        0x15f4, RW, NULL) \
   \
   /* Scissor / Clipping Registers */ \
-  X(sc_left,                  SC_LEFT,                 0x1640, RW) \
-  X(sc_top,                   SC_TOP,                  0x1648, RW) \
-  X(sc_right,                 SC_RIGHT,                0x1644, RW) \
-  X(sc_bottom,                SC_BOTTOM,               0x164c, RW) \
-  X(sc_top_left,              SC_TOP_LEFT,             0x16ec, RW) \
-  X(sc_bottom_right,          SC_BOTTOM_RIGHT,         0x16f0, RW) \
-  X(src_sc_bottom,            SRC_SC_BOTTOM,           0x165c, RW) \
-  X(src_sc_right,             SRC_SC_RIGHT,            0x1654, RW) \
-  X(src_sc_bottom_right,      SRC_SC_BOTTOM_RIGHT,     0x16f4, RW) \
-  X(default_sc_bottom_right,  DEFAULT_SC_BOTTOM_RIGHT, 0x16e8, RW) \
-  X(aux_sc_cntl,              AUX_SC_CNTL,             0x1660, RW) \
+  X(sc_left,                  SC_LEFT,                 0x1640, RW, NULL) \
+  X(sc_top,                   SC_TOP,                  0x1648, RW, NULL) \
+  X(sc_right,                 SC_RIGHT,                0x1644, RW, NULL) \
+  X(sc_bottom,                SC_BOTTOM,               0x164c, RW, NULL) \
+  X(sc_top_left,              SC_TOP_LEFT,             0x16ec, RW, NULL) \
+  X(sc_bottom_right,          SC_BOTTOM_RIGHT,         0x16f0, RW, NULL) \
+  X(src_sc_bottom,            SRC_SC_BOTTOM,           0x165c, RW, NULL) \
+  X(src_sc_right,             SRC_SC_RIGHT,            0x1654, RW, NULL) \
+  X(src_sc_bottom_right,      SRC_SC_BOTTOM_RIGHT,     0x16f4, RW, NULL) \
+  X(default_sc_bottom_right,  DEFAULT_SC_BOTTOM_RIGHT, 0x16e8, RW, NULL) \
+  X(aux_sc_cntl,              AUX_SC_CNTL,             0x1660, RW, NULL) \
   \
   /* Destination Registers */ \
-  X(dst_offset,               DST_OFFSET,              0x1404, RW) \
-  X(dst_pitch,                DST_PITCH,               0x1408, RW) \
-  X(dst_x,                    DST_X,                   0x141c, RW) \
-  X(dst_y,                    DST_Y,                   0x1420, RW) \
-  X(dst_x_y,                  DST_X_Y,                 0x1594, WO) \
-  X(dst_y_x,                  DST_Y_X,                 0x1438, WO) \
-  X(dst_width,                DST_WIDTH,               0x140c, RW) \
-  X(dst_height,               DST_HEIGHT,              0x1410, RW) \
-  X(dst_width_height,         DST_WIDTH_HEIGHT,        0x1598, RW) \
-  X(dst_bres_err,             DST_BRES_ERR,            0x1628, RW) \
-  X(dst_bres_inc,             DST_BRES_INC,            0x162c, RW) \
-  X(dst_bres_dec,             DST_BRES_DEC,            0x1630, RW) \
+  X(dst_offset,               DST_OFFSET,              0x1404, RW, NULL) \
+  X(dst_pitch,                DST_PITCH,               0x1408, RW, NULL) \
+  X(dst_x,                    DST_X,                   0x141c, RW, NULL) \
+  X(dst_y,                    DST_Y,                   0x1420, RW, NULL) \
+  X(dst_x_y,                  DST_X_Y,                 0x1594, WO, NULL) \
+  X(dst_y_x,                  DST_Y_X,                 0x1438, WO, NULL) \
+  X(dst_width,                DST_WIDTH,               0x140c, RW, NULL) \
+  X(dst_height,               DST_HEIGHT,              0x1410, RW, NULL) \
+  X(dst_width_height,         DST_WIDTH_HEIGHT,        0x1598, RW, NULL) \
+  X(dst_bres_err,             DST_BRES_ERR,            0x1628, RW, NULL) \
+  X(dst_bres_inc,             DST_BRES_INC,            0x162c, RW, NULL) \
+  X(dst_bres_dec,             DST_BRES_DEC,            0x1630, RW, NULL) \
   \
   /* Source Registers */ \
-  X(src_offset,               SRC_OFFSET,              0x15ac, RW) \
-  X(src_pitch,                SRC_PITCH,               0x15b0, RW) \
-  X(src_x,                    SRC_X,                   0x141c, RW) \
-  X(src_y,                    SRC_Y,                   0x1420, RW) \
-  X(src_x_y,                  SRC_X_Y,                 0x1590, WO) \
-  X(src_y_x,                  SRC_Y_X,                 0x1438, WO) \
+  X(src_offset,               SRC_OFFSET,              0x15ac, RW, NULL) \
+  X(src_pitch,                SRC_PITCH,               0x15b0, RW, NULL) \
+  X(src_x,                    SRC_X,                   0x141c, RW, NULL) \
+  X(src_y,                    SRC_Y,                   0x1420, RW, NULL) \
+  X(src_x_y,                  SRC_X_Y,                 0x1590, WO, NULL) \
+  X(src_y_x,                  SRC_Y_X,                 0x1438, WO, NULL) \
   \
   /* Default Registers */ \
-  X(default_offset,           DEFAULT_OFFSET,          0x16e0, RW) \
-  X(default_pitch,            DEFAULT_PITCH,           0x16e4, RW) \
+  X(default_offset,           DEFAULT_OFFSET,          0x16e0, RW, NULL) \
+  X(default_pitch,            DEFAULT_PITCH,           0x16e4, RW, NULL) \
   \
   /* CRTC Registers */ \
-  X(crtc_h_total_disp,        CRTC_H_TOTAL_DISP,       0x0200, RW) \
-  X(crtc_h_sync_strt_wid,     CRTC_H_SYNC_STRT_WID,    0x0204, RW) \
-  X(crtc_v_total_disp,        CRTC_V_TOTAL_DISP,       0x0208, RW) \
-  X(crtc_v_sync_strt_wid,     CRTC_V_SYNC_STRT_WID,    0x020c, RW) \
-  X(crtc_gen_cntl,            CRTC_GEN_CNTL,           0x0050, RW) \
-  X(crtc_ext_cntl,            CRTC_EXT_CNTL,           0x0054, RW) \
-  X(crtc_offset,              CRTC_OFFSET,             0x0224, RW) \
-  X(crtc_offset_cntl,         CRTC_OFFSET_CNTL,        0x0228, RW) \
-  X(crtc_pitch,               CRTC_PITCH,              0x022c, RW) \
+  X(crtc_h_total_disp,        CRTC_H_TOTAL_DISP,       0x0200, RW, NULL) \
+  X(crtc_h_sync_strt_wid,     CRTC_H_SYNC_STRT_WID,    0x0204, RW, NULL) \
+  X(crtc_v_total_disp,        CRTC_V_TOTAL_DISP,       0x0208, RW, NULL) \
+  X(crtc_v_sync_strt_wid,     CRTC_V_SYNC_STRT_WID,    0x020c, RW, NULL) \
+  X(crtc_gen_cntl,            CRTC_GEN_CNTL,           0x0050, RW, NULL) \
+  X(crtc_ext_cntl,            CRTC_EXT_CNTL,           0x0054, RW, NULL) \
+  X(crtc_offset,              CRTC_OFFSET,             0x0224, RW, NULL) \
+  X(crtc_offset_cntl,         CRTC_OFFSET_CNTL,        0x0228, RW, NULL) \
+  X(crtc_pitch,               CRTC_PITCH,              0x022c, RW, NULL) \
   \
   /* Reset & Engine Control Registers */ \
-  X(gen_reset_cntl,           GEN_RESET_CNTL,          0x00f0, RW) \
-  X(pc_ngui_ctlstat,          PC_NGUI_CTLSTAT,         0x0184, RW) \
+  X(gen_reset_cntl,           GEN_RESET_CNTL,          0x00f0, RW, NULL) \
+  X(pc_ngui_ctlstat,          PC_NGUI_CTLSTAT,         0x0184, RW, NULL) \
   \
   /* DAC Registers */ \
-  X(dac_cntl,                 DAC_CNTL,                0x0058, RW) \
+  X(dac_cntl,                 DAC_CNTL,                0x0058, RW, NULL) \
   \
   /* Palette Registers */ \
-  X(palette_index,            PALETTE_INDEX,           0x00b0, RW) \
-  X(palette_data,             PALETTE_DATA,            0x00b4, RW) \
+  X(palette_index,            PALETTE_INDEX,           0x00b0, RW, NULL) \
+  X(palette_data,             PALETTE_DATA,            0x00b4, RW, NULL) \
   \
   /* DDA Registers (Display FIFO Arbitration) */ \
-  X(dda_config,               DDA_CONFIG,              0x02e0, RW) \
-  X(dda_on_off,               DDA_ON_OFF,              0x02e4, RW) \
+  X(dda_config,               DDA_CONFIG,              0x02e0, RW, NULL) \
+  X(dda_on_off,               DDA_ON_OFF,              0x02e4, RW, NULL) \
   \
   /* Overscan Registers */ \
-  X(ovr_clr,                  OVR_CLR,                 0x0230, RW) \
-  X(ovr_wid_left_right,       OVR_WID_LEFT_RIGHT,      0x0234, RW) \
-  X(ovr_wid_top_bottom,       OVR_WID_TOP_BOTTOM,      0x0238, RW) \
+  X(ovr_clr,                  OVR_CLR,                 0x0230, RW, NULL) \
+  X(ovr_wid_left_right,       OVR_WID_LEFT_RIGHT,      0x0234, RW, NULL) \
+  X(ovr_wid_top_bottom,       OVR_WID_TOP_BOTTOM,      0x0238, RW, NULL) \
   \
   /* Interrupt & Control Registers */ \
-  X(gen_int_cntl,             GEN_INT_CNTL,            0x0040, RW) \
+  X(gen_int_cntl,             GEN_INT_CNTL,            0x0040, RW, NULL) \
   \
   /* Overlay & Video Registers */ \
-  X(ov0_scale_cntl,           OV0_SCALE_CNTL,          0x0420, RW) \
+  X(ov0_scale_cntl,           OV0_SCALE_CNTL,          0x0420, RW, NULL) \
   \
   /* Multimedia Port Processor Registers */ \
-  X(mpp_tb_config,            MPP_TB_CONFIG,           0x01c0, RW) \
-  X(mpp_gp_config,            MPP_GP_CONFIG,           0x01c8, RW) \
+  X(mpp_tb_config,            MPP_TB_CONFIG,           0x01c0, RW, NULL) \
+  X(mpp_gp_config,            MPP_GP_CONFIG,           0x01c8, RW, NULL) \
   \
   /* MPEG/DVD Registers */ \
-  X(subpic_cntl,              SUBPIC_CNTL,             0x0540, RW) \
+  X(subpic_cntl,              SUBPIC_CNTL,             0x0540, RW, NULL) \
   \
   /* VIP & I2C Registers */ \
-  X(viph_control,             VIPH_CONTROL,            0x01d0, RW) \
-  X(i2c_cntl_1,               I2C_CNTL_1,              0x0094, RW) \
+  X(viph_control,             VIPH_CONTROL,            0x01d0, RW, NULL) \
+  X(i2c_cntl_1,               I2C_CNTL_1,              0x0094, RW, NULL) \
   \
   /* Capture Registers */ \
-  X(cap0_trig_cntl,           CAP0_TRIG_CNTL,          0x0950, RW) \
-  X(cap1_trig_cntl,           CAP1_TRIG_CNTL,          0x09c0, RW) \
+  X(cap0_trig_cntl,           CAP0_TRIG_CNTL,          0x0950, RW, NULL) \
+  X(cap1_trig_cntl,           CAP1_TRIG_CNTL,          0x09c0, RW, NULL) \
   \
   /* Status Registers */ \
-  X(gui_stat,                 GUI_STAT,                0x1740, RO) \
+  X(gui_stat,                 GUI_STAT,                0x1740, RO, gui_stat_fields) \
   \
   /* Host Data Registers */ \
-  X(host_data0,               HOST_DATA0,              0x17c0, WO) \
-  X(host_data1,               HOST_DATA1,              0x17c4, WO) \
-  X(host_data2,               HOST_DATA2,              0x17c8, WO) \
-  X(host_data3,               HOST_DATA3,              0x17cc, WO) \
-  X(host_data4,               HOST_DATA4,              0x17d0, WO) \
-  X(host_data5,               HOST_DATA5,              0x17d4, WO) \
-  X(host_data6,               HOST_DATA6,              0x17d8, WO) \
-  X(host_data7,               HOST_DATA7,              0x17dc, WO) \
-  X(host_data_last,           HOST_DATA_LAST,          0x17e0, WO) \
+  X(host_data0,               HOST_DATA0,              0x17c0, WO, NULL) \
+  X(host_data1,               HOST_DATA1,              0x17c4, WO, NULL) \
+  X(host_data2,               HOST_DATA2,              0x17c8, WO, NULL) \
+  X(host_data3,               HOST_DATA3,              0x17cc, WO, NULL) \
+  X(host_data4,               HOST_DATA4,              0x17d0, WO, NULL) \
+  X(host_data5,               HOST_DATA5,              0x17d4, WO, NULL) \
+  X(host_data6,               HOST_DATA6,              0x17d8, WO, NULL) \
+  X(host_data7,               HOST_DATA7,              0x17dc, WO, NULL) \
+  X(host_data_last,           HOST_DATA_LAST,          0x17e0, WO, NULL) \
   \
   /* 3D Registers */ \
-  X(scale_3d_cntl,            SCALE_3D_CNTL,           0x1a00, RW) \
+  X(scale_3d_cntl,            SCALE_3D_CNTL,           0x1a00, RW, NULL) \
   \
   /* PM4/CCE Registers */ \
-  X(pm4_buffer_offset,        PM4_BUFFER_OFFSET,       0x0700, RW) \
-  X(pm4_buffer_cntl,          PM4_BUFFER_CNTL,         0x0704, RW) \
-  X(pm4_buffer_wm_cntl,       PM4_BUFFER_WM_CNTL,      0x0708, RW) \
-  X(pm4_buffer_dl_rptr_addr,  PM4_BUFFER_DL_RPTR_ADDR, 0x070c, RW) \
-  X(pm4_buffer_dl_rptr,       PM4_BUFFER_DL_RPTR,      0x0710, RW) \
-  X(pm4_buffer_dl_wptr,       PM4_BUFFER_DL_WPTR,      0x0714, RW) \
-  X(pm4_buffer_dl_wptr_delay, PM4_BUFFER_DL_WPTR_DELAY,0x0718, RW) \
-  X(pm4_buffer_addr,          PM4_BUFFER_ADDR,         0x07f0, RW) \
-  X(pm4_micro_cntl,           PM4_MICRO_CNTL,          0x07fc, RW) \
-  X(pm4_fifo_data_even,       PM4_FIFO_DATA_EVEN,      0x1000, WO) \
-  X(pm4_fifo_data_odd,        PM4_FIFO_DATA_ODD,       0x1004, WO) \
-  X(pm4_microcode_addr,       PM4_MICROCODE_ADDR,      0x07d4, RW) \
-  X(pm4_microcode_raddr,      PM4_MICROCODE_RADDR,     0x07d8, RW) \
-  X(pm4_microcode_datah,      PM4_MICROCODE_DATAH,     0x07dc, RW) \
-  X(pm4_microcode_datal,      PM4_MICROCODE_DATAL,     0x07e0, RW) \
-  X(pm4_stat,                 PM4_STAT,                0x07b8, RO)
+  X(pm4_buffer_offset,        PM4_BUFFER_OFFSET,       0x0700, RW, NULL) \
+  X(pm4_buffer_cntl,          PM4_BUFFER_CNTL,         0x0704, RW, NULL) \
+  X(pm4_buffer_wm_cntl,       PM4_BUFFER_WM_CNTL,      0x0708, RW, NULL) \
+  X(pm4_buffer_dl_rptr_addr,  PM4_BUFFER_DL_RPTR_ADDR, 0x070c, RW, NULL) \
+  X(pm4_buffer_dl_rptr,       PM4_BUFFER_DL_RPTR,      0x0710, RW, NULL) \
+  X(pm4_buffer_dl_wptr,       PM4_BUFFER_DL_WPTR,      0x0714, RW, NULL) \
+  X(pm4_buffer_dl_wptr_delay, PM4_BUFFER_DL_WPTR_DELAY,0x0718, RW, NULL) \
+  X(pm4_buffer_addr,          PM4_BUFFER_ADDR,         0x07f0, RW, NULL) \
+  X(pm4_micro_cntl,           PM4_MICRO_CNTL,          0x07fc, RW, NULL) \
+  X(pm4_fifo_data_even,       PM4_FIFO_DATA_EVEN,      0x1000, WO, NULL) \
+  X(pm4_fifo_data_odd,        PM4_FIFO_DATA_ODD,       0x1004, WO, NULL) \
+  X(pm4_microcode_addr,       PM4_MICROCODE_ADDR,      0x07d4, RW, NULL) \
+  X(pm4_microcode_raddr,      PM4_MICROCODE_RADDR,     0x07d8, RW, NULL) \
+  X(pm4_microcode_datah,      PM4_MICROCODE_DATAH,     0x07dc, RW, NULL) \
+  X(pm4_microcode_datal,      PM4_MICROCODE_DATAL,     0x07e0, RW, NULL) \
+  X(pm4_stat,                 PM4_STAT,                0x07b8, RO, NULL)
 
 // Register offset enum
-#define X(func_name, const_name, offset, mode) const_name = offset,
+#define X(func_name, const_name, offset, mode, fields) const_name = offset,
   enum {
       ATI_REGISTERS
   };
 #undef X
 
 // Read functions
-#define X(func_name, const_name, offset, mode) \
+#define X(func_name, const_name, offset, mode, fields) \
   X_##mode##_READ_DECL(func_name)
 
   #define X_RW_READ_DECL(func_name) \
@@ -231,7 +291,7 @@ void ati_top_cce_engine(ati_device_t *dev);
 #undef X_WO_READ_DECL
 
 // Write functions
-#define X(func_name, const_name, offset, mode) \
+#define X(func_name, const_name, offset, mode, fields) \
   X_##mode##_WRITE_DECL(func_name)
 
   #define X_RW_WRITE_DECL(func_name) \
@@ -410,29 +470,6 @@ enum {
     CRTC_V_SYNC_WID_SHIFT  = 16,
     CRTC_V_SYNC_WID_MASK   = ( 0x1f << 16),
     CRTC_V_SYNC_POL        = (    1 << 23),
-};
-
-// ----------------------------------------------------------------------------
-// GUI_STAT
-// ----------------------------------------------------------------------------
-enum {
-    GUI_FIFO_CNT_SHIFT = 0,
-    GUI_FIFO_CNT_MASK  = (0xfff <<  0),
-    PM4_BUSY           = (    1  << 16),
-    MICRO_BUSY         = (    1  << 17),
-    FPU_BUSY           = (    1  << 18),
-    VC_BUSY            = (    1  << 19),
-    IDCT_BUSY          = (    1  << 20),
-    ENG_EV_BUSY        = (    1  << 21),
-    SETUP_BUSY         = (    1  << 22),
-    EDGEWALK_BUSY      = (    1  << 23),
-    ADDRESSING_BUSY    = (    1  << 24),
-    ENG_3D_BUSY        = (    1  << 25),
-    ENG_2D_SM_BUSY     = (    1  << 26),
-    ENG_2D_BUSY        = (    1  << 27),
-    GUI_WB_BUSY        = (    1  << 28),
-    CACHE_BUSY         = (    1  << 29),
-    GUI_ACTIVE         = (    1u << 31),
 };
 
 // ----------------------------------------------------------------------------
