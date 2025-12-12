@@ -306,7 +306,7 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
     printf("\n");
 }
 
-#define MAX_ARGS 8
+#define MAX_ARGS 32
 
 // Command handlers
 

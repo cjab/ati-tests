@@ -13,8 +13,13 @@ typedef enum {
     CCE_CMD_DUMP,
     CCE_CMD_R,
     CCE_CMD_W,
+    CCE_CMD_PAINT,
     CCE_CMD_UNKNOWN
 } cce_cmd_t;
+
+// Max rectangles for paint command
+#define MAX_PAINT_RECTS 4
+#define MAX_PAINT_DWORDS (4 + MAX_PAINT_RECTS * 2)
 
 // clang-format off
 static const struct {
@@ -31,6 +36,7 @@ static const struct {
     {"dump",   CCE_CMD_DUMP,    NULL,              "dump all 256 instructions"},
     {"r",      CCE_CMD_R,       "<addr> [count]",  "read instruction(s) (0-255)"},
     {"w",      CCE_CMD_W,       "<addr> <h> <l>",  "write instruction"},
+    {"paint",  CCE_CMD_PAINT,   "<x y w h>... <color>", "paint rectangle(s) via CCE"},
     {NULL,     CCE_CMD_UNKNOWN, NULL,              NULL}
 };
 // clang-format on
@@ -219,6 +225,104 @@ cce_write(ati_device_t *dev, int argc, char **args)
     }
 }
 
+// Get DST_DATATYPE from current BPP
+static uint32_t
+get_dst_datatype(ati_device_t *dev)
+{
+    uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
+    uint32_t pix_width =
+        (crtc_gen_cntl & CRTC_PIX_WIDTH_MASK) >> CRTC_PIX_WIDTH_SHIFT;
+
+    switch (pix_width) {
+    case CRTC_PIX_WIDTH_8BPP:
+        return DST_PSEUDO_COLOR_8;
+    case CRTC_PIX_WIDTH_15BPP:
+        return DST_ARGB_1555;
+    case CRTC_PIX_WIDTH_16BPP:
+        return DST_RGB_565;
+    case CRTC_PIX_WIDTH_24BPP:
+        return DST_RGB_888;
+    case CRTC_PIX_WIDTH_32BPP:
+    default:
+        return DST_ARGB_8888;
+    }
+}
+
+// Paint one or more rectangles via CCE PAINT_MULTI packet
+static void
+cce_paint(ati_device_t *dev, int argc, char **args)
+{
+    // Format: cce paint <x> <y> <w> <h> [x y w h]... <color>
+    // Need at least: cce paint x y w h color = 7 args
+    int rect_args = argc - 3;
+
+    if (argc < 7 || rect_args % 4 != 0) {
+        printf("Usage: cce paint <x> <y> <w> <h> [x y w h]... <color>\n");
+        return;
+    }
+
+    int num_rects = rect_args / 4;
+    if (num_rects > MAX_PAINT_RECTS) {
+        printf("Too many rectangles (max %d)\n", MAX_PAINT_RECTS);
+        return;
+    }
+
+    uint32_t color;
+    if (parse_int(args[argc - 1], &color) != 0) {
+        printf("Invalid color: %s\n", args[argc - 1]);
+        return;
+    }
+
+    // Parse rectangles
+    uint32_t rects[MAX_PAINT_RECTS][4];
+    for (int i = 0; i < num_rects; i++) {
+        int base = 2 + i * 4;
+        if (parse_int(args[base], &rects[i][0]) != 0 ||
+            parse_int(args[base + 1], &rects[i][1]) != 0 ||
+            parse_int(args[base + 2], &rects[i][2]) != 0 ||
+            parse_int(args[base + 3], &rects[i][3]) != 0) {
+            printf("Invalid rectangle %d\n", i + 1);
+            return;
+        }
+    }
+
+    // Get current display settings
+    uint32_t dst_datatype = get_dst_datatype(dev);
+    uint32_t pitch = rd_default_pitch(dev);
+    uint32_t offset = rd_default_offset(dev);
+
+    // Build GMC value
+    uint32_t gmc = GMC_DST_PITCH_OFFSET_CNTL |
+                   (BRUSH_SOLIDCOLOR << GMC_BRUSH_DATATYPE_SHIFT) |
+                   (dst_datatype << GMC_DST_DATATYPE_SHIFT) |
+                   (SRC_DST_COLOR << GMC_SRC_DATATYPE_SHIFT) |
+                   (0xF0 << GMC_ROP3_SHIFT) |
+                   GMC_CLR_CMP_CNTL_DIS |
+                   GMC_AUX_CLIP_DIS;
+
+    uint32_t pitch_offset = (pitch << 21) | (offset >> 5);
+
+    // Build PAINT_MULTI packet
+    uint32_t body_dwords = 3 + num_rects * 2;
+    static uint32_t packets[MAX_PAINT_DWORDS];
+    int idx = 0;
+
+    packets[idx++] = CCE_PKT3(CCE_CNTL_PAINT_MULTI, body_dwords - 1);
+    packets[idx++] = gmc;
+    packets[idx++] = pitch_offset;
+    packets[idx++] = color;
+
+    for (int i = 0; i < num_rects; i++) {
+        packets[idx++] = (rects[i][0] << 16) | rects[i][1];
+        packets[idx++] = (rects[i][2] << 16) | rects[i][3];
+    }
+
+    ati_cce_pio_submit(dev, packets, idx);
+    ati_wait_for_idle(dev);
+
+    printf("Painted %d rectangle(s) with color 0x%06x\n", num_rects, color);
+}
+
 // Public functions
 
 void
@@ -268,6 +372,9 @@ cmd_cce(ati_device_t *dev, int argc, char **args)
         break;
     case CCE_CMD_W:
         cce_write(dev, argc, args);
+        break;
+    case CCE_CMD_PAINT:
+        cce_paint(dev, argc, args);
         break;
     case CCE_CMD_UNKNOWN:
         printf("Unknown cce command: %s\n", args[1]);

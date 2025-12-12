@@ -21,11 +21,11 @@
 .ascii "Xen\0"            /* name */
 .long _start               /* entry point address */
 
-/* Reserve stack space (64KB should be good?) */
+/* Reserve stack space */
 .section .bss
 .align 16
 stack_bottom:
-.skip 16384  /* 64KB stack */
+.skip 65536  /* 64KB stack */
 stack_top:
 
 /* The actual entry point */

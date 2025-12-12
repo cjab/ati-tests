@@ -20,6 +20,11 @@ enum {
 #define CCE_PKT2() (CCE_PACKET2)
 #define CCE_PKT3(opcode, n) (CCE_PACKET3 | (opcode) | ((n) << 16))
 
+// Type-3 packet opcodes
+enum {
+    CCE_CNTL_PAINT_MULTI = 0x9A00,
+};
+
 // CCE engine functions
 void ati_init_cce_engine(ati_device_t *dev);
 void ati_stop_cce_engine(ati_device_t *dev);

@@ -579,7 +579,10 @@ enum {
 // PM4_STAT
 // ----------------------------------------------------------------------------
 enum {
-    PM4_FIFOCNT_MASK = 0x0fff,
+    PM4_FIFOCNT_SHIFT = 0,
+    PM4_FIFOCNT_MASK  = (0x0fff <<  0),
+    // PM4_BUSY = Also defined by GUI_STAT (bit 16)
+    // GUI_ACTIVE = Also defined by GUI_STAT (bit 31)
 };
 
 // ----------------------------------------------------------------------------

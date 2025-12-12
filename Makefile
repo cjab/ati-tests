@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra
+CFLAGS = -std=c99 -Wall -Wextra -O1
 PLATFORM ?= linux
 
 # Auto-clean when platform changes
