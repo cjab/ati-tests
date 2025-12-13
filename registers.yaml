@@ -868,7 +868,7 @@ registers:
     group: gui_source
 
   SRC_Y_X:
-    offset: 0x1438
+    offset: 0x1434
     mode: wo
     group: gui_source
 

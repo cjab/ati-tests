@@ -679,7 +679,7 @@ enum {
     SRC_X = 0x141c,
     SRC_Y = 0x1420,
     SRC_X_Y = 0x1590,
-    SRC_Y_X = 0x1438,
+    SRC_Y_X = 0x1434,
     DEFAULT_OFFSET = 0x16e0,
     DEFAULT_PITCH = 0x16e4,
     HOST_DATA0 = 0x17c0,
@@ -789,7 +789,7 @@ enum {
   X(src_x, SRC_X, 0x141c, RW, NULL) \
   X(src_y, SRC_Y, 0x1420, RW, NULL) \
   X(src_x_y, SRC_X_Y, 0x1590, WO, NULL) \
-  X(src_y_x, SRC_Y_X, 0x1438, WO, NULL) \
+  X(src_y_x, SRC_Y_X, 0x1434, WO, NULL) \
   X(default_offset, DEFAULT_OFFSET, 0x16e0, RW, default_offset_fields) \
   X(default_pitch, DEFAULT_PITCH, 0x16e4, RW, default_pitch_fields) \
   X(host_data0, HOST_DATA0, 0x17c0, WO, NULL) \
