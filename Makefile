@@ -32,7 +32,16 @@ COMMON_SRCS = main.c ati.c cce.c cce_cmd.c repl.c $(wildcard tests/*.c)
 SRCS = $(COMMON_SRCS) $(PLATFORM_SRC)
 OBJS = $(filter %.o,$(SRCS:.c=.o) $(SRCS:.S=.o)) $(FIXTURE_OBJS) $(FIXTURE_REGISTRY)
 
-all: $(TARGET)
+# Generated register definitions
+REGS_YAML = registers.yaml
+REGS_GEN = bin/generate_registers
+REGS_HDR = ati_regs_gen.h
+
+all: $(REGS_HDR) $(TARGET)
+
+# Regenerate register header from YAML
+$(REGS_HDR): $(REGS_YAML) $(REGS_GEN)
+	$(REGS_GEN) -o $(REGS_HDR)
 
 $(TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
@@ -76,10 +85,13 @@ endif
 
 clean:
 	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests boot.o platform/*/*.o fixtures/*.o fixtures/fixtures_registry.c ati_tests.iso .platform
-	rm -rf iso
+
+# Regenerate register header
+regen:
+	$(REGS_GEN) -o $(REGS_HDR)
 
 compile_commands.json:
 	bear -- $(MAKE) clean
 	bear -- $(MAKE)
 
-.PHONY: all clean iso
+.PHONY: all clean regen iso

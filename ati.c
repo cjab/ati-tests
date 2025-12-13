@@ -361,7 +361,7 @@ ati_set_display_mode(ati_device_t *dev)
     wr_crtc_gen_cntl(dev, (crtc_gen_cntl & ~CRTC_PIX_WIDTH_MASK & ~CRTC_CUR_EN &
                            ~CRTC_C_SYNC_EN) |
                               CRTC_EXT_DISP_EN | CRTC_EN |
-                              (CRTC_PIX_WIDTH_32BPP << CRTC_PIX_WIDTH_SHIFT));
+                              CRTC_PIX_WIDTH_32BPP);
 
     // VESA 640x480@60Hz standard timings
     // Horizontal: 640 visible + 16 front porch + 96 sync + 48 back porch = 800
@@ -459,12 +459,12 @@ ati_init_gui_engine(ati_device_t *dev)
 
     // Set GUI master control
     wr_dp_gui_master_cntl(
-        dev, 0x0 | (BRUSH_SOLIDCOLOR << GMC_BRUSH_DATATYPE_SHIFT) |
-                 (ati_get_dst_datatype(BPP) << GMC_DST_DATATYPE_SHIFT) |
-                 (SRC_DST_COLOR << GMC_SRC_DATATYPE_SHIFT) |
+        dev, GMC_BRUSH_DATATYPE_SOLIDCOLOR |
+                 ati_get_dst_datatype(BPP) |
+                 GMC_SRC_DATATYPE_DST_COLOR |
                  GMC_BYTE_PIX_ORDER | // LSB to MSB
-                 (ROP3_SRCCOPY << GMC_ROP3_SHIFT) |
-                 (SOURCE_MEMORY << GMC_SRC_SOURCE_SHIFT) |
+                 GMC_ROP3_SRCCOPY |
+                 GMC_SRC_SOURCE_MEMORY |
                  GMC_CLR_CMP_CNTL_DIS | GMC_AUX_CLIP_DIS | GMC_WR_MSK_DIS);
 
     // Clear the line drawing registers

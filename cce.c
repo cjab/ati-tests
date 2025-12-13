@@ -80,8 +80,7 @@ ati_init_cce_engine(ati_device_t *dev)
     }
 
     // Set to PIO-based CCE mode with 192 entries
-    wr_pm4_buffer_cntl(dev, (PM4_192PIO << PM4_BUFFER_MODE_SHIFT) |
-                                PM4_BUFFER_CNTL_NOUPDATE);
+    wr_pm4_buffer_cntl(dev, PM4_BUFFER_MODE_192PIO | PM4_BUFFER_CNTL_NOUPDATE);
 
     // Read as per sample code (may be required for mode change to take effect)
     (void) rd_pm4_buffer_addr(dev);
@@ -99,7 +98,7 @@ ati_stop_cce_engine(ati_device_t *dev)
     wr_pm4_micro_cntl(dev, 0);
     ati_engine_reset(dev);
     // Set back to non-PM4 (standard PIO) mode
-    wr_pm4_buffer_cntl(dev, PM4_NONPM4 << PM4_BUFFER_MODE_SHIFT);
+    wr_pm4_buffer_cntl(dev, PM4_BUFFER_MODE_NONPM4);
 }
 
 static void

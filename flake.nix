@@ -17,6 +17,7 @@
             # build
             pkgs.gcc
             pkgs.gnumake
+            pkgs.ruby
             # real hardware
             pkgs.pciutils
             # dev tools

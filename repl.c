@@ -331,8 +331,7 @@ static uint32_t
 get_bytes_per_pixel(ati_device_t *dev)
 {
     uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
-    uint32_t pix_width =
-        (crtc_gen_cntl & CRTC_PIX_WIDTH_MASK) >> CRTC_PIX_WIDTH_SHIFT;
+    uint32_t pix_width = crtc_gen_cntl & CRTC_PIX_WIDTH_MASK;
 
     switch (pix_width) {
     case CRTC_PIX_WIDTH_8BPP:
@@ -354,8 +353,7 @@ static void
 print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
 {
     uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
-    uint32_t pix_width =
-        (crtc_gen_cntl & CRTC_PIX_WIDTH_MASK) >> CRTC_PIX_WIDTH_SHIFT;
+    uint32_t pix_width = crtc_gen_cntl & CRTC_PIX_WIDTH_MASK;
     uint32_t bpp = get_bytes_per_pixel(dev);
     uint32_t byte_offset = pixel_idx * bpp;
     uint32_t val = ati_vram_read(dev, byte_offset & ~3); // Align to dword

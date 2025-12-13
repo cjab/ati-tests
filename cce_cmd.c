@@ -135,9 +135,7 @@ cce_stop(ati_device_t *dev)
 static void
 cce_mode(ati_device_t *dev)
 {
-    wr_pm4_buffer_cntl(dev,
-                       (PM4_192PIO << PM4_BUFFER_MODE_SHIFT) |
-                           PM4_BUFFER_CNTL_NOUPDATE);
+    wr_pm4_buffer_cntl(dev, PM4_BUFFER_MODE_192PIO | PM4_BUFFER_CNTL_NOUPDATE);
     (void) rd_pm4_buffer_addr(dev);
     printf("PM4 PIO mode set\n");
 }
@@ -225,26 +223,25 @@ cce_write(ati_device_t *dev, int argc, char **args)
     }
 }
 
-// Get DST_DATATYPE from current BPP
+// Get pre-shifted GMC_DST_DATATYPE from current display mode
 static uint32_t
 get_dst_datatype(ati_device_t *dev)
 {
     uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
-    uint32_t pix_width =
-        (crtc_gen_cntl & CRTC_PIX_WIDTH_MASK) >> CRTC_PIX_WIDTH_SHIFT;
+    uint32_t pix_width = crtc_gen_cntl & CRTC_PIX_WIDTH_MASK;
 
     switch (pix_width) {
     case CRTC_PIX_WIDTH_8BPP:
-        return DST_PSEUDO_COLOR_8;
+        return GMC_DST_DATATYPE_PSEUDO_COLOR_8;
     case CRTC_PIX_WIDTH_15BPP:
-        return DST_ARGB_1555;
+        return GMC_DST_DATATYPE_ARGB_1555;
     case CRTC_PIX_WIDTH_16BPP:
-        return DST_RGB_565;
+        return GMC_DST_DATATYPE_RGB_565;
     case CRTC_PIX_WIDTH_24BPP:
-        return DST_RGB_888;
+        return GMC_DST_DATATYPE_RGB_888;
     case CRTC_PIX_WIDTH_32BPP:
     default:
-        return DST_ARGB_8888;
+        return GMC_DST_DATATYPE_ARGB_8888;
     }
 }
 
@@ -291,11 +288,11 @@ cce_paint(ati_device_t *dev, int argc, char **args)
     uint32_t pitch = rd_default_pitch(dev);
     uint32_t offset = rd_default_offset(dev);
 
-    // Build GMC value
+    // Build GMC value (dst_datatype is already pre-shifted)
     uint32_t gmc = GMC_DST_PITCH_OFFSET_CNTL |
-                   (BRUSH_SOLIDCOLOR << GMC_BRUSH_DATATYPE_SHIFT) |
-                   (dst_datatype << GMC_DST_DATATYPE_SHIFT) |
-                   (SRC_DST_COLOR << GMC_SRC_DATATYPE_SHIFT) |
+                   GMC_BRUSH_DATATYPE_SOLIDCOLOR |
+                   dst_datatype |
+                   GMC_SRC_DATATYPE_DST_COLOR |
                    (0xF0 << GMC_ROP3_SHIFT) |
                    GMC_CLR_CMP_CNTL_DIS |
                    GMC_AUX_CLIP_DIS;
