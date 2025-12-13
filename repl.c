@@ -197,9 +197,24 @@ find_next_field_start(const field_entry_t *fields, uint8_t after_bit)
     return next;
 }
 
+// Look up a value name in the field's value table
+static const char *
+lookup_value_name(const field_value_t *values, uint32_t val)
+{
+    if (!values)
+        return NULL;
+    for (const field_value_t *v = values; v->name != NULL; v++) {
+        if (v->value == val)
+            return v->name;
+    }
+    return NULL;
+}
+
 // Print a single field (known or unknown)
+// For unknown fields, pass NULL for values
 static void
-print_field(const char *name, uint8_t shift, uint8_t width, uint32_t val)
+print_field(const char *name, uint8_t shift, uint8_t width,
+            const field_value_t *values, uint32_t val)
 {
     uint32_t mask = ((1u << width) - 1);
     uint32_t field_val = (val >> shift) & mask;
@@ -213,13 +228,22 @@ print_field(const char *name, uint8_t shift, uint8_t width, uint32_t val)
             printf("  \x1b[90m%-25s [%5d]   = 0\x1b[0m\n", name, shift);
     } else {
         // Multi-bit: [11:0]
-        if (field_val)
-            printf("  \x1b[36m%-25s\x1b[0m [%2d:%-2d]   = \x1b[33m%-5u\x1b[0m "
-                   "(0x%x)\n",
-                   name, shift + width - 1, shift, field_val, field_val);
-        else
+        const char *value_name = lookup_value_name(values, field_val);
+        if (field_val) {
+            if (value_name) {
+                printf("  \x1b[36m%-25s\x1b[0m [%2d:%-2d]   = \x1b[33m%-5u\x1b[0m "
+                       "(0x%x) \x1b[32m%s\x1b[0m\n",
+                       name, shift + width - 1, shift, field_val, field_val,
+                       value_name);
+            } else {
+                printf("  \x1b[36m%-25s\x1b[0m [%2d:%-2d]   = \x1b[33m%-5u\x1b[0m "
+                       "(0x%x)\n",
+                       name, shift + width - 1, shift, field_val, field_val);
+            }
+        } else {
             printf("  \x1b[90m%-25s [%2d:%-2d]   = 0\x1b[0m\n", name,
                    shift + width - 1, shift);
+        }
     }
 }
 
@@ -236,14 +260,14 @@ print_reg_expanded(const reg_entry_t *reg, uint32_t val)
 
         if (f) {
             // Known field
-            print_field(f->name, f->shift, f->width, val);
+            print_field(f->name, f->shift, f->width, f->values, val);
             bit += f->width;
         } else {
             // Unknown gap - find where next known field starts
             uint8_t next_start = find_next_field_start(reg->fields, bit);
             uint8_t gap_width = next_start - bit;
 
-            print_field("(unknown)", bit, gap_width, val);
+            print_field("(unknown)", bit, gap_width, NULL, val);
             bit = next_start;
         }
     }
