@@ -216,7 +216,7 @@ static void
 print_field(const char *name, uint8_t shift, uint8_t width,
             const field_value_t *values, uint32_t val)
 {
-    uint32_t mask = ((1u << width) - 1);
+    uint32_t mask = (width >= 32) ? 0xFFFFFFFF : ((1u << width) - 1);
     uint32_t field_val = (val >> shift) & mask;
 
     if (width == 1) {
