@@ -164,6 +164,21 @@ print_reg(uint32_t addr, uint32_t val, char separator)
 }
 
 static void
+print_reg_mismatch(uint32_t addr, uint32_t wrote, uint32_t got)
+{
+    const char *name = lookup_reg_name(addr);
+    if (name) {
+        printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m = "
+               "\x1b[33m0x%08x\x1b[0m \xe2\x89\xa0 \x1b[31m0x%08x\x1b[0m\n",
+               name, addr, wrote, got);
+    } else {
+        printf("\x1b[90m0x%04x\x1b[0m = "
+               "\x1b[33m0x%08x\x1b[0m \xe2\x89\xa0 \x1b[31m0x%08x\x1b[0m\n",
+               addr, wrote, got);
+    }
+}
+
+static void
 print_mem(uint32_t addr, uint32_t val, char separator)
 {
     printf("\x1b[90m0x%08x\x1b[0m %c \x1b[33m0x%08x\x1b[0m\n", addr, separator,
@@ -534,7 +549,11 @@ cmd_reg_write(ati_device_t *dev, int argc, char **args)
     }
 
     ati_reg_write(dev, addr, val);
-    print_reg(addr, val, '=');
+    uint32_t readback = ati_reg_read(dev, addr);
+    if (readback != val)
+        print_reg_mismatch(addr, val, readback);
+    else
+        print_reg(addr, readback, '=');
 }
 
 static void
