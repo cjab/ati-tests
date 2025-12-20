@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra -O1
-PLATFORM ?= linux
+PLATFORM ?= baremetal
 
 # Auto-clean when platform changes
 -include .platform
