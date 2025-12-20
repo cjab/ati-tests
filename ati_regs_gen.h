@@ -184,6 +184,12 @@ enum {
     PM4_MICRO_FREERUN = (1u << 30),
 };
 
+// PM4_MICROCODE_ADDR fields
+enum {
+    PM4_MICROCODE_ADDR_SHIFT = 0,
+    PM4_MICROCODE_ADDR_MASK = 0xffu,
+};
+
 // PM4_STAT fields
 enum {
     PM4_FIFOCNT_SHIFT = 0,
@@ -512,6 +518,11 @@ static const field_entry_t pm4_micro_cntl_fields[] = {
     {NULL, 0, 0, NULL}
 };
 
+static const field_entry_t pm4_microcode_addr_fields[] = {
+    {"PM4_MICROCODE_ADDR", 0, 8, NULL},
+    {NULL, 0, 0, NULL}
+};
+
 static const field_entry_t pm4_stat_fields[] = {
     {"PM4_FIFOCNT", 0, 12, NULL},
     {NULL, 0, 0, NULL}
@@ -740,7 +751,7 @@ enum {
   X(pm4_micro_cntl, PM4_MICRO_CNTL, 0x7fc, RW, pm4_micro_cntl_fields) \
   X(pm4_fifo_data_even, PM4_FIFO_DATA_EVEN, 0x1000, WO, NULL) \
   X(pm4_fifo_data_odd, PM4_FIFO_DATA_ODD, 0x1004, WO, NULL) \
-  X(pm4_microcode_addr, PM4_MICROCODE_ADDR, 0x7d4, RW, NULL) \
+  X(pm4_microcode_addr, PM4_MICROCODE_ADDR, 0x7d4, RW, pm4_microcode_addr_fields) \
   X(pm4_microcode_raddr, PM4_MICROCODE_RADDR, 0x7d8, RW, NULL) \
   X(pm4_microcode_datah, PM4_MICROCODE_DATAH, 0x7dc, RW, NULL) \
   X(pm4_microcode_datal, PM4_MICROCODE_DATAL, 0x7e0, RW, NULL) \

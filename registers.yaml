@@ -479,6 +479,9 @@ registers:
     offset: 0x07d4
     mode: rw
     group: misc
+    fields:
+      PM4_MICROCODE_ADDR:
+        bits: [0, 7]
 
   PM4_MICROCODE_RADDR:
     offset: 0x07d8
