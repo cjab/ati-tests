@@ -28,6 +28,9 @@
             pkgs.mtools
             pkgs.grub2
           ];
+
+          hardeningDisable = [ "all" ];
+
           shellHook = ''
             export PATH="$PWD/bin:$PATH"
           '';
