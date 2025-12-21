@@ -791,7 +791,7 @@ enum {
   X(pm4_fifo_data_even, PM4_FIFO_DATA_EVEN, 0x1000, WO, NULL, NULL) \
   X(pm4_fifo_data_odd, PM4_FIFO_DATA_ODD, 0x1004, WO, NULL, NULL) \
   X(pm4_microcode_addr, PM4_MICROCODE_ADDR, 0x7d4, RW, pm4_microcode_addr_fields, NULL) \
-  X(pm4_microcode_raddr, PM4_MICROCODE_RADDR, 0x7d8, RW, NULL, NULL) \
+  X(pm4_microcode_raddr, PM4_MICROCODE_RADDR, 0x7d8, WO, NULL, NULL) \
   X(pm4_microcode_datah, PM4_MICROCODE_DATAH, 0x7dc, RW, NULL, NULL) \
   X(pm4_microcode_datal, PM4_MICROCODE_DATAL, 0x7e0, RW, NULL, NULL) \
   X(pm4_stat, PM4_STAT, 0x7b8, RO, pm4_stat_fields, NULL) \

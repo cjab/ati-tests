@@ -514,8 +514,15 @@ registers:
 
   PM4_MICROCODE_RADDR:
     offset: 0x07d8
-    mode: rw
+    mode: wo
     group: misc
+    description: |
+      Read address register for microcode. Write-only (reads return 0). Use this
+      to set the address before reading via DATAH/DATAL. Using ADDR instead of
+      RADDR before a read corrupts the first instruction read. Writes to RADDR
+      also update ADDR (they share the underlying pointer), but RADDR sets a
+      "read mode" flag that ADDR does not. Defined in headers but never
+      used in driver code.
 
   PM4_MICROCODE_DATAH:
     offset: 0x07dc

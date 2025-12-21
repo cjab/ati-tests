@@ -151,8 +151,8 @@ cce_reload(ati_device_t *dev)
 static void
 cce_dump(ati_device_t *dev)
 {
+    wr_pm4_microcode_raddr(dev, 0);
     for (uint32_t addr = 0; addr < 256; addr++) {
-        wr_pm4_microcode_raddr(dev, addr);
         uint32_t high = rd_pm4_microcode_datah(dev);
         uint32_t low = rd_pm4_microcode_datal(dev);
         print_instruction(addr, high, low);
@@ -176,8 +176,8 @@ cce_read(ati_device_t *dev, int argc, char **args)
     if (addr + count > 256)
         count = 256 - addr;
 
+    wr_pm4_microcode_raddr(dev, addr);
     for (uint32_t i = 0; i < count; i++) {
-        wr_pm4_microcode_raddr(dev, addr + i);
         uint32_t high = rd_pm4_microcode_datah(dev);
         uint32_t low = rd_pm4_microcode_datal(dev);
         print_instruction(addr + i, high, low);
