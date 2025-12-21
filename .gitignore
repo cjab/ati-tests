@@ -1,6 +1,7 @@
 .direnv
 .cache
 *.o
+*.d
 run-tests
 *.elf
 *.iso

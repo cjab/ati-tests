@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O1
+CFLAGS = -std=c99 -Wall -Wextra -O1 -MMD -MP
 PLATFORM ?= baremetal
 
 # Auto-clean when platform changes
@@ -52,6 +52,9 @@ $(TARGET): $(OBJS)
 %.o: %.S
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# Include auto-generated dependency files (if they exist)
+-include $(OBJS:.o=.d)
+
 # Bootable ISO target (baremetal only, requires grub-mkrescue, xorriso)
 ifeq ($(PLATFORM),baremetal)
 iso: $(TARGET)
@@ -85,6 +88,7 @@ endif
 
 clean:
 	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests boot.o platform/*/*.o fixtures/*.o fixtures/fixtures_registry.c ati_tests.iso .platform
+	rm -f *.d tests/*.d platform/*/*.d
 
 # Regenerate register header
 regen:
