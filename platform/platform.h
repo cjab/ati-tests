@@ -36,6 +36,9 @@ void platform_pci_unmap_bar(platform_pci_device_t *dev, void *addr,
                             int bar_idx);
 size_t platform_pci_get_bar_size(platform_pci_device_t *dev, int bar_idx);
 
+/* Timing */
+void udelay(unsigned int us);
+
 /* Fixture access - abstracted from filesystem */
 const uint8_t *platform_get_fixture(const char *name, size_t *size_out);
 void platform_free_fixture(const uint8_t *data);

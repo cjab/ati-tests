@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <unistd.h>
 
 #include "../platform.h"
 
@@ -202,6 +203,12 @@ platform_reboot(void)
 {
     // On Linux, just exit cleanly
     exit(0);
+}
+
+void
+udelay(unsigned int us)
+{
+    usleep(us);
 }
 
 

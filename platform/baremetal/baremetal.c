@@ -502,4 +502,18 @@ platform_destroy(platform_t *platform)
     }
 }
 
+// Rough estimate for busy-loop timing
+#define LOOPS_PER_US 100
+
+void
+udelay(unsigned int us)
+{
+    volatile unsigned int i;
+    while (us--) {
+        for (i = 0; i < LOOPS_PER_US; i++) {
+            __asm__ volatile("nop");
+        }
+    }
+}
+
 
