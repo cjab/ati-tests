@@ -1,5 +1,7 @@
 #include "cce.h"
 
+#define CCE_WAIT_TIMEOUT 10000000
+
 /* CCE microcode (from ATI) */
 static uint32_t r128_cce_microcode[] = {
     0,  276838400,   0,  268449792,  2,  142,         2,  145,
@@ -133,4 +135,43 @@ ati_cce_load_microcode(ati_device_t *dev)
         wr_pm4_microcode_datah(dev, r128_cce_microcode[i * 2]);
         wr_pm4_microcode_datal(dev, r128_cce_microcode[i * 2 + 1]);
     }
+}
+
+int
+ati_cce_wait_for_idle(ati_device_t *dev)
+{
+
+    for (int i = 0; i < CCE_WAIT_TIMEOUT; i++) {
+        uint32_t pm4_stat = rd_pm4_stat(dev);
+        uint32_t fifocnt = pm4_stat & PM4_FIFOCNT_MASK;
+        bool busy = pm4_stat & (PM4_BUSY | GUI_ACTIVE);
+        bool fifo_empty = fifocnt >= 192;
+        printf("busy: %d, fifo_empty: %d\n", busy, fifo_empty);
+        if (fifo_empty && !busy) {
+            printf("FLUSHING PIXCACHE\n");
+            ati_flush_pixcache(dev);
+            return 0;
+        }
+    }
+    printf("Failed to wait for cce idle\n");
+    return 1;
+}
+
+int
+ati_flush_pixcache(ati_device_t *dev)
+{
+    uint32_t tmp = rd_pc_ngui_ctlstat(dev) | PC_FLUSH_ALL_MASK;
+    printf("flushing... tmp: %x\n", tmp);
+    wr_pc_ngui_ctlstat(dev, tmp);
+
+    for (int i = 0; i < CCE_WAIT_TIMEOUT; i++) {
+        if (!(rd_pc_ngui_ctlstat(dev) & PC_BUSY)) {
+            printf("not busy\n");
+            return 0;
+        }
+        printf("busy\n");
+        udelay(1);
+    }
+    printf("Failed to flush pixcache\n");
+    return 1;
 }
