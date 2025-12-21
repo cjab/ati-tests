@@ -43,6 +43,11 @@ test_pm4_microcode(ati_device_t *dev)
     /* Microcode reads */
     // Set read addr
     wr_pm4_microcode_raddr(dev, 200);
+    // Which actually writes through to the write addr
+    // but must set some sort of internal flag saying this
+    // is a read. Setting the write addr directly before reading
+    // breaks things.
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 200);
     ASSERT_EQ(rd_pm4_microcode_datah(dev), 0x0000000f);
     ASSERT_EQ(rd_pm4_microcode_datal(dev), 0xcafec0de);
     // datah is masked to 0x1f
@@ -50,7 +55,7 @@ test_pm4_microcode(ati_device_t *dev)
     ASSERT_EQ(rd_pm4_microcode_datal(dev), 0xffffffff);
     // Read address _always_ returns 0
     ASSERT_EQ(rd_pm4_microcode_raddr(dev), 0);
-    // However, write addr auto-incremented, this is shared by reads
+    // Write addr auto-incremented by reads
     ASSERT_EQ(rd_pm4_microcode_addr(dev), 202);
 
     return true;
