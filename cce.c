@@ -146,9 +146,7 @@ ati_cce_wait_for_idle(ati_device_t *dev)
         uint32_t fifocnt = pm4_stat & PM4_FIFOCNT_MASK;
         bool busy = pm4_stat & (PM4_BUSY | GUI_ACTIVE);
         bool fifo_empty = fifocnt >= 192;
-        printf("busy: %d, fifo_empty: %d\n", busy, fifo_empty);
         if (fifo_empty && !busy) {
-            printf("FLUSHING PIXCACHE\n");
             ati_flush_pixcache(dev);
             return 0;
         }
@@ -161,15 +159,12 @@ int
 ati_flush_pixcache(ati_device_t *dev)
 {
     uint32_t tmp = rd_pc_ngui_ctlstat(dev) | PC_FLUSH_ALL_MASK;
-    printf("flushing... tmp: %x\n", tmp);
     wr_pc_ngui_ctlstat(dev, tmp);
 
     for (int i = 0; i < CCE_WAIT_TIMEOUT; i++) {
         if (!(rd_pc_ngui_ctlstat(dev) & PC_BUSY)) {
-            printf("not busy\n");
             return 0;
         }
-        printf("busy\n");
         udelay(1);
     }
     printf("Failed to flush pixcache\n");
