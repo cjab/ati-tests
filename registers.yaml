@@ -514,7 +514,7 @@ registers:
 
   PM4_MICROCODE_RADDR:
     offset: 0x07d8
-    mode: wo
+    mode: rw
     group: misc
     description: |
       Read address register for microcode. Write-only (reads return 0). Use this

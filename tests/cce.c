@@ -25,8 +25,40 @@ test_cce(ati_device_t *dev)
     return true;
 }
 
+bool
+test_pm4_microcode(ati_device_t *dev)
+{
+    /* Microcode writes */
+    // Set write addr start
+    wr_pm4_microcode_addr(dev, 200);
+    wr_pm4_microcode_datah(dev, 0xdeadbeef);
+    wr_pm4_microcode_datal(dev, 0xcafec0de);
+    wr_pm4_microcode_datah(dev, 0xffffffff);
+    wr_pm4_microcode_datal(dev, 0xffffffff);
+    // Write addr auto-incremented
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 202);
+
+    ati_cce_wait_for_idle(dev);
+
+    /* Microcode reads */
+    // Set read addr
+    wr_pm4_microcode_raddr(dev, 200);
+    ASSERT_EQ(rd_pm4_microcode_datah(dev), 0x0000000f);
+    ASSERT_EQ(rd_pm4_microcode_datal(dev), 0xcafec0de);
+    // datah is masked to 0x1f
+    ASSERT_EQ(rd_pm4_microcode_datah(dev), 0x0000001f);
+    ASSERT_EQ(rd_pm4_microcode_datal(dev), 0xffffffff);
+    // Read address _always_ returns 0
+    ASSERT_EQ(rd_pm4_microcode_raddr(dev), 0);
+    // However, write addr auto-incremented, this is shared by reads
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 202);
+
+    return true;
+}
+
 void
 register_cce_tests(void)
 {
     REGISTER_TEST(test_cce, "cce");
+    REGISTER_TEST(test_pm4_microcode, "pm4 microcode");
 }
