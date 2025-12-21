@@ -33,35 +33,56 @@ def field_shift(field)
   field['bit'] || field['bits'][0]
 end
 
-def generate_field_enums(reg_name, fields)
-  return '' if fields.nil? || fields.empty?
+def generate_field_enums(reg_name, fields, aliases = nil)
+  return '' if (fields.nil? || fields.empty?) && (aliases.nil? || aliases.empty?)
 
   lines = []
-  fields.each do |field_name, field|
-    shift = field_shift(field)
-    width = field_width(field)
 
-    if width == 1
-      # Single bit flag: NAME = (1u << bit)
-      lines << "    #{field_name} = (1u << #{shift}),"
-    else
-      # Multi-bit field: NAME_SHIFT and NAME_MASK
-      mask = ((1 << width) - 1) << shift
-      lines << "    #{field_name}_SHIFT = #{shift},"
-      lines << "    #{field_name}_MASK = 0x#{mask.to_s(16)}u,"
-    end
+  # Generate field constants
+  unless fields.nil? || fields.empty?
+    fields.each do |field_name, field|
+      shift = field_shift(field)
+      width = field_width(field)
 
-    # Generate named values if present (pre-shifted, ready to OR)
-    if field['values']
-      field['values'].each do |value_name, value|
-        # Prefix with field name to avoid collisions
-        const_name = "#{field_name}_#{value_name}"
-        shifted_value = value << shift
-        if shifted_value > 9
-          lines << "    #{const_name} = 0x#{shifted_value.to_s(16)}u,"
-        else
-          lines << "    #{const_name} = #{shifted_value}u,"
+      if width == 1
+        # Single bit flag: NAME = (1u << bit)
+        lines << "    #{field_name} = (1u << #{shift}),"
+      else
+        # Multi-bit field: NAME_SHIFT and NAME_MASK
+        mask = ((1 << width) - 1) << shift
+        lines << "    #{field_name}_SHIFT = #{shift},"
+        lines << "    #{field_name}_MASK = 0x#{mask.to_s(16)}u,"
+      end
+
+      # Generate named values if present (pre-shifted, ready to OR)
+      if field['values']
+        field['values'].each do |value_name, value|
+          # Prefix with field name to avoid collisions
+          const_name = "#{field_name}_#{value_name}"
+          shifted_value = value << shift
+          if shifted_value > 9
+            lines << "    #{const_name} = 0x#{shifted_value.to_s(16)}u,"
+          else
+            lines << "    #{const_name} = #{shifted_value}u,"
+          end
         end
+      end
+    end
+  end
+
+  # Generate alias constants
+  unless aliases.nil? || aliases.empty?
+    lines << '    // Aliases'
+    aliases.each do |alias_name, alias_def|
+      shift = field_shift(alias_def)
+      width = field_width(alias_def)
+
+      if width == 1
+        lines << "    #{alias_name} = (1u << #{shift}),"
+      else
+        mask = ((1 << width) - 1) << shift
+        lines << "    #{alias_name}_SHIFT = #{shift},"
+        lines << "    #{alias_name}_MASK = 0x#{mask.to_s(16)}u,"
       end
     end
   end
@@ -121,6 +142,24 @@ def generate_field_table(reg_name, fields)
   lines.join("\n")
 end
 
+def generate_alias_table(reg_name, aliases)
+  return 'NULL' if aliases.nil? || aliases.empty?
+
+  table_name = "#{reg_name.downcase}_aliases"
+  lines = ["static const field_entry_t #{table_name}[] = {"]
+
+  aliases.each do |alias_name, alias_def|
+    shift = field_shift(alias_def)
+    width = field_width(alias_def)
+    lines << "    {\"#{alias_name}\", #{shift}, #{width}, NULL},"
+  end
+
+  lines << '    {NULL, 0, 0, NULL}'
+  lines << '};'
+
+  lines.join("\n")
+end
+
 def generate_c_code(data)
   output = []
 
@@ -163,11 +202,13 @@ def generate_c_code(data)
   output << ''
 
   data['registers'].each do |reg_name, reg|
-    next unless reg['fields'] && !reg['fields'].empty?
+    has_fields = reg['fields'] && !reg['fields'].empty?
+    has_aliases = reg['aliases'] && !reg['aliases'].empty?
+    next unless has_fields || has_aliases
 
     output << "// #{reg_name} fields"
     output << 'enum {'
-    output << generate_field_enums(reg_name, reg['fields'])
+    output << generate_field_enums(reg_name, reg['fields'], reg['aliases'])
     output << '};'
     output << ''
   end
@@ -201,6 +242,19 @@ def generate_c_code(data)
     output << ''
   end
 
+  # Generate alias tables
+  output << '// ============================================================================'
+  output << '// Alias Tables (for REPL display)'
+  output << '// ============================================================================'
+  output << ''
+
+  data['registers'].each do |reg_name, reg|
+    next unless reg['aliases'] && !reg['aliases'].empty?
+
+    output << generate_alias_table(reg_name, reg['aliases'])
+    output << ''
+  end
+
   # Generate register offset enum
   output << '// ============================================================================'
   output << '// Register Offsets'
@@ -219,7 +273,7 @@ def generate_c_code(data)
   output << '// ============================================================================'
   output << '// ATI_REGISTERS X-macro'
   output << '// Used to generate read/write functions, register tables, etc.'
-  output << '// X(func_name, const_name, offset, mode, fields)'
+  output << '// X(func_name, const_name, offset, mode, fields, aliases)'
   output << '// ============================================================================'
   output << ''
   output << '#define ATI_REGISTERS \\'
@@ -227,9 +281,10 @@ def generate_c_code(data)
   data['registers'].each_with_index do |(reg_name, reg), idx|
     mode = reg['mode'].upcase
     fields = reg['fields'] && !reg['fields'].empty? ? "#{reg_name.downcase}_fields" : 'NULL'
+    aliases = reg['aliases'] && !reg['aliases'].empty? ? "#{reg_name.downcase}_aliases" : 'NULL'
     last = idx == data['registers'].size - 1
     cont = last ? '' : ' \\'
-    output << "  X(#{reg_name.downcase}, #{reg_name}, 0x#{reg['offset'].to_s(16)}, #{mode}, #{fields})#{cont}"
+    output << "  X(#{reg_name.downcase}, #{reg_name}, 0x#{reg['offset'].to_s(16)}, #{mode}, #{fields}, #{aliases})#{cont}"
   end
 
   output << ''

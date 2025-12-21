@@ -268,11 +268,40 @@ registers:
     offset: 0x0184
     mode: rw
     group: gui_control
+    ref: "RRG:253"
     fields:
-      PC_FLUSH_ALL:
-        bits: [0, 7]
+      PC_FLUSH_GUI:
+        bits: [0, 1]
+      PC_RI_GUI:
+        bits: [2, 3]
+      PC_FLUSH_NONGUI:
+        bits: [4, 5]
+      PC_RI_NONGUI:
+        bits: [6, 7]
+      PC_PURGE_GUI:
+        bit: 8
+      PC_PURGE_NONGUI:
+        bit: 9
+      PC_DIRTY:
+        bit: 24
+      PC_PURGE_DOPURGE:
+        bit: 25
+      PC_FLUSH_DOFLUSH:
+        bit: 26
+      PC_BUSY_INIT:
+        bit: 27
+      PC_BUSY_FLUSH:
+        bit: 28
+      PC_BUSY_GUI:
+        bit: 29
+      PC_BUSY_NGUI:
+        bit: 30
       PC_BUSY:
         bit: 31
+    aliases:
+      PC_FLUSH_ALL:
+        bits: [0, 7]
+        ref: "linux:drivers/char/drm/r128_drv.h:247"
 
   # ===========================================================================
   # Interrupt Registers

@@ -30,5 +30,7 @@ void ati_init_cce_engine(ati_device_t *dev);
 void ati_stop_cce_engine(ati_device_t *dev);
 void ati_cce_pio_submit(ati_device_t *dev, uint32_t *packets, size_t dwords);
 void ati_cce_load_microcode(ati_device_t *dev);
+void ati_cce_wait_for_idle(ati_device_t *dev);
+void ati_flush_pixcache(ati_device_t *dev);
 
 #endif

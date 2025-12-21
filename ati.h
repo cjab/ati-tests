@@ -70,7 +70,7 @@ void ati_top_cce_engine(ati_device_t *dev);
 // These use the ATI_REGISTERS macro from the generated header.
 
 // Read functions
-#define X(func_name, const_name, offset, mode, fields) \
+#define X(func_name, const_name, offset, mode, fields, aliases) \
   X_##mode##_READ_DECL(func_name)
 
   #define X_RW_READ_DECL(func_name) \
@@ -88,7 +88,7 @@ void ati_top_cce_engine(ati_device_t *dev);
 #undef X_WO_READ_DECL
 
 // Write functions
-#define X(func_name, const_name, offset, mode, fields) \
+#define X(func_name, const_name, offset, mode, fields, aliases) \
   X_##mode##_WRITE_DECL(func_name)
 
   #define X_RW_WRITE_DECL(func_name) \

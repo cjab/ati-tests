@@ -13,11 +13,12 @@ typedef struct {
     uint32_t offset;
     reg_mode_t mode;
     const field_entry_t *fields;
+    const field_entry_t *aliases;
 } reg_entry_t;
 
-#define X(func_name, const_name, offset, mode, fields)                         \
-    {#const_name, offset, mode, fields},
-static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0, RW, NULL}};
+#define X(func_name, const_name, offset, mode, fields, aliases)                \
+    {#const_name, offset, mode, fields, aliases},
+static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0, RW, NULL, NULL}};
 #undef X
 
 // Command enum for dispatch
@@ -284,6 +285,14 @@ print_reg_expanded(const reg_entry_t *reg, uint32_t val)
 
             print_field("(unknown)", bit, gap_width, NULL, val);
             bit = next_start;
+        }
+    }
+
+    // Print aliases section if present
+    if (reg->aliases && reg->aliases[0].name != NULL) {
+        printf("  \x1b[90m--- aliases ---\x1b[0m\n");
+        for (const field_entry_t *a = reg->aliases; a->name != NULL; a++) {
+            print_field(a->name, a->shift, a->width, NULL, val);
         }
     }
 }
