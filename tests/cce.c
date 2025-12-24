@@ -29,34 +29,105 @@ bool
 test_pm4_microcode(ati_device_t *dev)
 {
     /* Microcode writes */
-    // Set write addr start
+    // set write addr start
     wr_pm4_microcode_addr(dev, 200);
     wr_pm4_microcode_datah(dev, 0xdeadbeef);
+    // writing to datah does _not_ increment addr
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 200);
+
     wr_pm4_microcode_datal(dev, 0xcafec0de);
+    // writing to datal increments addr
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 201);
+
     wr_pm4_microcode_datah(dev, 0xffffffff);
     wr_pm4_microcode_datal(dev, 0xffffffff);
-    // Write addr auto-incremented
+    // write addr incremented again
     ASSERT_EQ(rd_pm4_microcode_addr(dev), 202);
 
-    ati_cce_wait_for_idle(dev);
+    //ati_cce_wait_for_idle(dev);
 
     /* Microcode reads */
-    // Set read addr
+    // set read addr
     wr_pm4_microcode_raddr(dev, 200);
     // Which actually writes through to the write addr
     // but must set some sort of internal flag saying this
     // is a read. Setting the write addr directly before reading
     // breaks things.
     ASSERT_EQ(rd_pm4_microcode_addr(dev), 200);
+
     ASSERT_EQ(rd_pm4_microcode_datah(dev), 0x0000000f);
+    // reading datah does _not_ increment addr
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 200);
+    // and can safely be read again without changing state
+    ASSERT_EQ(rd_pm4_microcode_datah(dev), 0x0000000f);
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 200);
+
     ASSERT_EQ(rd_pm4_microcode_datal(dev), 0xcafec0de);
+    // reading datal increments addr
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 201);
+
     // datah is masked to 0x1f
     ASSERT_EQ(rd_pm4_microcode_datah(dev), 0x0000001f);
     ASSERT_EQ(rd_pm4_microcode_datal(dev), 0xffffffff);
+
     // Read address _always_ returns 0
     ASSERT_EQ(rd_pm4_microcode_raddr(dev), 0);
-    // Write addr auto-incremented by reads
+
+    // Write addr incremented by reads
     ASSERT_EQ(rd_pm4_microcode_addr(dev), 202);
+
+    /*
+     * Test that ADDR and RADDR control separate pointers for reads.
+     *
+     * RADDR sets both the visible ADDR register and an internal read pointer.
+     * ADDR only sets the visible ADDR register, leaving the internal read
+     * pointer unchanged. The pointers re-sync after reading DATAL.
+     */
+    // write known values at indices 10 and 50
+    wr_pm4_microcode_addr(dev, 10);
+    wr_pm4_microcode_datah(dev, 0x0a);
+    wr_pm4_microcode_datal(dev, 0x10101010);
+
+    wr_pm4_microcode_addr(dev, 50);
+    wr_pm4_microcode_datah(dev, 0x0b);
+    wr_pm4_microcode_datal(dev, 0x50505050);
+
+    // set read pointer to index 10 using RADDR
+    wr_pm4_microcode_raddr(dev, 10);
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 10);
+
+    // read index 10
+    ASSERT_EQ(rd_pm4_microcode_datah(dev), 0x0a);
+    ASSERT_EQ(rd_pm4_microcode_datal(dev), 0x10101010);
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 11);
+
+    // now write ADDR=50, this should _not_ affect the internal read pointer
+    wr_pm4_microcode_addr(dev, 50);
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 50);
+
+    // DATAH read still comes from internal pointer (index 11), not ADDR (50)
+    uint32_t datah_at_11 = rd_pm4_microcode_datah(dev);
+    // ADDR unchanged after DATAH read
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 50);
+
+    // DATAL read comes from internal pointer (index 11), then syncs to ADDR+1
+    uint32_t datal_at_11 = rd_pm4_microcode_datal(dev);
+    // after DATAL read, ADDR increments and internal pointer syncs
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 51);
+
+    // verify we did _not_ read index 50's data
+    ASSERT_TRUE(datah_at_11 != 0x0b);
+    ASSERT_TRUE(datal_at_11 != 0x50505050);
+
+    // now reads proceed from index 51 (synced after first DATAL read)
+    uint32_t datah_at_51 = rd_pm4_microcode_datah(dev);
+    uint32_t datal_at_51 = rd_pm4_microcode_datal(dev);
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 52);
+
+    // verify by reading index 51 properly via RADDR
+    wr_pm4_microcode_raddr(dev, 51);
+    ASSERT_EQ(rd_pm4_microcode_datah(dev), datah_at_51);
+    ASSERT_EQ(rd_pm4_microcode_datal(dev), datal_at_51);
 
     return true;
 }
