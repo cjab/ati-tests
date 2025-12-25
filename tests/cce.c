@@ -49,11 +49,11 @@ test_pm4_microcode(ati_device_t *dev)
     /* Microcode reads */
     // set read addr
     wr_pm4_microcode_raddr(dev, 200);
-    // Which actually writes through to the write addr
-    // but must set some sort of internal flag saying this
-    // is a read. Setting the write addr directly before reading
-    // breaks things.
+    // which also writes through to addr
     ASSERT_EQ(rd_pm4_microcode_addr(dev), 200);
+    // raddr, however, _always_ returns 0 despite internally
+    // writing to an independent read address.
+    ASSERT_EQ(rd_pm4_microcode_raddr(dev), 0);
 
     ASSERT_EQ(rd_pm4_microcode_datah(dev), 0x0000000f);
     // reading datah does _not_ increment addr
@@ -81,7 +81,8 @@ test_pm4_microcode(ati_device_t *dev)
      *
      * RADDR sets both the visible ADDR register and an internal read pointer.
      * ADDR only sets the visible ADDR register, leaving the internal read
-     * pointer unchanged. The pointers re-sync after reading DATAL.
+     * pointer unchanged. The pointers re-sync after any DATAL access (read
+     * or write).
      */
     // write known values at indices 10 and 50
     wr_pm4_microcode_addr(dev, 10);
@@ -128,6 +129,45 @@ test_pm4_microcode(ati_device_t *dev)
     wr_pm4_microcode_raddr(dev, 51);
     ASSERT_EQ(rd_pm4_microcode_datah(dev), datah_at_51);
     ASSERT_EQ(rd_pm4_microcode_datal(dev), datal_at_51);
+
+    /*
+     * Test that DATAL writes also sync the internal read pointer.
+     */
+    // write known values at indices 80 and 81
+    wr_pm4_microcode_addr(dev, 80);
+    wr_pm4_microcode_datah(dev, 0x08);
+    wr_pm4_microcode_datal(dev, 0x80808080);
+
+    wr_pm4_microcode_addr(dev, 81);
+    wr_pm4_microcode_datah(dev, 0x18);
+    wr_pm4_microcode_datal(dev, 0x81818181);
+
+    // set read pointer to 80, read to advance internal pointer to 81
+    wr_pm4_microcode_raddr(dev, 80);
+    ASSERT_EQ(rd_pm4_microcode_datal(dev), 0x80808080);
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 81);
+
+    // set ADDR=200, internal read pointer still at 81
+    wr_pm4_microcode_addr(dev, 200);
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 200);
+
+    // write to index 200, DATAL write should sync internal pointer to 201
+    wr_pm4_microcode_datah(dev, 0x1f);
+    wr_pm4_microcode_datal(dev, 0xdeadbeef);
+    ASSERT_EQ(rd_pm4_microcode_addr(dev), 201);
+
+    // read should now come from 201, _not_ from 81
+    uint32_t datah_after_write = rd_pm4_microcode_datah(dev);
+    uint32_t datal_after_write = rd_pm4_microcode_datal(dev);
+
+    // verify we did _not_ get index 81's data
+    ASSERT_TRUE(datah_after_write != 0x18);
+    ASSERT_TRUE(datal_after_write != 0x81818181);
+
+    // verify we got index 201's data by reading it via RADDR
+    wr_pm4_microcode_raddr(dev, 201);
+    ASSERT_EQ(rd_pm4_microcode_datah(dev), datah_after_write);
+    ASSERT_EQ(rd_pm4_microcode_datal(dev), datal_after_write);
 
     return true;
 }
