@@ -18,6 +18,12 @@ typedef struct {
 static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0, 0, NULL, NULL}};
 #undef X
 
+// Register snapshot storage - indexed by offset/4
+// Highest register offset is ~0x1a00, so 0x2000/4 = 2048 entries is plenty
+#define REG_SNAPSHOT_SIZE (0x2000 / 4)
+static uint32_t reg_snapshot[REG_SNAPSHOT_SIZE];
+static bool snapshot_valid = false;
+
 // Command enum for dispatch
 typedef enum {
     CMD_REBOOT,
@@ -32,6 +38,7 @@ typedef enum {
     CMD_T,
     CMD_TL,
     CMD_CCE,
+    CMD_REGS,
     CMD_HELP,
     CMD_UNKNOWN
 } cmd_t;
@@ -55,6 +62,7 @@ static const struct {
     {"t",        CMD_T,        "[test_name]",            "run test(s)"},
     {"tl",       CMD_TL,       NULL,                     "list tests"},
     {"cce",      CMD_CCE,      "<cmd>",                  "CCE control (init/start/stop/r/w)"},
+    {"regs",     CMD_REGS,     "<save|diff>",            "register snapshot/diff"},
     {"help",     CMD_HELP,     NULL,                     NULL},
     {"?",        CMD_HELP,     NULL,                     NULL},
     {NULL,       CMD_UNKNOWN,  NULL,                     NULL}
@@ -713,6 +721,61 @@ cmd_test_list(void)
     list_tests();
 }
 
+// Flags that indicate register is unsafe to read during snapshot
+#define REG_UNSAFE_READ (REG_NO_READ | REG_READ_SIDE_EFFECTS | REG_INDIRECT)
+
+static void
+regs_save(ati_device_t *dev)
+{
+    int count = 0;
+    for (int i = 0; reg_table[i].name != NULL; i++) {
+        if (reg_table[i].flags & REG_UNSAFE_READ)
+            continue;
+        uint32_t offset = reg_table[i].offset;
+        reg_snapshot[offset / 4] = ati_reg_read(dev, offset);
+        count++;
+    }
+    snapshot_valid = true;
+    printf("Saved %d registers\n", count);
+}
+
+static void
+regs_diff(ati_device_t *dev)
+{
+    if (!snapshot_valid) {
+        printf("No snapshot taken. Use 'regs save' first.\n");
+        return;
+    }
+    for (int i = 0; reg_table[i].name != NULL; i++) {
+        if (reg_table[i].flags & REG_UNSAFE_READ)
+            continue;
+        uint32_t offset = reg_table[i].offset;
+        uint32_t old_val = reg_snapshot[offset / 4];
+        uint32_t new_val = ati_reg_read(dev, offset);
+        if (old_val != new_val) {
+            printf("%s (0x%04x) : 0x%08x -> 0x%08x\n",
+                   reg_table[i].name, offset, old_val, new_val);
+        }
+    }
+}
+
+static void
+cmd_regs(ati_device_t *dev, int argc, char **args)
+{
+    if (argc < 2) {
+        print_usage(CMD_REGS);
+        return;
+    }
+
+    if (strcmp(args[1], "save") == 0) {
+        regs_save(dev);
+    } else if (strcmp(args[1], "diff") == 0) {
+        regs_diff(dev);
+    } else {
+        print_usage(CMD_REGS);
+    }
+}
+
 // Main REPL
 
 void
@@ -784,6 +847,9 @@ repl(ati_device_t *dev)
             break;
         case CMD_CCE:
             cmd_cce(dev, argc, args);
+            break;
+        case CMD_REGS:
+            cmd_regs(dev, argc, args);
             break;
         case CMD_HELP:
             cmd_help(argc, args);
