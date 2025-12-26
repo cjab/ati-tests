@@ -14,8 +14,41 @@ require 'optparse'
 SCRIPT_DIR = __dir__
 YAML_PATH = File.join(SCRIPT_DIR, '..', 'registers.yaml')
 
+# Flag name to C constant mapping
+FLAG_MAP = {
+  'no_read' => 'REG_NO_READ',
+  'no_write' => 'REG_NO_WRITE',
+  'read_side_effects' => 'REG_READ_SIDE_EFFECTS',
+  'indirect' => 'REG_INDIRECT'
+}.freeze
+
 def load_registers
   YAML.load_file(YAML_PATH)
+end
+
+# Convert flags array to C expression
+def flags_to_c(flags)
+  return '0' if flags.nil? || flags.empty?
+
+  # Validate flags
+  flags.each do |flag|
+    raise "Unknown flag '#{flag}'" unless FLAG_MAP.key?(flag)
+  end
+
+  # Check for contradictory combinations
+  if flags.include?('no_read') && flags.include?('no_write')
+    raise "Invalid flags: no_read + no_write makes register useless"
+  end
+
+  if flags.include?('no_read') && flags.include?('read_side_effects')
+    warn "Warning: no_read + read_side_effects is contradictory (read_side_effects is meaningless)"
+  end
+
+  if flags.include?('no_read') && flags.include?('indirect')
+    warn "Warning: no_read + indirect is contradictory (indirect is meaningless)"
+  end
+
+  flags.map { |f| FLAG_MAP[f] }.join(' | ')
 end
 
 def field_width(field)
@@ -193,6 +226,14 @@ def generate_c_code(data)
         const field_value_t *values;  // NULL if no named values
     } field_entry_t;
 
+    // Register flags
+    enum {
+        REG_NO_READ           = (1 << 0),  // Register cannot be read (write-only)
+        REG_NO_WRITE          = (1 << 1),  // Register cannot be written (read-only)
+        REG_READ_SIDE_EFFECTS = (1 << 2),  // Reading modifies hardware state
+        REG_INDIRECT          = (1 << 3),  // Access requires index register set first
+    };
+
   HEADER
 
   # Generate field enums
@@ -273,18 +314,18 @@ def generate_c_code(data)
   output << '// ============================================================================'
   output << '// ATI_REGISTERS X-macro'
   output << '// Used to generate read/write functions, register tables, etc.'
-  output << '// X(func_name, const_name, offset, mode, fields, aliases)'
+  output << '// X(func_name, const_name, offset, flags, fields, aliases)'
   output << '// ============================================================================'
   output << ''
   output << '#define ATI_REGISTERS \\'
 
   data['registers'].each_with_index do |(reg_name, reg), idx|
-    mode = reg['mode'].upcase
+    flags = flags_to_c(reg['flags'])
     fields = reg['fields'] && !reg['fields'].empty? ? "#{reg_name.downcase}_fields" : 'NULL'
     aliases = reg['aliases'] && !reg['aliases'].empty? ? "#{reg_name.downcase}_aliases" : 'NULL'
     last = idx == data['registers'].size - 1
     cont = last ? '' : ' \\'
-    output << "  X(#{reg_name.downcase}, #{reg_name}, 0x#{reg['offset'].to_s(16)}, #{mode}, #{fields}, #{aliases})#{cont}"
+    output << "  X(#{reg_name.downcase}, #{reg_name}, 0x#{reg['offset'].to_s(16)}, #{flags}, #{fields}, #{aliases})#{cont}"
   end
 
   output << ''

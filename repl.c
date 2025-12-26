@@ -4,21 +4,18 @@
 #include "common.h"
 #include "platform/platform.h"
 
-// Access mode enum
-typedef enum { RW, WO, RO } reg_mode_t;
-
 // Generate register name lookup table from X-macro
 typedef struct {
     const char *name;
     uint32_t offset;
-    reg_mode_t mode;
+    uint8_t flags;
     const field_entry_t *fields;
     const field_entry_t *aliases;
 } reg_entry_t;
 
-#define X(func_name, const_name, offset, mode, fields, aliases)                \
-    {#const_name, offset, mode, fields, aliases},
-static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0, RW, NULL, NULL}};
+#define X(func_name, const_name, offset, flags, fields, aliases)               \
+    {#const_name, offset, flags, fields, aliases},
+static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0, 0, NULL, NULL}};
 #undef X
 
 // Command enum for dispatch
@@ -115,13 +112,13 @@ next_token(char **p)
 }
 
 static int
-lookup_reg(const char *name, uint32_t *out, reg_mode_t *mode_out)
+lookup_reg(const char *name, uint32_t *out, uint8_t *flags_out)
 {
     for (int i = 0; reg_table[i].name != NULL; i++) {
         if (strcasecmp(name, reg_table[i].name) == 0) {
             *out = reg_table[i].offset;
-            if (mode_out)
-                *mode_out = reg_table[i].mode;
+            if (flags_out)
+                *flags_out = reg_table[i].flags;
             return 0;
         }
     }
@@ -150,17 +147,50 @@ lookup_reg_entry(uint32_t offset)
     return NULL;
 }
 
+// Print register flags in colored brackets
+// Returns true if any flags were printed
+static bool
+print_flags(uint8_t flags)
+{
+    if (flags == 0)
+        return false;
+
+    bool first = true;
+    printf(" [");
+
+    if (flags & REG_READ_SIDE_EFFECTS) {
+        printf("\x1b[31m%sside-effects\x1b[0m", first ? "" : ", ");
+        first = false;
+    }
+    if (flags & REG_INDIRECT) {
+        printf("\x1b[35m%sindirect\x1b[0m", first ? "" : ", ");
+        first = false;
+    }
+    if (flags & REG_NO_READ) {
+        printf("\x1b[33m%sno-read\x1b[0m", first ? "" : ", ");
+        first = false;
+    }
+    if (flags & REG_NO_WRITE) {
+        printf("\x1b[36m%sno-write\x1b[0m", first ? "" : ", ");
+        first = false;
+    }
+
+    printf("]");
+    return true;
+}
+
 static void
-print_reg(uint32_t addr, uint32_t val, char separator)
+print_reg(uint32_t addr, uint32_t val, char separator, uint8_t flags)
 {
     const char *name = lookup_reg_name(addr);
     if (name) {
-        printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m %c "
-               "\x1b[33m0x%08x\x1b[0m\n",
-               name, addr, separator, val);
+        printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m", name, addr);
+        print_flags(flags);
+        printf(" %c \x1b[33m0x%08x\x1b[0m\n", separator, val);
     } else {
-        printf("\x1b[90m0x%04x\x1b[0m %c \x1b[33m0x%08x\x1b[0m\n", addr,
-               separator, val);
+        printf("\x1b[90m0x%04x\x1b[0m", addr);
+        print_flags(flags);
+        printf(" %c \x1b[33m0x%08x\x1b[0m\n", separator, val);
     }
 }
 
@@ -267,8 +297,9 @@ static void
 print_reg_expanded(const reg_entry_t *reg, uint32_t val)
 {
     // Header line
-    printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m : \x1b[33m0x%08x\x1b[0m\n",
-           reg->name, reg->offset, val);
+    printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m", reg->name, reg->offset);
+    print_flags(reg->flags);
+    printf(" : \x1b[33m0x%08x\x1b[0m\n", val);
 
     uint8_t bit = 0;
     while (bit < 32) {
@@ -355,16 +386,16 @@ parse_int(const char *s, uint32_t *out)
 }
 
 static int
-parse_addr(const char *s, uint32_t *out, reg_mode_t *mode_out)
+parse_addr(const char *s, uint32_t *out, uint8_t *flags_out)
 {
     // Try hex first
     if (parse_int(s, out) == 0) {
-        if (mode_out)
-            *mode_out = RW; // Unknown register, assume RW
+        if (flags_out)
+            *flags_out = 0; // Unknown register, assume no restrictions
         return 0;
     }
     // Fall back to register name lookup
-    return lookup_reg(s, out, mode_out);
+    return lookup_reg(s, out, flags_out);
 }
 
 // Print a single color swatch using ANSI 24-bit color
@@ -489,47 +520,33 @@ static void
 cmd_reg_read(ati_device_t *dev, int argc, char **args)
 {
     uint32_t addr;
-    reg_mode_t mode;
+    uint8_t flags;
 
-    if (argc < 2 || parse_addr(args[1], &addr, &mode) != 0) {
+    if (argc < 2 || parse_addr(args[1], &addr, &flags) != 0) {
         print_usage(CMD_R);
         return;
     }
 
-    if (mode == WO) {
-        const char *name = lookup_reg_name(addr);
-        printf("\x1b[31mWARNING: %s (\x1b[90m0x%04x\x1b[31m) is "
-               "write-only\x1b[0m\n",
-               name ? name : "register", addr);
-    }
-
     uint32_t val = ati_reg_read(dev, addr);
-    print_reg(addr, val, ':');
+    print_reg(addr, val, ':', flags);
 }
 
 static void
 cmd_reg_read_expanded(ati_device_t *dev, int argc, char **args)
 {
     uint32_t addr;
-    reg_mode_t mode;
+    uint8_t flags;
 
-    if (argc < 2 || parse_addr(args[1], &addr, &mode) != 0) {
+    if (argc < 2 || parse_addr(args[1], &addr, &flags) != 0) {
         print_usage(CMD_RX);
         return;
-    }
-
-    if (mode == WO) {
-        const char *name = lookup_reg_name(addr);
-        printf("\x1b[31mWARNING: %s (\x1b[90m0x%04x\x1b[31m) is "
-               "write-only\x1b[0m\n",
-               name ? name : "register", addr);
     }
 
     const reg_entry_t *reg = lookup_reg_entry(addr);
     if (reg == NULL) {
         // Unknown register, fall back to simple display
         uint32_t val = ati_reg_read(dev, addr);
-        print_reg(addr, val, ':');
+        print_reg(addr, val, ':', flags);
         printf("  \x1b[90m(unknown register)\x1b[0m\n");
         return;
     }
@@ -538,31 +555,33 @@ cmd_reg_read_expanded(ati_device_t *dev, int argc, char **args)
     print_reg_expanded(reg, val);
 }
 
+// Flags that indicate we should skip readback after write
+#define REG_SKIP_READBACK (REG_NO_READ | REG_READ_SIDE_EFFECTS | REG_INDIRECT)
+
 static void
 cmd_reg_write(ati_device_t *dev, int argc, char **args)
 {
     uint32_t addr, val;
-    reg_mode_t mode;
+    uint8_t flags;
 
-    if (argc < 3 || parse_addr(args[1], &addr, &mode) != 0 ||
+    if (argc < 3 || parse_addr(args[1], &addr, &flags) != 0 ||
         parse_int(args[2], &val) != 0) {
         print_usage(CMD_W);
         return;
     }
 
-    if (mode == RO) {
-        const char *name = lookup_reg_name(addr);
-        printf("\x1b[31mWARNING: %s (\x1b[90m0x%04x\x1b[31m) is "
-               "read-only\x1b[0m\n",
-               name ? name : "register", addr);
-    }
-
     ati_reg_write(dev, addr, val);
-    uint32_t readback = ati_reg_read(dev, addr);
-    if (readback != val)
-        print_reg_mismatch(addr, val, readback);
-    else
-        print_reg(addr, readback, '=');
+
+    // Skip readback if register can't be read safely
+    if (flags & REG_SKIP_READBACK) {
+        print_reg(addr, val, '=', flags);
+    } else {
+        uint32_t readback = ati_reg_read(dev, addr);
+        if (readback != val)
+            print_reg_mismatch(addr, val, readback);
+        else
+            print_reg(addr, readback, '=', flags);
+    }
 }
 
 static void

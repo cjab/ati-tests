@@ -204,52 +204,25 @@ ati_dump_mode(ati_device_t *dev)
 }
 
 /* Register accessor functions */
+/* All registers get read/write implementations - flags indicate runtime behavior */
 
 /* Reads */
-#define X(func_name, const_name, offset, mode, fields, aliases)                \
-    X_##mode##_READ_IMPL(func_name, const_name)
-
-#define X_RW_READ_IMPL(func_name, const_name)                                  \
+#define X(func_name, const_name, offset, flags, fields, aliases)               \
     uint32_t rd_##func_name(ati_device_t *dev)                                 \
     {                                                                          \
         return ati_reg_read(dev, const_name);                                  \
     }
-
-#define X_RO_READ_IMPL(func_name, const_name)                                  \
-    uint32_t rd_##func_name(ati_device_t *dev)                                 \
-    {                                                                          \
-        return ati_reg_read(dev, const_name);                                  \
-    }
-
-#define X_WO_READ_IMPL(func_name, const_name) /* No read for write-only */
-
 ATI_REGISTERS
 #undef X
-#undef X_RW_READ_IMPL
-#undef X_RO_READ_IMPL
-#undef X_WO_READ_IMPL
 
 /* Writes */
-#define X(func_name, const_name, offset, mode, fields, aliases)                \
-    X_##mode##_WRITE_IMPL(func_name, const_name)
-
-#define X_RW_WRITE_IMPL(func_name, const_name)                                 \
+#define X(func_name, const_name, offset, flags, fields, aliases)               \
     void wr_##func_name(ati_device_t *dev, uint32_t val)                       \
     {                                                                          \
         ati_reg_write(dev, const_name, val);                                   \
     }
-#define X_WO_WRITE_IMPL(func_name, const_name)                                 \
-    void wr_##func_name(ati_device_t *dev, uint32_t val)                       \
-    {                                                                          \
-        ati_reg_write(dev, const_name, val);                                   \
-    }
-#define X_RO_WRITE_IMPL(func_name, const_name) /* No write for read-only */
-
 ATI_REGISTERS
 #undef X
-#undef X_RW_WRITE_IMPL
-#undef X_WO_WRITE_IMPL
-#undef X_RO_WRITE_IMPL
 
 void
 ati_dump_registers(ati_device_t *dev, int count, ...)
@@ -262,35 +235,20 @@ ati_dump_registers(ati_device_t *dev, int count, ...)
         uint32_t offset = va_arg(args, uint32_t);
         bool found = false;
 
-#define X(func_name, const_name, offset_val, mode, fields, aliases)            \
-    X_##mode##_DUMP_IF(func_name, const_name, offset_val, offset, &found)
-
-#define X_RW_DUMP_IF(func_name, const_name, offset_val, target, found_ptr)     \
-    if (offset_val == target) {                                                \
-        printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":",             \
-               rd_##func_name(dev));                                           \
-        *found_ptr = true;                                                     \
-    }
-
-#define X_RO_DUMP_IF(func_name, const_name, offset_val, target, found_ptr)     \
-    if (offset_val == target) {                                                \
-        printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":",             \
-               rd_##func_name(dev));                                           \
-        *found_ptr = true;                                                     \
-    }
-
-#define X_WO_DUMP_IF(func_name, const_name, offset_val, target, found_ptr)     \
-    if (offset_val == target) {                                                \
-        printf(" %-30s " RED "[write-only]\n" RESET, #const_name ":");         \
-        *found_ptr = true;                                                     \
+#define X(func_name, const_name, offset_val, flags, fields, aliases)           \
+    if (offset_val == offset) {                                                \
+        if ((flags) & REG_NO_READ) {                                           \
+            printf(" %-30s " RED "[write-only]\n" RESET, #const_name ":");     \
+        } else {                                                               \
+            printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":",         \
+                   rd_##func_name(dev));                                       \
+        }                                                                      \
+        found = true;                                                          \
     }
 
         ATI_REGISTERS
 
 #undef X
-#undef X_RW_DUMP_IF
-#undef X_RO_DUMP_IF
-#undef X_WO_DUMP_IF
 
         if (!found) {
             printf("0x%08x:                   [unknown register]\n", offset);
@@ -306,25 +264,16 @@ ati_dump_all_registers(ati_device_t *dev)
 {
     printf("\n============== Register State ==============\n");
 
-#define X(func_name, const_name, offset, mode, fields, aliases)                \
-    X_##mode##_DUMP(func_name, const_name)
-
-#define X_RW_DUMP(func_name, const_name)                                       \
-    printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":",                 \
-           rd_##func_name(dev));
-
-#define X_RO_DUMP(func_name, const_name)                                       \
-    printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":",                 \
-           rd_##func_name(dev));
-
-#define X_WO_DUMP(func_name, const_name)                                       \
-    printf(" %-30s " RED "[write-only]\n" RESET, #const_name ":");
+#define X(func_name, const_name, offset, flags, fields, aliases)               \
+    if ((flags) & REG_NO_READ) {                                               \
+        printf(" %-30s " RED "[write-only]\n" RESET, #const_name ":");         \
+    } else {                                                                   \
+        printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":",             \
+               rd_##func_name(dev));                                           \
+    }
 
     ATI_REGISTERS
 #undef X
-#undef X_RW_DUMP
-#undef X_RO_DUMP
-#undef X_WO_DUMP
     printf("============================================\n");
 }
 

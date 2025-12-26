@@ -68,42 +68,20 @@ void ati_top_cce_engine(ati_device_t *dev);
 // Read/Write Function Declarations
 // ============================================================================
 // These use the ATI_REGISTERS macro from the generated header.
+// All registers get both read and write declarations - the flags just
+// indicate runtime behavior, not whether the functions should exist.
 
 // Read functions
-#define X(func_name, const_name, offset, mode, fields, aliases) \
-  X_##mode##_READ_DECL(func_name)
-
-  #define X_RW_READ_DECL(func_name) \
-    uint32_t rd_##func_name(ati_device_t *dev);
-
-  #define X_RO_READ_DECL(func_name) \
-    uint32_t rd_##func_name(ati_device_t *dev);
-
-  #define X_WO_READ_DECL(func_name)  /* No read for write-only */
-  ATI_REGISTERS
-
+#define X(func_name, const_name, offset, flags, fields, aliases) \
+  uint32_t rd_##func_name(ati_device_t *dev);
+ATI_REGISTERS
 #undef X
-#undef X_RW_READ_DECL
-#undef X_RO_READ_DECL
-#undef X_WO_READ_DECL
 
 // Write functions
-#define X(func_name, const_name, offset, mode, fields, aliases) \
-  X_##mode##_WRITE_DECL(func_name)
-
-  #define X_RW_WRITE_DECL(func_name) \
-    void wr_##func_name(ati_device_t *dev, uint32_t val);
-
-  #define X_WO_WRITE_DECL(func_name) \
-    void wr_##func_name(ati_device_t *dev, uint32_t val);
-
-  #define X_RO_WRITE_DECL(func_name)  /* No write for read-only */
-  ATI_REGISTERS
-
+#define X(func_name, const_name, offset, flags, fields, aliases) \
+  void wr_##func_name(ati_device_t *dev, uint32_t val);
+ATI_REGISTERS
 #undef X
-#undef X_RW_WRITE_DECL
-#undef X_WO_WRITE_DECL
-#undef X_RO_WRITE_DECL
 
 // ============================================================================
 // Helper Functions

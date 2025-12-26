@@ -27,6 +27,14 @@ typedef struct {
     const field_value_t *values;  // NULL if no named values
 } field_entry_t;
 
+// Register flags
+enum {
+    REG_NO_READ           = (1 << 0),  // Register cannot be read (write-only)
+    REG_NO_WRITE          = (1 << 1),  // Register cannot be written (read-only)
+    REG_READ_SIDE_EFFECTS = (1 << 2),  // Reading modifies hardware state
+    REG_INDIRECT          = (1 << 3),  // Access requires index register set first
+};
+
 
 // ============================================================================
 // Field Constants
@@ -747,110 +755,110 @@ enum {
 // ============================================================================
 // ATI_REGISTERS X-macro
 // Used to generate read/write functions, register tables, etc.
-// X(func_name, const_name, offset, mode, fields, aliases)
+// X(func_name, const_name, offset, flags, fields, aliases)
 // ============================================================================
 
 #define ATI_REGISTERS \
-  X(crtc_gen_cntl, CRTC_GEN_CNTL, 0x50, RW, crtc_gen_cntl_fields, NULL) \
-  X(crtc_ext_cntl, CRTC_EXT_CNTL, 0x54, RW, crtc_ext_cntl_fields, NULL) \
-  X(crtc_h_total_disp, CRTC_H_TOTAL_DISP, 0x200, RW, crtc_h_total_disp_fields, NULL) \
-  X(crtc_h_sync_strt_wid, CRTC_H_SYNC_STRT_WID, 0x204, RW, crtc_h_sync_strt_wid_fields, NULL) \
-  X(crtc_v_total_disp, CRTC_V_TOTAL_DISP, 0x208, RW, crtc_v_total_disp_fields, NULL) \
-  X(crtc_v_sync_strt_wid, CRTC_V_SYNC_STRT_WID, 0x20c, RW, crtc_v_sync_strt_wid_fields, NULL) \
-  X(crtc_offset, CRTC_OFFSET, 0x224, RW, NULL, NULL) \
-  X(crtc_offset_cntl, CRTC_OFFSET_CNTL, 0x228, RW, NULL, NULL) \
-  X(crtc_pitch, CRTC_PITCH, 0x22c, RW, NULL, NULL) \
-  X(dac_cntl, DAC_CNTL, 0x58, RW, dac_cntl_fields, NULL) \
-  X(palette_index, PALETTE_INDEX, 0xb0, RW, NULL, NULL) \
-  X(palette_data, PALETTE_DATA, 0xb4, RW, NULL, NULL) \
-  X(gen_reset_cntl, GEN_RESET_CNTL, 0xf0, RW, gen_reset_cntl_fields, NULL) \
-  X(pc_ngui_ctlstat, PC_NGUI_CTLSTAT, 0x184, RW, pc_ngui_ctlstat_fields, pc_ngui_ctlstat_aliases) \
-  X(gen_int_cntl, GEN_INT_CNTL, 0x40, RW, gen_int_cntl_fields, NULL) \
-  X(dda_config, DDA_CONFIG, 0x2e0, RW, NULL, NULL) \
-  X(dda_on_off, DDA_ON_OFF, 0x2e4, RW, NULL, NULL) \
-  X(ovr_clr, OVR_CLR, 0x230, RW, NULL, NULL) \
-  X(ovr_wid_left_right, OVR_WID_LEFT_RIGHT, 0x234, RW, NULL, NULL) \
-  X(ovr_wid_top_bottom, OVR_WID_TOP_BOTTOM, 0x238, RW, NULL, NULL) \
-  X(ov0_scale_cntl, OV0_SCALE_CNTL, 0x420, RW, NULL, NULL) \
-  X(mpp_tb_config, MPP_TB_CONFIG, 0x1c0, RW, NULL, NULL) \
-  X(mpp_gp_config, MPP_GP_CONFIG, 0x1c8, RW, NULL, NULL) \
-  X(subpic_cntl, SUBPIC_CNTL, 0x540, RW, NULL, NULL) \
-  X(viph_control, VIPH_CONTROL, 0x1d0, RW, NULL, NULL) \
-  X(i2c_cntl_1, I2C_CNTL_1, 0x94, RW, NULL, NULL) \
-  X(cap0_trig_cntl, CAP0_TRIG_CNTL, 0x950, RW, NULL, NULL) \
-  X(cap1_trig_cntl, CAP1_TRIG_CNTL, 0x9c0, RW, NULL, NULL) \
-  X(pm4_buffer_offset, PM4_BUFFER_OFFSET, 0x700, RW, NULL, NULL) \
-  X(pm4_buffer_cntl, PM4_BUFFER_CNTL, 0x704, RW, pm4_buffer_cntl_fields, NULL) \
-  X(pm4_buffer_wm_cntl, PM4_BUFFER_WM_CNTL, 0x708, RW, NULL, NULL) \
-  X(pm4_buffer_dl_rptr_addr, PM4_BUFFER_DL_RPTR_ADDR, 0x70c, RW, NULL, NULL) \
-  X(pm4_buffer_dl_rptr, PM4_BUFFER_DL_RPTR, 0x710, RW, NULL, NULL) \
-  X(pm4_buffer_dl_wptr, PM4_BUFFER_DL_WPTR, 0x714, RW, NULL, NULL) \
-  X(pm4_buffer_dl_wptr_delay, PM4_BUFFER_DL_WPTR_DELAY, 0x718, RW, NULL, NULL) \
-  X(pm4_buffer_addr, PM4_BUFFER_ADDR, 0x7f0, RW, NULL, NULL) \
-  X(pm4_micro_cntl, PM4_MICRO_CNTL, 0x7fc, RW, pm4_micro_cntl_fields, NULL) \
-  X(pm4_fifo_data_even, PM4_FIFO_DATA_EVEN, 0x1000, WO, NULL, NULL) \
-  X(pm4_fifo_data_odd, PM4_FIFO_DATA_ODD, 0x1004, WO, NULL, NULL) \
-  X(pm4_microcode_addr, PM4_MICROCODE_ADDR, 0x7d4, RW, pm4_microcode_addr_fields, NULL) \
-  X(pm4_microcode_raddr, PM4_MICROCODE_RADDR, 0x7d8, RW, NULL, NULL) \
-  X(pm4_microcode_datah, PM4_MICROCODE_DATAH, 0x7dc, RW, NULL, NULL) \
-  X(pm4_microcode_datal, PM4_MICROCODE_DATAL, 0x7e0, RW, NULL, NULL) \
-  X(pm4_stat, PM4_STAT, 0x7b8, RO, pm4_stat_fields, NULL) \
-  X(gui_stat, GUI_STAT, 0x1740, RO, gui_stat_fields, NULL) \
-  X(dp_gui_master_cntl, DP_GUI_MASTER_CNTL, 0x146c, RW, dp_gui_master_cntl_fields, NULL) \
-  X(dp_datatype, DP_DATATYPE, 0x16c4, RW, dp_datatype_fields, NULL) \
-  X(dp_mix, DP_MIX, 0x16c8, RW, NULL, NULL) \
-  X(dp_write_msk, DP_WRITE_MSK, 0x16cc, RW, NULL, NULL) \
-  X(dp_cntl, DP_CNTL, 0x16c0, RW, dp_cntl_fields, NULL) \
-  X(dp_brush_bkgd_clr, DP_BRUSH_BKGD_CLR, 0x15dc, RW, NULL, NULL) \
-  X(dp_brush_frgd_clr, DP_BRUSH_FRGD_CLR, 0x1578, RW, NULL, NULL) \
-  X(dp_src_bkgd_clr, DP_SRC_BKGD_CLR, 0x15dc, RW, NULL, NULL) \
-  X(dp_src_frgd_clr, DP_SRC_FRGD_CLR, 0x15d8, RW, NULL, NULL) \
-  X(gui_scratch_reg0, GUI_SCRATCH_REG0, 0x15e0, RW, NULL, NULL) \
-  X(gui_scratch_reg1, GUI_SCRATCH_REG1, 0x15e4, RW, NULL, NULL) \
-  X(gui_scratch_reg2, GUI_SCRATCH_REG2, 0x15e8, RW, NULL, NULL) \
-  X(gui_scratch_reg3, GUI_SCRATCH_REG3, 0x15ec, RW, NULL, NULL) \
-  X(gui_scratch_reg4, GUI_SCRATCH_REG4, 0x15f0, RW, NULL, NULL) \
-  X(gui_scratch_reg5, GUI_SCRATCH_REG5, 0x15f4, RW, NULL, NULL) \
-  X(sc_left, SC_LEFT, 0x1640, RW, NULL, NULL) \
-  X(sc_top, SC_TOP, 0x1648, RW, NULL, NULL) \
-  X(sc_right, SC_RIGHT, 0x1644, RW, NULL, NULL) \
-  X(sc_bottom, SC_BOTTOM, 0x164c, RW, NULL, NULL) \
-  X(sc_top_left, SC_TOP_LEFT, 0x16ec, RW, NULL, NULL) \
-  X(sc_bottom_right, SC_BOTTOM_RIGHT, 0x16f0, RW, NULL, NULL) \
-  X(src_sc_bottom, SRC_SC_BOTTOM, 0x165c, RW, NULL, NULL) \
-  X(src_sc_right, SRC_SC_RIGHT, 0x1654, RW, NULL, NULL) \
-  X(src_sc_bottom_right, SRC_SC_BOTTOM_RIGHT, 0x16f4, RW, NULL, NULL) \
-  X(default_sc_bottom_right, DEFAULT_SC_BOTTOM_RIGHT, 0x16e8, RW, default_sc_bottom_right_fields, NULL) \
-  X(aux_sc_cntl, AUX_SC_CNTL, 0x1660, RW, NULL, NULL) \
-  X(dst_offset, DST_OFFSET, 0x1404, RW, NULL, NULL) \
-  X(dst_pitch, DST_PITCH, 0x1408, RW, NULL, NULL) \
-  X(dst_x, DST_X, 0x141c, RW, NULL, NULL) \
-  X(dst_y, DST_Y, 0x1420, RW, NULL, NULL) \
-  X(dst_x_y, DST_X_Y, 0x1594, WO, NULL, NULL) \
-  X(dst_y_x, DST_Y_X, 0x1438, WO, NULL, NULL) \
-  X(dst_width, DST_WIDTH, 0x140c, RW, NULL, NULL) \
-  X(dst_height, DST_HEIGHT, 0x1410, RW, NULL, NULL) \
-  X(dst_width_height, DST_WIDTH_HEIGHT, 0x1598, RW, NULL, NULL) \
-  X(dst_bres_err, DST_BRES_ERR, 0x1628, RW, NULL, NULL) \
-  X(dst_bres_inc, DST_BRES_INC, 0x162c, RW, NULL, NULL) \
-  X(dst_bres_dec, DST_BRES_DEC, 0x1630, RW, NULL, NULL) \
-  X(src_offset, SRC_OFFSET, 0x15ac, RW, NULL, NULL) \
-  X(src_pitch, SRC_PITCH, 0x15b0, RW, NULL, NULL) \
-  X(src_x, SRC_X, 0x141c, RW, NULL, NULL) \
-  X(src_y, SRC_Y, 0x1420, RW, NULL, NULL) \
-  X(src_x_y, SRC_X_Y, 0x1590, WO, NULL, NULL) \
-  X(src_y_x, SRC_Y_X, 0x1434, WO, NULL, NULL) \
-  X(default_offset, DEFAULT_OFFSET, 0x16e0, RW, default_offset_fields, NULL) \
-  X(default_pitch, DEFAULT_PITCH, 0x16e4, RW, default_pitch_fields, NULL) \
-  X(host_data0, HOST_DATA0, 0x17c0, WO, NULL, NULL) \
-  X(host_data1, HOST_DATA1, 0x17c4, WO, NULL, NULL) \
-  X(host_data2, HOST_DATA2, 0x17c8, WO, NULL, NULL) \
-  X(host_data3, HOST_DATA3, 0x17cc, WO, NULL, NULL) \
-  X(host_data4, HOST_DATA4, 0x17d0, WO, NULL, NULL) \
-  X(host_data5, HOST_DATA5, 0x17d4, WO, NULL, NULL) \
-  X(host_data6, HOST_DATA6, 0x17d8, WO, NULL, NULL) \
-  X(host_data7, HOST_DATA7, 0x17dc, WO, NULL, NULL) \
-  X(host_data_last, HOST_DATA_LAST, 0x17e0, WO, NULL, NULL) \
-  X(scale_3d_cntl, SCALE_3D_CNTL, 0x1a00, RW, NULL, NULL)
+  X(crtc_gen_cntl, CRTC_GEN_CNTL, 0x50, 0, crtc_gen_cntl_fields, NULL) \
+  X(crtc_ext_cntl, CRTC_EXT_CNTL, 0x54, 0, crtc_ext_cntl_fields, NULL) \
+  X(crtc_h_total_disp, CRTC_H_TOTAL_DISP, 0x200, 0, crtc_h_total_disp_fields, NULL) \
+  X(crtc_h_sync_strt_wid, CRTC_H_SYNC_STRT_WID, 0x204, 0, crtc_h_sync_strt_wid_fields, NULL) \
+  X(crtc_v_total_disp, CRTC_V_TOTAL_DISP, 0x208, 0, crtc_v_total_disp_fields, NULL) \
+  X(crtc_v_sync_strt_wid, CRTC_V_SYNC_STRT_WID, 0x20c, 0, crtc_v_sync_strt_wid_fields, NULL) \
+  X(crtc_offset, CRTC_OFFSET, 0x224, 0, NULL, NULL) \
+  X(crtc_offset_cntl, CRTC_OFFSET_CNTL, 0x228, 0, NULL, NULL) \
+  X(crtc_pitch, CRTC_PITCH, 0x22c, 0, NULL, NULL) \
+  X(dac_cntl, DAC_CNTL, 0x58, 0, dac_cntl_fields, NULL) \
+  X(palette_index, PALETTE_INDEX, 0xb0, 0, NULL, NULL) \
+  X(palette_data, PALETTE_DATA, 0xb4, REG_READ_SIDE_EFFECTS, NULL, NULL) \
+  X(gen_reset_cntl, GEN_RESET_CNTL, 0xf0, 0, gen_reset_cntl_fields, NULL) \
+  X(pc_ngui_ctlstat, PC_NGUI_CTLSTAT, 0x184, 0, pc_ngui_ctlstat_fields, pc_ngui_ctlstat_aliases) \
+  X(gen_int_cntl, GEN_INT_CNTL, 0x40, 0, gen_int_cntl_fields, NULL) \
+  X(dda_config, DDA_CONFIG, 0x2e0, 0, NULL, NULL) \
+  X(dda_on_off, DDA_ON_OFF, 0x2e4, 0, NULL, NULL) \
+  X(ovr_clr, OVR_CLR, 0x230, 0, NULL, NULL) \
+  X(ovr_wid_left_right, OVR_WID_LEFT_RIGHT, 0x234, 0, NULL, NULL) \
+  X(ovr_wid_top_bottom, OVR_WID_TOP_BOTTOM, 0x238, 0, NULL, NULL) \
+  X(ov0_scale_cntl, OV0_SCALE_CNTL, 0x420, 0, NULL, NULL) \
+  X(mpp_tb_config, MPP_TB_CONFIG, 0x1c0, 0, NULL, NULL) \
+  X(mpp_gp_config, MPP_GP_CONFIG, 0x1c8, 0, NULL, NULL) \
+  X(subpic_cntl, SUBPIC_CNTL, 0x540, 0, NULL, NULL) \
+  X(viph_control, VIPH_CONTROL, 0x1d0, 0, NULL, NULL) \
+  X(i2c_cntl_1, I2C_CNTL_1, 0x94, 0, NULL, NULL) \
+  X(cap0_trig_cntl, CAP0_TRIG_CNTL, 0x950, 0, NULL, NULL) \
+  X(cap1_trig_cntl, CAP1_TRIG_CNTL, 0x9c0, 0, NULL, NULL) \
+  X(pm4_buffer_offset, PM4_BUFFER_OFFSET, 0x700, 0, NULL, NULL) \
+  X(pm4_buffer_cntl, PM4_BUFFER_CNTL, 0x704, 0, pm4_buffer_cntl_fields, NULL) \
+  X(pm4_buffer_wm_cntl, PM4_BUFFER_WM_CNTL, 0x708, 0, NULL, NULL) \
+  X(pm4_buffer_dl_rptr_addr, PM4_BUFFER_DL_RPTR_ADDR, 0x70c, 0, NULL, NULL) \
+  X(pm4_buffer_dl_rptr, PM4_BUFFER_DL_RPTR, 0x710, 0, NULL, NULL) \
+  X(pm4_buffer_dl_wptr, PM4_BUFFER_DL_WPTR, 0x714, 0, NULL, NULL) \
+  X(pm4_buffer_dl_wptr_delay, PM4_BUFFER_DL_WPTR_DELAY, 0x718, 0, NULL, NULL) \
+  X(pm4_buffer_addr, PM4_BUFFER_ADDR, 0x7f0, 0, NULL, NULL) \
+  X(pm4_micro_cntl, PM4_MICRO_CNTL, 0x7fc, 0, pm4_micro_cntl_fields, NULL) \
+  X(pm4_fifo_data_even, PM4_FIFO_DATA_EVEN, 0x1000, REG_NO_READ, NULL, NULL) \
+  X(pm4_fifo_data_odd, PM4_FIFO_DATA_ODD, 0x1004, REG_NO_READ, NULL, NULL) \
+  X(pm4_microcode_addr, PM4_MICROCODE_ADDR, 0x7d4, 0, pm4_microcode_addr_fields, NULL) \
+  X(pm4_microcode_raddr, PM4_MICROCODE_RADDR, 0x7d8, REG_NO_READ, NULL, NULL) \
+  X(pm4_microcode_datah, PM4_MICROCODE_DATAH, 0x7dc, REG_INDIRECT, NULL, NULL) \
+  X(pm4_microcode_datal, PM4_MICROCODE_DATAL, 0x7e0, REG_READ_SIDE_EFFECTS | REG_INDIRECT, NULL, NULL) \
+  X(pm4_stat, PM4_STAT, 0x7b8, REG_NO_WRITE, pm4_stat_fields, NULL) \
+  X(gui_stat, GUI_STAT, 0x1740, REG_NO_WRITE, gui_stat_fields, NULL) \
+  X(dp_gui_master_cntl, DP_GUI_MASTER_CNTL, 0x146c, 0, dp_gui_master_cntl_fields, NULL) \
+  X(dp_datatype, DP_DATATYPE, 0x16c4, 0, dp_datatype_fields, NULL) \
+  X(dp_mix, DP_MIX, 0x16c8, 0, NULL, NULL) \
+  X(dp_write_msk, DP_WRITE_MSK, 0x16cc, 0, NULL, NULL) \
+  X(dp_cntl, DP_CNTL, 0x16c0, 0, dp_cntl_fields, NULL) \
+  X(dp_brush_bkgd_clr, DP_BRUSH_BKGD_CLR, 0x15dc, 0, NULL, NULL) \
+  X(dp_brush_frgd_clr, DP_BRUSH_FRGD_CLR, 0x1578, 0, NULL, NULL) \
+  X(dp_src_bkgd_clr, DP_SRC_BKGD_CLR, 0x15dc, 0, NULL, NULL) \
+  X(dp_src_frgd_clr, DP_SRC_FRGD_CLR, 0x15d8, 0, NULL, NULL) \
+  X(gui_scratch_reg0, GUI_SCRATCH_REG0, 0x15e0, 0, NULL, NULL) \
+  X(gui_scratch_reg1, GUI_SCRATCH_REG1, 0x15e4, 0, NULL, NULL) \
+  X(gui_scratch_reg2, GUI_SCRATCH_REG2, 0x15e8, 0, NULL, NULL) \
+  X(gui_scratch_reg3, GUI_SCRATCH_REG3, 0x15ec, 0, NULL, NULL) \
+  X(gui_scratch_reg4, GUI_SCRATCH_REG4, 0x15f0, 0, NULL, NULL) \
+  X(gui_scratch_reg5, GUI_SCRATCH_REG5, 0x15f4, 0, NULL, NULL) \
+  X(sc_left, SC_LEFT, 0x1640, 0, NULL, NULL) \
+  X(sc_top, SC_TOP, 0x1648, 0, NULL, NULL) \
+  X(sc_right, SC_RIGHT, 0x1644, 0, NULL, NULL) \
+  X(sc_bottom, SC_BOTTOM, 0x164c, 0, NULL, NULL) \
+  X(sc_top_left, SC_TOP_LEFT, 0x16ec, 0, NULL, NULL) \
+  X(sc_bottom_right, SC_BOTTOM_RIGHT, 0x16f0, 0, NULL, NULL) \
+  X(src_sc_bottom, SRC_SC_BOTTOM, 0x165c, 0, NULL, NULL) \
+  X(src_sc_right, SRC_SC_RIGHT, 0x1654, 0, NULL, NULL) \
+  X(src_sc_bottom_right, SRC_SC_BOTTOM_RIGHT, 0x16f4, 0, NULL, NULL) \
+  X(default_sc_bottom_right, DEFAULT_SC_BOTTOM_RIGHT, 0x16e8, 0, default_sc_bottom_right_fields, NULL) \
+  X(aux_sc_cntl, AUX_SC_CNTL, 0x1660, 0, NULL, NULL) \
+  X(dst_offset, DST_OFFSET, 0x1404, 0, NULL, NULL) \
+  X(dst_pitch, DST_PITCH, 0x1408, 0, NULL, NULL) \
+  X(dst_x, DST_X, 0x141c, 0, NULL, NULL) \
+  X(dst_y, DST_Y, 0x1420, 0, NULL, NULL) \
+  X(dst_x_y, DST_X_Y, 0x1594, REG_NO_READ, NULL, NULL) \
+  X(dst_y_x, DST_Y_X, 0x1438, REG_NO_READ, NULL, NULL) \
+  X(dst_width, DST_WIDTH, 0x140c, 0, NULL, NULL) \
+  X(dst_height, DST_HEIGHT, 0x1410, 0, NULL, NULL) \
+  X(dst_width_height, DST_WIDTH_HEIGHT, 0x1598, 0, NULL, NULL) \
+  X(dst_bres_err, DST_BRES_ERR, 0x1628, 0, NULL, NULL) \
+  X(dst_bres_inc, DST_BRES_INC, 0x162c, 0, NULL, NULL) \
+  X(dst_bres_dec, DST_BRES_DEC, 0x1630, 0, NULL, NULL) \
+  X(src_offset, SRC_OFFSET, 0x15ac, 0, NULL, NULL) \
+  X(src_pitch, SRC_PITCH, 0x15b0, 0, NULL, NULL) \
+  X(src_x, SRC_X, 0x141c, 0, NULL, NULL) \
+  X(src_y, SRC_Y, 0x1420, 0, NULL, NULL) \
+  X(src_x_y, SRC_X_Y, 0x1590, REG_NO_READ, NULL, NULL) \
+  X(src_y_x, SRC_Y_X, 0x1434, REG_NO_READ, NULL, NULL) \
+  X(default_offset, DEFAULT_OFFSET, 0x16e0, 0, default_offset_fields, NULL) \
+  X(default_pitch, DEFAULT_PITCH, 0x16e4, 0, default_pitch_fields, NULL) \
+  X(host_data0, HOST_DATA0, 0x17c0, REG_NO_READ, NULL, NULL) \
+  X(host_data1, HOST_DATA1, 0x17c4, REG_NO_READ, NULL, NULL) \
+  X(host_data2, HOST_DATA2, 0x17c8, REG_NO_READ, NULL, NULL) \
+  X(host_data3, HOST_DATA3, 0x17cc, REG_NO_READ, NULL, NULL) \
+  X(host_data4, HOST_DATA4, 0x17d0, REG_NO_READ, NULL, NULL) \
+  X(host_data5, HOST_DATA5, 0x17d4, REG_NO_READ, NULL, NULL) \
+  X(host_data6, HOST_DATA6, 0x17d8, REG_NO_READ, NULL, NULL) \
+  X(host_data7, HOST_DATA7, 0x17dc, REG_NO_READ, NULL, NULL) \
+  X(host_data_last, HOST_DATA_LAST, 0x17e0, REG_NO_READ, NULL, NULL) \
+  X(scale_3d_cntl, SCALE_3D_CNTL, 0x1a00, 0, NULL, NULL)
 
 #endif // ATI_REGS_GEN_H
