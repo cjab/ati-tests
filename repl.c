@@ -301,6 +301,80 @@ print_field(const char *name, uint8_t shift, uint8_t width,
     }
 }
 
+// Print a field diff showing old -> new values
+// Only prints if the field value changed
+static void
+print_field_diff(const char *name, uint8_t shift, uint8_t width,
+                 const field_value_t *values, uint32_t old_reg, uint32_t new_reg)
+{
+    uint32_t mask = (width >= 32) ? 0xFFFFFFFF : ((1u << width) - 1);
+    uint32_t old_val = (old_reg >> shift) & mask;
+    uint32_t new_val = (new_reg >> shift) & mask;
+
+    if (old_val == new_val)
+        return;
+
+    if (width == 1) {
+        // Single bit: [16]
+        printf("  \x1b[36m%-25s\x1b[0m [%5d]   : %u -> %u\n",
+               name, shift, old_val, new_val);
+    } else {
+        // Multi-bit: [11:0]
+        const char *old_name = lookup_value_name(values, old_val);
+        const char *new_name = lookup_value_name(values, new_val);
+
+        printf("  \x1b[36m%-25s\x1b[0m [%2d:%-2d]   : ", name,
+               shift + width - 1, shift);
+
+        // Print old value
+        if (old_val == 0) {
+            printf("0");
+        } else if (old_name) {
+            printf("%u (0x%x) \x1b[32m%s\x1b[0m", old_val, old_val, old_name);
+        } else {
+            printf("%u (0x%x)", old_val, old_val);
+        }
+
+        printf(" -> ");
+
+        // Print new value
+        if (new_val == 0) {
+            printf("0");
+        } else if (new_name) {
+            printf("%u (0x%x) \x1b[32m%s\x1b[0m", new_val, new_val, new_name);
+        } else {
+            printf("%u (0x%x)", new_val, new_val);
+        }
+
+        printf("\n");
+    }
+}
+
+// Print field-level diff for a register
+static void
+print_reg_diff(const reg_entry_t *reg, uint32_t old_val, uint32_t new_val)
+{
+    uint8_t bit = 0;
+    while (bit < 32) {
+        const field_entry_t *f = find_field_at_bit(reg->fields, bit);
+
+        if (f) {
+            // Known field
+            print_field_diff(f->name, f->shift, f->width, f->values,
+                             old_val, new_val);
+            bit += f->width;
+        } else {
+            // Unknown gap - find where next known field starts
+            uint8_t next_start = find_next_field_start(reg->fields, bit);
+            uint8_t gap_width = next_start - bit;
+
+            print_field_diff("(unknown)", bit, gap_width, NULL,
+                             old_val, new_val);
+            bit = next_start;
+        }
+    }
+}
+
 static void
 print_reg_expanded(const reg_entry_t *reg, uint32_t val)
 {
@@ -755,6 +829,7 @@ regs_diff(ati_device_t *dev)
         if (old_val != new_val) {
             printf("%s (0x%04x) : 0x%08x -> 0x%08x\n",
                    reg_table[i].name, offset, old_val, new_val);
+            print_reg_diff(&reg_table[i], old_val, new_val);
         }
     }
 }
