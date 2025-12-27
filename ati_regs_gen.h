@@ -190,6 +190,8 @@ enum {
 
 // PM4_BUFFER_CNTL fields
 enum {
+    PM4_BUFFER_SIZE_L2QW_SHIFT = 0,
+    PM4_BUFFER_SIZE_L2QW_MASK = 0x7ffffffu,
     PM4_BUFFER_CNTL_NOUPDATE = (1u << 27),
     PM4_BUFFER_MODE_SHIFT = 28,
     PM4_BUFFER_MODE_MASK = 0xf0000000u,
@@ -220,12 +222,6 @@ enum {
 enum {
     PM4_FIFOCNT_SHIFT = 0,
     PM4_FIFOCNT_MASK = 0xfffu,
-};
-
-// GUI_STAT fields
-enum {
-    GUI_FIFO_CNT_SHIFT = 0,
-    GUI_FIFO_CNT_MASK = 0xfffu,
     PM4_BUSY = (1u << 16),
     MICRO_BUSY = (1u << 17),
     FPU_BUSY = (1u << 18),
@@ -240,6 +236,13 @@ enum {
     ENG_2D_BUSY = (1u << 27),
     GUI_WB_BUSY = (1u << 28),
     CACHE_BUSY = (1u << 29),
+    PM4_GUI_ACTIVE = (1u << 31),
+};
+
+// GUI_STAT fields
+enum {
+    GUI_FIFO_CNT_SHIFT = 0,
+    GUI_FIFO_CNT_MASK = 0xfffu,
     GUI_ACTIVE = (1u << 31),
 };
 
@@ -546,6 +549,7 @@ static const field_entry_t gen_int_cntl_fields[] = {
 };
 
 static const field_entry_t pm4_buffer_cntl_fields[] = {
+    {"PM4_BUFFER_SIZE_L2QW", 0, 27, NULL},
     {"PM4_BUFFER_CNTL_NOUPDATE", 27, 1, NULL},
     {"PM4_BUFFER_MODE", 28, 4, pm4_buffer_mode_values},
     {NULL, 0, 0, NULL}
@@ -563,6 +567,21 @@ static const field_entry_t pm4_microcode_addr_fields[] = {
 
 static const field_entry_t pm4_stat_fields[] = {
     {"PM4_FIFOCNT", 0, 12, NULL},
+    {"PM4_BUSY", 16, 1, NULL},
+    {"MICRO_BUSY", 17, 1, NULL},
+    {"FPU_BUSY", 18, 1, NULL},
+    {"VC_BUSY", 19, 1, NULL},
+    {"IDCT_BUSY", 20, 1, NULL},
+    {"ENG_EV_BUSY", 21, 1, NULL},
+    {"SETUP_BUSY", 22, 1, NULL},
+    {"EDGEWALK_BUSY", 23, 1, NULL},
+    {"ADDRESSING_BUSY", 24, 1, NULL},
+    {"ENG_3D_BUSY", 25, 1, NULL},
+    {"ENG_2D_SM_BUSY", 26, 1, NULL},
+    {"ENG_2D_BUSY", 27, 1, NULL},
+    {"GUI_WB_BUSY", 28, 1, NULL},
+    {"CACHE_BUSY", 29, 1, NULL},
+    {"PM4_GUI_ACTIVE", 31, 1, NULL},
     {NULL, 0, 0, NULL}
 };
 

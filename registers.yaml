@@ -411,8 +411,14 @@ registers:
     group: misc
     ref: "linux:drivers/char/drm/r128_drv.h:270"
     fields:
+      PM4_BUFFER_SIZE_L2QW:
+        bits: [0, 26]
+        description: log2 of size of the ring buffer in quadwords
       PM4_BUFFER_CNTL_NOUPDATE:
         bit: 27
+        description: |
+          Always set when writing in available driver source. It's unclear what
+          its exact purpose is.
       PM4_BUFFER_MODE:
         bits: [28, 31]
         values:
@@ -508,9 +514,58 @@ registers:
     group: gui_status
     flags: [no_write]
     ref: "linux:drivers/char/drm/r128_drv.h:300"
+    description: |
+      Mirrors GUI_STAT bits 16-31 exactly. Only the FIFOCNT field (bits 0-11)
+      differs - it reflects the CCE FIFO instead of the GUI command FIFO.
     fields:
       PM4_FIFOCNT:
         bits: [0, 11]
+        description: Number of CCE FIFO slots currently available (max depends on PM4_BUFFER_MODE).
+      PM4_BUSY:
+        bit: 16
+        description: PM4 microengine is busy processing.
+      MICRO_BUSY:
+        bit: 17
+        description: State of the micro engine.
+      FPU_BUSY:
+        bit: 18
+        description: State of the pre-setup engine.
+      VC_BUSY:
+        bit: 19
+        description: State of the vertex controller engine.
+      IDCT_BUSY:
+        bit: 20
+        description: State of the IDCT engine.
+      ENG_EV_BUSY:
+        bit: 21
+        description: State of the event engine.
+      SETUP_BUSY:
+        bit: 22
+        description: State of the setup engine.
+      EDGEWALK_BUSY:
+        bit: 23
+        description: State of the edgewalker pipeline.
+      ADDRESSING_BUSY:
+        bit: 24
+        description: State of the texel/destination addressing pipeline.
+      ENG_3D_BUSY:
+        bit: 25
+        description: State of the eng_3d data pipeline.
+      ENG_2D_SM_BUSY:
+        bit: 26
+        description: State of the eng_2d state machine.
+      ENG_2D_BUSY:
+        bit: 27
+        description: State of the eng_2d pipeline.
+      GUI_WB_BUSY:
+        bit: 28
+        description: State of the GUI write buffer.
+      CACHE_BUSY:
+        bit: 29
+        description: State of the pixel cache.
+      PM4_GUI_ACTIVE:
+        bit: 31
+        description: OR of all busy bits above - indicates any GPU activity.
 
   # ===========================================================================
   # GUI Status Registers

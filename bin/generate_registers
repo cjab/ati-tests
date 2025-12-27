@@ -66,6 +66,61 @@ def field_shift(field)
   field['bit'] || field['bits'][0]
 end
 
+# Track emitted enum constants to detect duplicates
+@emitted_enums = {}
+
+def reset_emitted_enums
+  @emitted_enums = {}
+end
+
+# Check for duplicate/conflicting enum definitions
+# Returns true if this is a duplicate (should skip), raises on conflict
+def check_enum_duplicate(name, value)
+  if @emitted_enums.key?(name)
+    if @emitted_enums[name] != value
+      raise "Conflicting enum '#{name}': previously defined as 0x#{@emitted_enums[name].to_s(16)}, " \
+            "now trying to define as 0x#{value.to_s(16)}"
+    end
+    # Same name and value - skip silently (legitimate mirror)
+    return true
+  end
+  @emitted_enums[name] = value
+  false
+end
+
+# Emit a single-bit flag: NAME = (1u << bit)
+def emit_enum_bit(name, bit, lines)
+  value = 1 << bit
+  return if check_enum_duplicate(name, value)
+
+  lines << "    #{name} = (1u << #{bit}),"
+end
+
+# Emit a shift constant: NAME_SHIFT = N
+def emit_enum_shift(name, shift, lines)
+  return if check_enum_duplicate(name, shift)
+
+  lines << "    #{name} = #{shift},"
+end
+
+# Emit a mask constant: NAME_MASK = 0xNNNu
+def emit_enum_mask(name, mask, lines)
+  return if check_enum_duplicate(name, mask)
+
+  lines << "    #{name} = 0x#{mask.to_s(16)}u,"
+end
+
+# Emit a pre-shifted value constant
+def emit_enum_value(name, value, lines)
+  return if check_enum_duplicate(name, value)
+
+  if value > 9
+    lines << "    #{name} = 0x#{value.to_s(16)}u,"
+  else
+    lines << "    #{name} = #{value}u,"
+  end
+end
+
 def generate_field_enums(reg_name, fields, aliases = nil)
   return '' if (fields.nil? || fields.empty?) && (aliases.nil? || aliases.empty?)
 
@@ -79,12 +134,12 @@ def generate_field_enums(reg_name, fields, aliases = nil)
 
       if width == 1
         # Single bit flag: NAME = (1u << bit)
-        lines << "    #{field_name} = (1u << #{shift}),"
+        emit_enum_bit(field_name, shift, lines)
       else
         # Multi-bit field: NAME_SHIFT and NAME_MASK
         mask = ((1 << width) - 1) << shift
-        lines << "    #{field_name}_SHIFT = #{shift},"
-        lines << "    #{field_name}_MASK = 0x#{mask.to_s(16)}u,"
+        emit_enum_shift("#{field_name}_SHIFT", shift, lines)
+        emit_enum_mask("#{field_name}_MASK", mask, lines)
       end
 
       # Generate named values if present (pre-shifted, ready to OR)
@@ -93,11 +148,7 @@ def generate_field_enums(reg_name, fields, aliases = nil)
           # Prefix with field name to avoid collisions
           const_name = "#{field_name}_#{value_name}"
           shifted_value = value << shift
-          if shifted_value > 9
-            lines << "    #{const_name} = 0x#{shifted_value.to_s(16)}u,"
-          else
-            lines << "    #{const_name} = #{shifted_value}u,"
-          end
+          emit_enum_value(const_name, shifted_value, lines)
         end
       end
     end
@@ -111,11 +162,11 @@ def generate_field_enums(reg_name, fields, aliases = nil)
       width = field_width(alias_def)
 
       if width == 1
-        lines << "    #{alias_name} = (1u << #{shift}),"
+        emit_enum_bit(alias_name, shift, lines)
       else
         mask = ((1 << width) - 1) << shift
-        lines << "    #{alias_name}_SHIFT = #{shift},"
-        lines << "    #{alias_name}_MASK = 0x#{mask.to_s(16)}u,"
+        emit_enum_shift("#{alias_name}_SHIFT", shift, lines)
+        emit_enum_mask("#{alias_name}_MASK", mask, lines)
       end
     end
   end
@@ -194,6 +245,7 @@ def generate_alias_table(reg_name, aliases)
 end
 
 def generate_c_code(data)
+  reset_emitted_enums
   output = []
 
   output << <<~HEADER
