@@ -26,6 +26,26 @@ test_cce(ati_device_t *dev)
 }
 
 bool
+test_cce_setup(ati_device_t *dev)
+{
+    /* Changing the buffer mode affects the number of CCE FIFO buffer slots */
+    uint32_t pm4_buffer_cntl = rd_pm4_buffer_cntl(dev);
+    wr_pm4_buffer_cntl(dev, 0x00000000);
+    ASSERT_EQ(rd_pm4_stat(dev) & PM4_FIFOCNT_MASK, 192);
+    wr_pm4_buffer_cntl(dev, PM4_BUFFER_MODE_192PIO);
+    ASSERT_EQ(rd_pm4_buffer_cntl(dev) & PM4_BUFFER_MODE_MASK, PM4_BUFFER_MODE_192PIO);
+    ASSERT_EQ(rd_pm4_stat(dev) & PM4_FIFOCNT_MASK, 192);
+    wr_pm4_buffer_cntl(dev, PM4_BUFFER_MODE_128PIO_64INDBM);
+    ASSERT_EQ(rd_pm4_stat(dev) & PM4_FIFOCNT_MASK, 128);
+    wr_pm4_buffer_cntl(dev, PM4_BUFFER_MODE_64PIO_128INDBM);
+    ASSERT_EQ(rd_pm4_stat(dev) & PM4_FIFOCNT_MASK, 64);
+    // Reset to initial
+    wr_pm4_buffer_cntl(dev, pm4_buffer_cntl);
+
+    return true;
+}
+
+bool
 test_pm4_microcode(ati_device_t *dev)
 {
     /* Microcode writes */
@@ -171,5 +191,6 @@ void
 register_cce_tests(void)
 {
     REGISTER_TEST(test_cce, "cce");
+    REGISTER_TEST(test_cce_setup, "cce setup");
     REGISTER_TEST(test_pm4_microcode, "pm4 microcode");
 }
