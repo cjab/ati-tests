@@ -96,6 +96,12 @@ registers:
         bit: 25
       CRTC_DISP_REQ_EN_B:
         bit: 26
+    reserved:
+      - bits: [2, 3]
+      - bits: [5, 7]
+      - bits: [11, 15]
+      - bits: [20, 23]
+      - bits: [27, 31]
 
   CRTC_EXT_CNTL:
     offset: 0x0054
@@ -144,6 +150,11 @@ registers:
         bit: 23
       VCRTC_IDX_MASTER:
         bits: [24, 30]
+    reserved:
+      - bit: 7
+      - bit: 14
+      - bit: 16
+      - bit: 31
 
   CRTC_H_TOTAL_DISP:
     offset: 0x0200
@@ -154,6 +165,9 @@ registers:
         bits: [0, 8]
       CRTC_H_DISP:
         bits: [16, 23]
+    reserved:
+      - bits: [9, 15]
+      - bits: [24, 31]
 
   CRTC_H_SYNC_STRT_WID:
     offset: 0x0204
@@ -168,6 +182,10 @@ registers:
         bits: [16, 21]
       CRTC_H_SYNC_POL:
         bit: 23
+    reserved:
+      - bits: [12, 15]
+      - bit: 22
+      - bits: [24, 31]
 
   CRTC_V_TOTAL_DISP:
     offset: 0x0208
@@ -178,6 +196,9 @@ registers:
         bits: [0, 10]
       CRTC_V_DISP:
         bits: [16, 26]
+    reserved:
+      - bits: [11, 15]
+      - bits: [27, 31]
 
   CRTC_V_SYNC_STRT_WID:
     offset: 0x020c
@@ -190,6 +211,10 @@ registers:
         bits: [16, 20]
       CRTC_V_SYNC_POL:
         bit: 23
+    reserved:
+      - bits: [11, 15]
+      - bits: [21, 22]
+      - bits: [24, 31]
 
   CRTC_OFFSET:
     offset: 0x0224
@@ -237,6 +262,11 @@ registers:
         bit: 19
       DAC_MASK:
         bits: [24, 31]
+    reserved:
+      - bits: [4, 6]
+      - bit: 14
+      - bits: [16, 18]
+      - bits: [20, 23]
 
   PALETTE_INDEX:
     offset: 0x00b0
@@ -295,6 +325,8 @@ registers:
       PC_FLUSH_ALL:
         bits: [0, 7]
         ref: "linux:drivers/char/drm/r128_drv.h:247"
+    reserved:
+      - bits: [10, 23]
 
   # ===========================================================================
   # Interrupt Registers
@@ -324,6 +356,11 @@ registers:
         bit: 19
       VIPH_INT_EN:
         bit: 24
+    reserved:
+      - bits: [4, 9]
+      - bits: [11, 15]
+      - bits: [20, 23]
+      - bits: [25, 31]
 
   # ===========================================================================
   # DDA Registers (Display FIFO Arbitration)
@@ -566,6 +603,9 @@ registers:
       PM4_GUI_ACTIVE:
         bit: 31
         description: OR of all busy bits above - indicates any GPU activity.
+    reserved:
+      - bits: [12, 15]
+      - bit: 30
 
   # ===========================================================================
   # GUI Status Registers
@@ -608,6 +648,9 @@ registers:
         bit: 29
       GUI_ACTIVE:
         bit: 31
+    reserved:
+      - bits: [12, 15]
+      - bit: 30
 
   # ===========================================================================
   # Datapath / Drawing Engine Registers
@@ -694,8 +737,22 @@ registers:
     group: datapath
     ref: "RRG:183"
     fields:
+      DP_DST_DATATYPE:
+        bits: [0, 3]
+      DP_BRUSH_DATATYPE:
+        bits: [8, 11]
+      DP_SRC_DATATYPE:
+        bits: [16, 17]
       HOST_BIG_ENDIAN_EN:
         bit: 29
+      DP_BYTE_PIX_ORDER:
+        bit: 30
+      DP_CONVERSION_TEMP:
+        bit: 31
+    reserved:
+      - bits: [4, 7]
+      - bits: [12, 15]
+      - bits: [18, 28]
 
   DP_MIX:
     offset: 0x16c8
@@ -808,6 +865,9 @@ registers:
         bits: [0, 13]
       DEFAULT_SC_BOTTOM:
         bits: [16, 29]
+    reserved:
+      - bits: [14, 15]
+      - bits: [30, 31]
 
   AUX_SC_CNTL:
     offset: 0x1660
@@ -913,6 +973,9 @@ registers:
         bits: [0, 9]
       DEFAULT_TILE:
         bit: 16
+    reserved:
+      - bits: [10, 15]
+      - bits: [17, 31]
 
   # ===========================================================================
   # Host Data Registers

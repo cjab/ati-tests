@@ -307,7 +307,15 @@ enum {
 
 // DP_DATATYPE fields
 enum {
+    DP_DST_DATATYPE_SHIFT = 0,
+    DP_DST_DATATYPE_MASK = 0xfu,
+    DP_BRUSH_DATATYPE_SHIFT = 8,
+    DP_BRUSH_DATATYPE_MASK = 0xf00u,
+    DP_SRC_DATATYPE_SHIFT = 16,
+    DP_SRC_DATATYPE_MASK = 0x30000u,
     HOST_BIG_ENDIAN_EN = (1u << 29),
+    DP_BYTE_PIX_ORDER = (1u << 30),
+    DP_CONVERSION_TEMP = (1u << 31),
 };
 
 // DP_CNTL fields
@@ -439,6 +447,11 @@ static const field_entry_t crtc_gen_cntl_fields[] = {
     {"CRTC_EXT_DISP_EN", 24, 1, NULL},
     {"CRTC_EN", 25, 1, NULL},
     {"CRTC_DISP_REQ_EN_B", 26, 1, NULL},
+    {"(reserved)", 2, 2, NULL},
+    {"(reserved)", 5, 3, NULL},
+    {"(reserved)", 11, 5, NULL},
+    {"(reserved)", 20, 4, NULL},
+    {"(reserved)", 27, 5, NULL},
     {NULL, 0, 0, NULL}
 };
 
@@ -464,12 +477,18 @@ static const field_entry_t crtc_ext_cntl_fields[] = {
     {"FP_OUT_EN", 22, 1, NULL},
     {"FP_ACTIVE", 23, 1, NULL},
     {"VCRTC_IDX_MASTER", 24, 7, NULL},
+    {"(reserved)", 7, 1, NULL},
+    {"(reserved)", 14, 1, NULL},
+    {"(reserved)", 16, 1, NULL},
+    {"(reserved)", 31, 1, NULL},
     {NULL, 0, 0, NULL}
 };
 
 static const field_entry_t crtc_h_total_disp_fields[] = {
     {"CRTC_H_TOTAL", 0, 9, NULL},
     {"CRTC_H_DISP", 16, 8, NULL},
+    {"(reserved)", 9, 7, NULL},
+    {"(reserved)", 24, 8, NULL},
     {NULL, 0, 0, NULL}
 };
 
@@ -478,12 +497,17 @@ static const field_entry_t crtc_h_sync_strt_wid_fields[] = {
     {"CRTC_H_SYNC_STRT_CHAR", 3, 9, NULL},
     {"CRTC_H_SYNC_WID", 16, 6, NULL},
     {"CRTC_H_SYNC_POL", 23, 1, NULL},
+    {"(reserved)", 12, 4, NULL},
+    {"(reserved)", 22, 1, NULL},
+    {"(reserved)", 24, 8, NULL},
     {NULL, 0, 0, NULL}
 };
 
 static const field_entry_t crtc_v_total_disp_fields[] = {
     {"CRTC_V_TOTAL", 0, 11, NULL},
     {"CRTC_V_DISP", 16, 11, NULL},
+    {"(reserved)", 11, 5, NULL},
+    {"(reserved)", 27, 5, NULL},
     {NULL, 0, 0, NULL}
 };
 
@@ -491,6 +515,9 @@ static const field_entry_t crtc_v_sync_strt_wid_fields[] = {
     {"CRTC_V_SYNC_STRT", 0, 11, NULL},
     {"CRTC_V_SYNC_WID", 16, 5, NULL},
     {"CRTC_V_SYNC_POL", 23, 1, NULL},
+    {"(reserved)", 11, 5, NULL},
+    {"(reserved)", 21, 2, NULL},
+    {"(reserved)", 24, 8, NULL},
     {NULL, 0, 0, NULL}
 };
 
@@ -508,6 +535,10 @@ static const field_entry_t dac_cntl_fields[] = {
     {"DAC_PDWN", 15, 1, NULL},
     {"DAC_CRC_EN", 19, 1, NULL},
     {"DAC_MASK", 24, 8, NULL},
+    {"(reserved)", 4, 3, NULL},
+    {"(reserved)", 14, 1, NULL},
+    {"(reserved)", 16, 3, NULL},
+    {"(reserved)", 20, 4, NULL},
     {NULL, 0, 0, NULL}
 };
 
@@ -531,6 +562,7 @@ static const field_entry_t pc_ngui_ctlstat_fields[] = {
     {"PC_BUSY_GUI", 29, 1, NULL},
     {"PC_BUSY_NGUI", 30, 1, NULL},
     {"PC_BUSY", 31, 1, NULL},
+    {"(reserved)", 10, 14, NULL},
     {NULL, 0, 0, NULL}
 };
 
@@ -545,6 +577,10 @@ static const field_entry_t gen_int_cntl_fields[] = {
     {"MPP_GP_INT_EN", 18, 1, NULL},
     {"GUI_IDLE_INT_EN", 19, 1, NULL},
     {"VIPH_INT_EN", 24, 1, NULL},
+    {"(reserved)", 4, 6, NULL},
+    {"(reserved)", 11, 5, NULL},
+    {"(reserved)", 20, 4, NULL},
+    {"(reserved)", 25, 7, NULL},
     {NULL, 0, 0, NULL}
 };
 
@@ -582,6 +618,8 @@ static const field_entry_t pm4_stat_fields[] = {
     {"GUI_WB_BUSY", 28, 1, NULL},
     {"CACHE_BUSY", 29, 1, NULL},
     {"PM4_GUI_ACTIVE", 31, 1, NULL},
+    {"(reserved)", 12, 4, NULL},
+    {"(reserved)", 30, 1, NULL},
     {NULL, 0, 0, NULL}
 };
 
@@ -602,6 +640,8 @@ static const field_entry_t gui_stat_fields[] = {
     {"GUI_WB_BUSY", 28, 1, NULL},
     {"CACHE_BUSY", 29, 1, NULL},
     {"GUI_ACTIVE", 31, 1, NULL},
+    {"(reserved)", 12, 4, NULL},
+    {"(reserved)", 30, 1, NULL},
     {NULL, 0, 0, NULL}
 };
 
@@ -626,7 +666,15 @@ static const field_entry_t dp_gui_master_cntl_fields[] = {
 };
 
 static const field_entry_t dp_datatype_fields[] = {
+    {"DP_DST_DATATYPE", 0, 4, NULL},
+    {"DP_BRUSH_DATATYPE", 8, 4, NULL},
+    {"DP_SRC_DATATYPE", 16, 2, NULL},
     {"HOST_BIG_ENDIAN_EN", 29, 1, NULL},
+    {"DP_BYTE_PIX_ORDER", 30, 1, NULL},
+    {"DP_CONVERSION_TEMP", 31, 1, NULL},
+    {"(reserved)", 4, 4, NULL},
+    {"(reserved)", 12, 4, NULL},
+    {"(reserved)", 18, 11, NULL},
     {NULL, 0, 0, NULL}
 };
 
@@ -640,6 +688,8 @@ static const field_entry_t dp_cntl_fields[] = {
 static const field_entry_t default_sc_bottom_right_fields[] = {
     {"DEFAULT_SC_RIGHT", 0, 14, NULL},
     {"DEFAULT_SC_BOTTOM", 16, 14, NULL},
+    {"(reserved)", 14, 2, NULL},
+    {"(reserved)", 30, 2, NULL},
     {NULL, 0, 0, NULL}
 };
 
@@ -651,6 +701,8 @@ static const field_entry_t default_offset_fields[] = {
 static const field_entry_t default_pitch_fields[] = {
     {"DEFAULT_PITCH", 0, 10, NULL},
     {"DEFAULT_TILE", 16, 1, NULL},
+    {"(reserved)", 10, 6, NULL},
+    {"(reserved)", 17, 15, NULL},
     {NULL, 0, 0, NULL}
 };
 

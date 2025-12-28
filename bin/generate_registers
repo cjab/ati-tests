@@ -203,21 +203,35 @@ def generate_value_tables(reg_name, fields)
   tables
 end
 
-def generate_field_table(reg_name, fields)
-  return 'NULL' if fields.nil? || fields.empty?
+def generate_field_table(reg_name, fields, reserved = nil)
+  has_fields = fields && !fields.empty?
+  has_reserved = reserved && !reserved.empty?
+  return 'NULL' unless has_fields || has_reserved
 
   table_name = "#{reg_name.downcase}_fields"
   lines = ["static const field_entry_t #{table_name}[] = {"]
 
-  fields.each do |field_name, field|
-    shift = field_shift(field)
-    width = field_width(field)
-    values_ptr = if field['values'] && !field['values'].empty?
-                   "#{field_name.downcase}_values"
-                 else
-                   'NULL'
-                 end
-    lines << "    {\"#{field_name}\", #{shift}, #{width}, #{values_ptr}},"
+  # Add regular fields
+  if has_fields
+    fields.each do |field_name, field|
+      shift = field_shift(field)
+      width = field_width(field)
+      values_ptr = if field['values'] && !field['values'].empty?
+                     "#{field_name.downcase}_values"
+                   else
+                     'NULL'
+                   end
+      lines << "    {\"#{field_name}\", #{shift}, #{width}, #{values_ptr}},"
+    end
+  end
+
+  # Add reserved fields
+  if has_reserved
+    reserved.each do |res|
+      shift = field_shift(res)
+      width = field_width(res)
+      lines << "    {\"(reserved)\", #{shift}, #{width}, NULL},"
+    end
   end
 
   lines << '    {NULL, 0, 0, NULL}'
@@ -329,9 +343,11 @@ def generate_c_code(data)
   output << ''
 
   data['registers'].each do |reg_name, reg|
-    next unless reg['fields'] && !reg['fields'].empty?
+    has_fields = reg['fields'] && !reg['fields'].empty?
+    has_reserved = reg['reserved'] && !reg['reserved'].empty?
+    next unless has_fields || has_reserved
 
-    output << generate_field_table(reg_name, reg['fields'])
+    output << generate_field_table(reg_name, reg['fields'], reg['reserved'])
     output << ''
   end
 
@@ -373,7 +389,9 @@ def generate_c_code(data)
 
   data['registers'].each_with_index do |(reg_name, reg), idx|
     flags = flags_to_c(reg['flags'])
-    fields = reg['fields'] && !reg['fields'].empty? ? "#{reg_name.downcase}_fields" : 'NULL'
+    has_fields = reg['fields'] && !reg['fields'].empty?
+    has_reserved = reg['reserved'] && !reg['reserved'].empty?
+    fields = (has_fields || has_reserved) ? "#{reg_name.downcase}_fields" : 'NULL'
     aliases = reg['aliases'] && !reg['aliases'].empty? ? "#{reg_name.downcase}_aliases" : 'NULL'
     last = idx == data['registers'].size - 1
     cont = last ? '' : ' \\'
