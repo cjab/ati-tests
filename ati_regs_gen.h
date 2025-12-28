@@ -593,6 +593,9 @@ static const field_entry_t pm4_buffer_cntl_fields[] = {
 
 static const field_entry_t pm4_micro_cntl_fields[] = {
     {"PM4_MICRO_FREERUN", 30, 1, NULL},
+    {"(unknown)", 0, 14, NULL},
+    {"(unknown)", 14, 16, NULL},
+    {"(unknown)", 31, 1, NULL},
     {NULL, 0, 0, NULL}
 };
 

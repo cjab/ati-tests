@@ -203,10 +203,11 @@ def generate_value_tables(reg_name, fields)
   tables
 end
 
-def generate_field_table(reg_name, fields, reserved = nil)
+def generate_field_table(reg_name, fields, reserved = nil, unknown = nil)
   has_fields = fields && !fields.empty?
+  has_unknown = unknown && !unknown.empty?
   has_reserved = reserved && !reserved.empty?
-  return 'NULL' unless has_fields || has_reserved
+  return 'NULL' unless has_fields || has_unknown || has_reserved
 
   table_name = "#{reg_name.downcase}_fields"
   lines = ["static const field_entry_t #{table_name}[] = {"]
@@ -222,6 +223,15 @@ def generate_field_table(reg_name, fields, reserved = nil)
                      'NULL'
                    end
       lines << "    {\"#{field_name}\", #{shift}, #{width}, #{values_ptr}},"
+    end
+  end
+
+  # Add unknown fields
+  if has_unknown
+    unknown.each do |unk|
+      shift = field_shift(unk)
+      width = field_width(unk)
+      lines << "    {\"(unknown)\", #{shift}, #{width}, NULL},"
     end
   end
 
@@ -344,10 +354,11 @@ def generate_c_code(data)
 
   data['registers'].each do |reg_name, reg|
     has_fields = reg['fields'] && !reg['fields'].empty?
+    has_unknown = reg['unknown'] && !reg['unknown'].empty?
     has_reserved = reg['reserved'] && !reg['reserved'].empty?
-    next unless has_fields || has_reserved
+    next unless has_fields || has_unknown || has_reserved
 
-    output << generate_field_table(reg_name, reg['fields'], reg['reserved'])
+    output << generate_field_table(reg_name, reg['fields'], reg['reserved'], reg['unknown'])
     output << ''
   end
 

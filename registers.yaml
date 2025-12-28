@@ -15,6 +15,10 @@
 #   no_write          - register cannot be written (read-only)
 #   read_side_effects - reading modifies hardware state (e.g., auto-increment)
 #   indirect          - access requires index register to be set first
+#
+# unknown:          - bit ranges with observable behavior but unknown purpose
+#                     supports: bit, bits, description (description is for
+#                     documentation only, not currently displayed)
 
 groups:
   config:
@@ -506,6 +510,11 @@ registers:
     fields:
       PM4_MICRO_FREERUN:
         bit: 30
+    unknown:
+      - bits: [0, 13]
+        description: "Often (but not always) reads 0x3fff. Changes when submitting packets"
+      - bits: [14, 29]
+      - bit: 31
 
   PM4_FIFO_DATA_EVEN:
     offset: 0x1000
