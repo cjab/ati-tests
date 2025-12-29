@@ -1,20 +1,27 @@
 # ATI Rage 128 Pro Register Definitions
 #
 # Reference key:
-#   RRG:<page>  - Rage 128 Pro Register Reference Guide (PDF page number)
-#   xorg:<file> - xserver-xorg-video-r128 driver source
-#   linux:<file> - Linux kernel r128 DRM driver source
+#   RRG:<page>      - Rage 128 Pro Register Reference Guide (PDF page number)
+#   xorg:<file>     - xserver-xorg-video-r128 driver source
+#   linux:<file>    - Linux kernel r128 DRM driver source
+#   hardware:<card> - Not documented or used in drivers, discovered
+#                     through experimentation on this specific card
 #
 # Field format:
 #   bit: N           - single bit at position N
 #   bits: [lo, hi]   - multi-bit field from lo to hi (inclusive)
 #   values:          - named constants for field values
+#   flags:           - flags (listed below) that apply to this field
+#   ref:             - where information about this field was found
+#   description:     - a short description of the field
 #
 # Flags (optional list, default is readable + writable):
-#   no_read           - register cannot be read (write-only)
-#   no_write          - register cannot be written (read-only)
-#   read_side_effects - reading modifies hardware state (e.g., auto-increment)
-#   indirect          - access requires index register to be set first
+#   no_read            - register cannot be read (write-only)
+#   no_write           - register cannot be written (read-only)
+#   read_side_effects  - reading modifies hardware state (e.g., auto-increment)
+#   indirect           - access requires index register to be set first
+#   reverse_engineered - not documented or used in dirvers, discovered through
+#                        experimentation
 #
 # unknown:          - bit ranges with observable behavior but unknown purpose
 #                     supports: bit, bits, description (description is for
@@ -462,6 +469,10 @@ registers:
           its exact purpose is.
       PM4_BUFFER_MODE:
         bits: [28, 31]
+        description: |
+          When this is set to anything other than NONPM4 all MMIO writes to the
+          GUI engine registers are disabled. Everything must go through the
+          CCE FIFO at that point.
         values:
           NONPM4: 0
           192PIO: 1
@@ -508,11 +519,21 @@ registers:
     group: misc
     ref: "linux:drivers/char/drm/r128_drv.h:311"
     fields:
+      PM4_PKT_DWORDS_REMAIN:
+        bits: [0, 13]
+        flags: [reverse_engineered]
+        ref: "hardware:Rage128ProUltra(PCI 1002:5446)"
+        description: |
+          Remaining 32-bit words to be processed in the current packet. When
+          idle this will be set to 0x3fff meaning a new packet can be sent.
+          Situations have been observed where this register seems to contain
+          garbage that persists across reboots until a full packet is processed
+          and the value returns to 0x3fff. This could use more investigation.
+        values:
+          IDLE: 0x3fff
       PM4_MICRO_FREERUN:
         bit: 30
     unknown:
-      - bits: [0, 13]
-        description: "Often (but not always) reads 0x3fff. Changes when submitting packets"
       - bits: [14, 29]
       - bit: 31
 

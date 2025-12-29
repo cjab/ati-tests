@@ -28,8 +28,10 @@ test_cce(ati_device_t *dev)
 bool
 test_cce_setup(ati_device_t *dev)
 {
-    /* Changing the buffer mode affects the number of CCE FIFO buffer slots */
+    uint32_t dp_gui_master_cntl = rd_dp_gui_master_cntl(dev);
     uint32_t pm4_buffer_cntl = rd_pm4_buffer_cntl(dev);
+
+    /* Changing the buffer mode affects the number of CCE FIFO buffer slots */
     wr_pm4_buffer_cntl(dev, 0x00000000);
     ASSERT_EQ(rd_pm4_stat(dev) & PM4_FIFOCNT_MASK, 192);
     wr_pm4_buffer_cntl(dev, PM4_BUFFER_MODE_192PIO);
@@ -42,6 +44,22 @@ test_cce_setup(ati_device_t *dev)
     // Reset to initial
     wr_pm4_buffer_cntl(dev, pm4_buffer_cntl);
 
+    /* Changing the buffer mode to anything other than 0 (NONPM4) disables
+     * MMIO writes to GUI engine registers. (0x1400-0x1fff) */
+    wr_dp_gui_master_cntl(dev, (dp_gui_master_cntl & ~GMC_BRUSH_DATATYPE_MASK) |
+                          GMC_BRUSH_DATATYPE_32X1_MONO);
+    ASSERT_EQ(rd_dp_gui_master_cntl(dev) & GMC_BRUSH_DATATYPE_MASK,
+              GMC_BRUSH_DATATYPE_32X1_MONO);
+    wr_pm4_buffer_cntl(dev, PM4_BUFFER_MODE_192PIO);
+    wr_dp_gui_master_cntl(dev, (dp_gui_master_cntl & ~GMC_BRUSH_DATATYPE_MASK) |
+                          GMC_BRUSH_DATATYPE_SOLIDCOLOR);
+    // Failed to write to GUI register because we're in CCE 192PIO mode
+    ASSERT_EQ(rd_dp_gui_master_cntl(dev) & GMC_BRUSH_DATATYPE_MASK,
+              GMC_BRUSH_DATATYPE_32X1_MONO);
+
+    // Reset to initial
+    wr_dp_gui_master_cntl(dev, dp_gui_master_cntl);
+    wr_pm4_buffer_cntl(dev, pm4_buffer_cntl);
     return true;
 }
 
