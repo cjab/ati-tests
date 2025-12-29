@@ -24,15 +24,17 @@ typedef struct {
     const char *name;
     uint8_t shift;
     uint8_t width;
+    uint8_t flags;
     const field_value_t *values;  // NULL if no named values
 } field_entry_t;
 
-// Register flags
+// Flags (for registers and fields)
 enum {
-    REG_NO_READ           = (1 << 0),  // Register cannot be read (write-only)
-    REG_NO_WRITE          = (1 << 1),  // Register cannot be written (read-only)
-    REG_READ_SIDE_EFFECTS = (1 << 2),  // Reading modifies hardware state
-    REG_INDIRECT          = (1 << 3),  // Access requires index register set first
+    FLAG_NO_READ           = (1 << 0),  // Cannot be read (write-only)
+    FLAG_NO_WRITE          = (1 << 1),  // Cannot be written (read-only)
+    FLAG_READ_SIDE_EFFECTS = (1 << 2),  // Reading modifies hardware state
+    FLAG_INDIRECT          = (1 << 3),  // Access requires index register set first
+    FLAG_REVERSE_ENGINEERED = (1 << 4), // Discovered through hardware testing
 };
 
 
@@ -209,6 +211,9 @@ enum {
 
 // PM4_MICRO_CNTL fields
 enum {
+    PM4_PKT_DWORDS_REMAIN_SHIFT = 0,
+    PM4_PKT_DWORDS_REMAIN_MASK = 0x3fffu,
+    PM4_PKT_DWORDS_REMAIN_IDLE = 0x3fffu,
     PM4_MICRO_FREERUN = (1u << 30),
 };
 
@@ -379,6 +384,11 @@ static const field_value_t pm4_buffer_mode_values[] = {
     {NULL, 0}
 };
 
+static const field_value_t pm4_pkt_dwords_remain_values[] = {
+    {"IDLE", 16383},
+    {NULL, 0}
+};
+
 static const field_value_t gmc_brush_datatype_values[] = {
     {"8X8_MONO", 0},
     {"8X8_MONO_TRANS", 1},
@@ -438,275 +448,275 @@ static const field_value_t gmc_src_source_values[] = {
 // ============================================================================
 
 static const field_entry_t crtc_gen_cntl_fields[] = {
-    {"CRTC_DBL_SCAN_EN", 0, 1, NULL},
-    {"CRTC_INTERLACE_EN", 1, 1, NULL},
-    {"CRTC_C_SYNC_EN", 4, 1, NULL},
-    {"CRTC_PIX_WIDTH", 8, 3, crtc_pix_width_values},
-    {"CRTC_CUR_EN", 16, 1, NULL},
-    {"CRTC_CUR_MODE", 17, 3, crtc_cur_mode_values},
-    {"CRTC_EXT_DISP_EN", 24, 1, NULL},
-    {"CRTC_EN", 25, 1, NULL},
-    {"CRTC_DISP_REQ_EN_B", 26, 1, NULL},
-    {"(reserved)", 2, 2, NULL},
-    {"(reserved)", 5, 3, NULL},
-    {"(reserved)", 11, 5, NULL},
-    {"(reserved)", 20, 4, NULL},
-    {"(reserved)", 27, 5, NULL},
-    {NULL, 0, 0, NULL}
+    {"CRTC_DBL_SCAN_EN", 0, 1, 0, NULL},
+    {"CRTC_INTERLACE_EN", 1, 1, 0, NULL},
+    {"CRTC_C_SYNC_EN", 4, 1, 0, NULL},
+    {"CRTC_PIX_WIDTH", 8, 3, 0, crtc_pix_width_values},
+    {"CRTC_CUR_EN", 16, 1, 0, NULL},
+    {"CRTC_CUR_MODE", 17, 3, 0, crtc_cur_mode_values},
+    {"CRTC_EXT_DISP_EN", 24, 1, 0, NULL},
+    {"CRTC_EN", 25, 1, 0, NULL},
+    {"CRTC_DISP_REQ_EN_B", 26, 1, 0, NULL},
+    {"(reserved)", 2, 2, 0, NULL},
+    {"(reserved)", 5, 3, 0, NULL},
+    {"(reserved)", 11, 5, 0, NULL},
+    {"(reserved)", 20, 4, 0, NULL},
+    {"(reserved)", 27, 5, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t crtc_ext_cntl_fields[] = {
-    {"CRTC_VGA_XOVERSCAN", 0, 1, NULL},
-    {"VGA_BLINK_RATE", 1, 2, NULL},
-    {"VGA_ATI_LINEAR", 3, 1, NULL},
-    {"VGA_128KAP_PAGING", 4, 1, NULL},
-    {"VGA_TEXT_132", 5, 1, NULL},
-    {"VGA_XCRT_CNT_EN", 6, 1, NULL},
-    {"CRTC_HSYNC_DIS", 8, 1, NULL},
-    {"CRTC_VSYNC_DIS", 9, 1, NULL},
-    {"CRTC_DISPLAY_DIS", 10, 1, NULL},
-    {"CRTC_SYNC_TRISTATE", 11, 1, NULL},
-    {"CRTC_HSYNC_TRISTATE", 12, 1, NULL},
-    {"CRTC_VSYNC_TRISTATE", 13, 1, NULL},
-    {"CRTC_CRT_ON", 15, 1, NULL},
-    {"VGA_CUR_B_TEST", 17, 1, NULL},
-    {"VGA_PACK_DIS", 18, 1, NULL},
-    {"VGA_MEM_PS_EN", 19, 1, NULL},
-    {"VGA_READ_PREFETCH_DIS", 20, 1, NULL},
-    {"DFIFO_EXTSENSE", 21, 1, NULL},
-    {"FP_OUT_EN", 22, 1, NULL},
-    {"FP_ACTIVE", 23, 1, NULL},
-    {"VCRTC_IDX_MASTER", 24, 7, NULL},
-    {"(reserved)", 7, 1, NULL},
-    {"(reserved)", 14, 1, NULL},
-    {"(reserved)", 16, 1, NULL},
-    {"(reserved)", 31, 1, NULL},
-    {NULL, 0, 0, NULL}
+    {"CRTC_VGA_XOVERSCAN", 0, 1, 0, NULL},
+    {"VGA_BLINK_RATE", 1, 2, 0, NULL},
+    {"VGA_ATI_LINEAR", 3, 1, 0, NULL},
+    {"VGA_128KAP_PAGING", 4, 1, 0, NULL},
+    {"VGA_TEXT_132", 5, 1, 0, NULL},
+    {"VGA_XCRT_CNT_EN", 6, 1, 0, NULL},
+    {"CRTC_HSYNC_DIS", 8, 1, 0, NULL},
+    {"CRTC_VSYNC_DIS", 9, 1, 0, NULL},
+    {"CRTC_DISPLAY_DIS", 10, 1, 0, NULL},
+    {"CRTC_SYNC_TRISTATE", 11, 1, 0, NULL},
+    {"CRTC_HSYNC_TRISTATE", 12, 1, 0, NULL},
+    {"CRTC_VSYNC_TRISTATE", 13, 1, 0, NULL},
+    {"CRTC_CRT_ON", 15, 1, 0, NULL},
+    {"VGA_CUR_B_TEST", 17, 1, 0, NULL},
+    {"VGA_PACK_DIS", 18, 1, 0, NULL},
+    {"VGA_MEM_PS_EN", 19, 1, 0, NULL},
+    {"VGA_READ_PREFETCH_DIS", 20, 1, 0, NULL},
+    {"DFIFO_EXTSENSE", 21, 1, 0, NULL},
+    {"FP_OUT_EN", 22, 1, 0, NULL},
+    {"FP_ACTIVE", 23, 1, 0, NULL},
+    {"VCRTC_IDX_MASTER", 24, 7, 0, NULL},
+    {"(reserved)", 7, 1, 0, NULL},
+    {"(reserved)", 14, 1, 0, NULL},
+    {"(reserved)", 16, 1, 0, NULL},
+    {"(reserved)", 31, 1, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t crtc_h_total_disp_fields[] = {
-    {"CRTC_H_TOTAL", 0, 9, NULL},
-    {"CRTC_H_DISP", 16, 8, NULL},
-    {"(reserved)", 9, 7, NULL},
-    {"(reserved)", 24, 8, NULL},
-    {NULL, 0, 0, NULL}
+    {"CRTC_H_TOTAL", 0, 9, 0, NULL},
+    {"CRTC_H_DISP", 16, 8, 0, NULL},
+    {"(reserved)", 9, 7, 0, NULL},
+    {"(reserved)", 24, 8, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t crtc_h_sync_strt_wid_fields[] = {
-    {"CRTC_H_SYNC_STRT_PIX", 0, 3, NULL},
-    {"CRTC_H_SYNC_STRT_CHAR", 3, 9, NULL},
-    {"CRTC_H_SYNC_WID", 16, 6, NULL},
-    {"CRTC_H_SYNC_POL", 23, 1, NULL},
-    {"(reserved)", 12, 4, NULL},
-    {"(reserved)", 22, 1, NULL},
-    {"(reserved)", 24, 8, NULL},
-    {NULL, 0, 0, NULL}
+    {"CRTC_H_SYNC_STRT_PIX", 0, 3, 0, NULL},
+    {"CRTC_H_SYNC_STRT_CHAR", 3, 9, 0, NULL},
+    {"CRTC_H_SYNC_WID", 16, 6, 0, NULL},
+    {"CRTC_H_SYNC_POL", 23, 1, 0, NULL},
+    {"(reserved)", 12, 4, 0, NULL},
+    {"(reserved)", 22, 1, 0, NULL},
+    {"(reserved)", 24, 8, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t crtc_v_total_disp_fields[] = {
-    {"CRTC_V_TOTAL", 0, 11, NULL},
-    {"CRTC_V_DISP", 16, 11, NULL},
-    {"(reserved)", 11, 5, NULL},
-    {"(reserved)", 27, 5, NULL},
-    {NULL, 0, 0, NULL}
+    {"CRTC_V_TOTAL", 0, 11, 0, NULL},
+    {"CRTC_V_DISP", 16, 11, 0, NULL},
+    {"(reserved)", 11, 5, 0, NULL},
+    {"(reserved)", 27, 5, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t crtc_v_sync_strt_wid_fields[] = {
-    {"CRTC_V_SYNC_STRT", 0, 11, NULL},
-    {"CRTC_V_SYNC_WID", 16, 5, NULL},
-    {"CRTC_V_SYNC_POL", 23, 1, NULL},
-    {"(reserved)", 11, 5, NULL},
-    {"(reserved)", 21, 2, NULL},
-    {"(reserved)", 24, 8, NULL},
-    {NULL, 0, 0, NULL}
+    {"CRTC_V_SYNC_STRT", 0, 11, 0, NULL},
+    {"CRTC_V_SYNC_WID", 16, 5, 0, NULL},
+    {"CRTC_V_SYNC_POL", 23, 1, 0, NULL},
+    {"(reserved)", 11, 5, 0, NULL},
+    {"(reserved)", 21, 2, 0, NULL},
+    {"(reserved)", 24, 8, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t dac_cntl_fields[] = {
-    {"DAC_RANGE_CNTL", 0, 2, NULL},
-    {"DAC_BLANKING", 2, 1, NULL},
-    {"DAC_CMP_EN", 3, 1, NULL},
-    {"DAC_CMP_OUTPUT", 7, 1, NULL},
-    {"DAC_8BIT_EN", 8, 1, NULL},
-    {"DAC_4BPP_PIX_ORDER", 9, 1, NULL},
-    {"DAC_TVO_EN", 10, 1, NULL},
-    {"DAC_TVO_OVR_EXCL", 11, 1, NULL},
-    {"DAC_TVO_16BPP_DITH_EN", 12, 1, NULL},
-    {"DAC_VGA_ADR_EN", 13, 1, NULL},
-    {"DAC_PDWN", 15, 1, NULL},
-    {"DAC_CRC_EN", 19, 1, NULL},
-    {"DAC_MASK", 24, 8, NULL},
-    {"(reserved)", 4, 3, NULL},
-    {"(reserved)", 14, 1, NULL},
-    {"(reserved)", 16, 3, NULL},
-    {"(reserved)", 20, 4, NULL},
-    {NULL, 0, 0, NULL}
+    {"DAC_RANGE_CNTL", 0, 2, 0, NULL},
+    {"DAC_BLANKING", 2, 1, 0, NULL},
+    {"DAC_CMP_EN", 3, 1, 0, NULL},
+    {"DAC_CMP_OUTPUT", 7, 1, 0, NULL},
+    {"DAC_8BIT_EN", 8, 1, 0, NULL},
+    {"DAC_4BPP_PIX_ORDER", 9, 1, 0, NULL},
+    {"DAC_TVO_EN", 10, 1, 0, NULL},
+    {"DAC_TVO_OVR_EXCL", 11, 1, 0, NULL},
+    {"DAC_TVO_16BPP_DITH_EN", 12, 1, 0, NULL},
+    {"DAC_VGA_ADR_EN", 13, 1, 0, NULL},
+    {"DAC_PDWN", 15, 1, 0, NULL},
+    {"DAC_CRC_EN", 19, 1, 0, NULL},
+    {"DAC_MASK", 24, 8, 0, NULL},
+    {"(reserved)", 4, 3, 0, NULL},
+    {"(reserved)", 14, 1, 0, NULL},
+    {"(reserved)", 16, 3, 0, NULL},
+    {"(reserved)", 20, 4, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t gen_reset_cntl_fields[] = {
-    {"SOFT_RESET_GUI", 0, 1, NULL},
-    {NULL, 0, 0, NULL}
+    {"SOFT_RESET_GUI", 0, 1, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t pc_ngui_ctlstat_fields[] = {
-    {"PC_FLUSH_GUI", 0, 2, NULL},
-    {"PC_RI_GUI", 2, 2, NULL},
-    {"PC_FLUSH_NONGUI", 4, 2, NULL},
-    {"PC_RI_NONGUI", 6, 2, NULL},
-    {"PC_PURGE_GUI", 8, 1, NULL},
-    {"PC_PURGE_NONGUI", 9, 1, NULL},
-    {"PC_DIRTY", 24, 1, NULL},
-    {"PC_PURGE_DOPURGE", 25, 1, NULL},
-    {"PC_FLUSH_DOFLUSH", 26, 1, NULL},
-    {"PC_BUSY_INIT", 27, 1, NULL},
-    {"PC_BUSY_FLUSH", 28, 1, NULL},
-    {"PC_BUSY_GUI", 29, 1, NULL},
-    {"PC_BUSY_NGUI", 30, 1, NULL},
-    {"PC_BUSY", 31, 1, NULL},
-    {"(reserved)", 10, 14, NULL},
-    {NULL, 0, 0, NULL}
+    {"PC_FLUSH_GUI", 0, 2, 0, NULL},
+    {"PC_RI_GUI", 2, 2, 0, NULL},
+    {"PC_FLUSH_NONGUI", 4, 2, 0, NULL},
+    {"PC_RI_NONGUI", 6, 2, 0, NULL},
+    {"PC_PURGE_GUI", 8, 1, 0, NULL},
+    {"PC_PURGE_NONGUI", 9, 1, 0, NULL},
+    {"PC_DIRTY", 24, 1, 0, NULL},
+    {"PC_PURGE_DOPURGE", 25, 1, 0, NULL},
+    {"PC_FLUSH_DOFLUSH", 26, 1, 0, NULL},
+    {"PC_BUSY_INIT", 27, 1, 0, NULL},
+    {"PC_BUSY_FLUSH", 28, 1, 0, NULL},
+    {"PC_BUSY_GUI", 29, 1, 0, NULL},
+    {"PC_BUSY_NGUI", 30, 1, 0, NULL},
+    {"PC_BUSY", 31, 1, 0, NULL},
+    {"(reserved)", 10, 14, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t gen_int_cntl_fields[] = {
-    {"CRTC_VBLANK_INT_EN", 0, 1, NULL},
-    {"CRTC_VLINE_INT_EN", 1, 1, NULL},
-    {"CRTC_VSYNC_INT_EN", 2, 1, NULL},
-    {"SNAPSHOT_INT_EN", 3, 1, NULL},
-    {"FP_DETECT_INT_EN", 10, 1, NULL},
-    {"BUSMASTER_EOL_INT_EN", 16, 1, NULL},
-    {"I2C_INT_EN", 17, 1, NULL},
-    {"MPP_GP_INT_EN", 18, 1, NULL},
-    {"GUI_IDLE_INT_EN", 19, 1, NULL},
-    {"VIPH_INT_EN", 24, 1, NULL},
-    {"(reserved)", 4, 6, NULL},
-    {"(reserved)", 11, 5, NULL},
-    {"(reserved)", 20, 4, NULL},
-    {"(reserved)", 25, 7, NULL},
-    {NULL, 0, 0, NULL}
+    {"CRTC_VBLANK_INT_EN", 0, 1, 0, NULL},
+    {"CRTC_VLINE_INT_EN", 1, 1, 0, NULL},
+    {"CRTC_VSYNC_INT_EN", 2, 1, 0, NULL},
+    {"SNAPSHOT_INT_EN", 3, 1, 0, NULL},
+    {"FP_DETECT_INT_EN", 10, 1, 0, NULL},
+    {"BUSMASTER_EOL_INT_EN", 16, 1, 0, NULL},
+    {"I2C_INT_EN", 17, 1, 0, NULL},
+    {"MPP_GP_INT_EN", 18, 1, 0, NULL},
+    {"GUI_IDLE_INT_EN", 19, 1, 0, NULL},
+    {"VIPH_INT_EN", 24, 1, 0, NULL},
+    {"(reserved)", 4, 6, 0, NULL},
+    {"(reserved)", 11, 5, 0, NULL},
+    {"(reserved)", 20, 4, 0, NULL},
+    {"(reserved)", 25, 7, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t pm4_buffer_cntl_fields[] = {
-    {"PM4_BUFFER_SIZE_L2QW", 0, 27, NULL},
-    {"PM4_BUFFER_CNTL_NOUPDATE", 27, 1, NULL},
-    {"PM4_BUFFER_MODE", 28, 4, pm4_buffer_mode_values},
-    {NULL, 0, 0, NULL}
+    {"PM4_BUFFER_SIZE_L2QW", 0, 27, 0, NULL},
+    {"PM4_BUFFER_CNTL_NOUPDATE", 27, 1, 0, NULL},
+    {"PM4_BUFFER_MODE", 28, 4, 0, pm4_buffer_mode_values},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t pm4_micro_cntl_fields[] = {
-    {"PM4_MICRO_FREERUN", 30, 1, NULL},
-    {"(unknown)", 0, 14, NULL},
-    {"(unknown)", 14, 16, NULL},
-    {"(unknown)", 31, 1, NULL},
-    {NULL, 0, 0, NULL}
+    {"PM4_PKT_DWORDS_REMAIN", 0, 14, FLAG_REVERSE_ENGINEERED, pm4_pkt_dwords_remain_values},
+    {"PM4_MICRO_FREERUN", 30, 1, 0, NULL},
+    {"(unknown)", 14, 16, 0, NULL},
+    {"(unknown)", 31, 1, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t pm4_microcode_addr_fields[] = {
-    {"PM4_MICROCODE_ADDR", 0, 8, NULL},
-    {NULL, 0, 0, NULL}
+    {"PM4_MICROCODE_ADDR", 0, 8, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t pm4_stat_fields[] = {
-    {"PM4_FIFOCNT", 0, 12, NULL},
-    {"PM4_BUSY", 16, 1, NULL},
-    {"MICRO_BUSY", 17, 1, NULL},
-    {"FPU_BUSY", 18, 1, NULL},
-    {"VC_BUSY", 19, 1, NULL},
-    {"IDCT_BUSY", 20, 1, NULL},
-    {"ENG_EV_BUSY", 21, 1, NULL},
-    {"SETUP_BUSY", 22, 1, NULL},
-    {"EDGEWALK_BUSY", 23, 1, NULL},
-    {"ADDRESSING_BUSY", 24, 1, NULL},
-    {"ENG_3D_BUSY", 25, 1, NULL},
-    {"ENG_2D_SM_BUSY", 26, 1, NULL},
-    {"ENG_2D_BUSY", 27, 1, NULL},
-    {"GUI_WB_BUSY", 28, 1, NULL},
-    {"CACHE_BUSY", 29, 1, NULL},
-    {"PM4_GUI_ACTIVE", 31, 1, NULL},
-    {"(reserved)", 12, 4, NULL},
-    {"(reserved)", 30, 1, NULL},
-    {NULL, 0, 0, NULL}
+    {"PM4_FIFOCNT", 0, 12, 0, NULL},
+    {"PM4_BUSY", 16, 1, 0, NULL},
+    {"MICRO_BUSY", 17, 1, 0, NULL},
+    {"FPU_BUSY", 18, 1, 0, NULL},
+    {"VC_BUSY", 19, 1, 0, NULL},
+    {"IDCT_BUSY", 20, 1, 0, NULL},
+    {"ENG_EV_BUSY", 21, 1, 0, NULL},
+    {"SETUP_BUSY", 22, 1, 0, NULL},
+    {"EDGEWALK_BUSY", 23, 1, 0, NULL},
+    {"ADDRESSING_BUSY", 24, 1, 0, NULL},
+    {"ENG_3D_BUSY", 25, 1, 0, NULL},
+    {"ENG_2D_SM_BUSY", 26, 1, 0, NULL},
+    {"ENG_2D_BUSY", 27, 1, 0, NULL},
+    {"GUI_WB_BUSY", 28, 1, 0, NULL},
+    {"CACHE_BUSY", 29, 1, 0, NULL},
+    {"PM4_GUI_ACTIVE", 31, 1, 0, NULL},
+    {"(reserved)", 12, 4, 0, NULL},
+    {"(reserved)", 30, 1, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t gui_stat_fields[] = {
-    {"GUI_FIFO_CNT", 0, 12, NULL},
-    {"PM4_BUSY", 16, 1, NULL},
-    {"MICRO_BUSY", 17, 1, NULL},
-    {"FPU_BUSY", 18, 1, NULL},
-    {"VC_BUSY", 19, 1, NULL},
-    {"IDCT_BUSY", 20, 1, NULL},
-    {"ENG_EV_BUSY", 21, 1, NULL},
-    {"SETUP_BUSY", 22, 1, NULL},
-    {"EDGEWALK_BUSY", 23, 1, NULL},
-    {"ADDRESSING_BUSY", 24, 1, NULL},
-    {"ENG_3D_BUSY", 25, 1, NULL},
-    {"ENG_2D_SM_BUSY", 26, 1, NULL},
-    {"ENG_2D_BUSY", 27, 1, NULL},
-    {"GUI_WB_BUSY", 28, 1, NULL},
-    {"CACHE_BUSY", 29, 1, NULL},
-    {"GUI_ACTIVE", 31, 1, NULL},
-    {"(reserved)", 12, 4, NULL},
-    {"(reserved)", 30, 1, NULL},
-    {NULL, 0, 0, NULL}
+    {"GUI_FIFO_CNT", 0, 12, 0, NULL},
+    {"PM4_BUSY", 16, 1, 0, NULL},
+    {"MICRO_BUSY", 17, 1, 0, NULL},
+    {"FPU_BUSY", 18, 1, 0, NULL},
+    {"VC_BUSY", 19, 1, 0, NULL},
+    {"IDCT_BUSY", 20, 1, 0, NULL},
+    {"ENG_EV_BUSY", 21, 1, 0, NULL},
+    {"SETUP_BUSY", 22, 1, 0, NULL},
+    {"EDGEWALK_BUSY", 23, 1, 0, NULL},
+    {"ADDRESSING_BUSY", 24, 1, 0, NULL},
+    {"ENG_3D_BUSY", 25, 1, 0, NULL},
+    {"ENG_2D_SM_BUSY", 26, 1, 0, NULL},
+    {"ENG_2D_BUSY", 27, 1, 0, NULL},
+    {"GUI_WB_BUSY", 28, 1, 0, NULL},
+    {"CACHE_BUSY", 29, 1, 0, NULL},
+    {"GUI_ACTIVE", 31, 1, 0, NULL},
+    {"(reserved)", 12, 4, 0, NULL},
+    {"(reserved)", 30, 1, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t dp_gui_master_cntl_fields[] = {
-    {"GMC_SRC_PITCH_OFFSET_CNTL", 0, 1, NULL},
-    {"GMC_DST_PITCH_OFFSET_CNTL", 1, 1, NULL},
-    {"GMC_SRC_CLIPPING", 2, 1, NULL},
-    {"GMC_DST_CLIPPING", 3, 1, NULL},
-    {"GMC_BRUSH_DATATYPE", 4, 4, gmc_brush_datatype_values},
-    {"GMC_DST_DATATYPE", 8, 4, gmc_dst_datatype_values},
-    {"GMC_SRC_DATATYPE", 12, 2, gmc_src_datatype_values},
-    {"GMC_BYTE_PIX_ORDER", 14, 1, NULL},
-    {"GMC_CONVERSION_TEMP", 15, 1, NULL},
-    {"GMC_ROP3", 16, 8, gmc_rop3_values},
-    {"GMC_SRC_SOURCE", 24, 3, gmc_src_source_values},
-    {"GMC_3D_FCN_EN", 27, 1, NULL},
-    {"GMC_CLR_CMP_CNTL_DIS", 28, 1, NULL},
-    {"GMC_AUX_CLIP_DIS", 29, 1, NULL},
-    {"GMC_WR_MSK_DIS", 30, 1, NULL},
-    {"GMC_LD_BRUSH_Y_X", 31, 1, NULL},
-    {NULL, 0, 0, NULL}
+    {"GMC_SRC_PITCH_OFFSET_CNTL", 0, 1, 0, NULL},
+    {"GMC_DST_PITCH_OFFSET_CNTL", 1, 1, 0, NULL},
+    {"GMC_SRC_CLIPPING", 2, 1, 0, NULL},
+    {"GMC_DST_CLIPPING", 3, 1, 0, NULL},
+    {"GMC_BRUSH_DATATYPE", 4, 4, 0, gmc_brush_datatype_values},
+    {"GMC_DST_DATATYPE", 8, 4, 0, gmc_dst_datatype_values},
+    {"GMC_SRC_DATATYPE", 12, 2, 0, gmc_src_datatype_values},
+    {"GMC_BYTE_PIX_ORDER", 14, 1, 0, NULL},
+    {"GMC_CONVERSION_TEMP", 15, 1, 0, NULL},
+    {"GMC_ROP3", 16, 8, 0, gmc_rop3_values},
+    {"GMC_SRC_SOURCE", 24, 3, 0, gmc_src_source_values},
+    {"GMC_3D_FCN_EN", 27, 1, 0, NULL},
+    {"GMC_CLR_CMP_CNTL_DIS", 28, 1, 0, NULL},
+    {"GMC_AUX_CLIP_DIS", 29, 1, 0, NULL},
+    {"GMC_WR_MSK_DIS", 30, 1, 0, NULL},
+    {"GMC_LD_BRUSH_Y_X", 31, 1, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t dp_datatype_fields[] = {
-    {"DP_DST_DATATYPE", 0, 4, NULL},
-    {"DP_BRUSH_DATATYPE", 8, 4, NULL},
-    {"DP_SRC_DATATYPE", 16, 2, NULL},
-    {"HOST_BIG_ENDIAN_EN", 29, 1, NULL},
-    {"DP_BYTE_PIX_ORDER", 30, 1, NULL},
-    {"DP_CONVERSION_TEMP", 31, 1, NULL},
-    {"(reserved)", 4, 4, NULL},
-    {"(reserved)", 12, 4, NULL},
-    {"(reserved)", 18, 11, NULL},
-    {NULL, 0, 0, NULL}
+    {"DP_DST_DATATYPE", 0, 4, 0, NULL},
+    {"DP_BRUSH_DATATYPE", 8, 4, 0, NULL},
+    {"DP_SRC_DATATYPE", 16, 2, 0, NULL},
+    {"HOST_BIG_ENDIAN_EN", 29, 1, 0, NULL},
+    {"DP_BYTE_PIX_ORDER", 30, 1, 0, NULL},
+    {"DP_CONVERSION_TEMP", 31, 1, 0, NULL},
+    {"(reserved)", 4, 4, 0, NULL},
+    {"(reserved)", 12, 4, 0, NULL},
+    {"(reserved)", 18, 11, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t dp_cntl_fields[] = {
-    {"DST_X_LEFT_TO_RIGHT", 0, 1, NULL},
-    {"DST_Y_TOP_TO_BOTTOM", 1, 1, NULL},
-    {"DST_Y_MAJOR", 2, 1, NULL},
-    {NULL, 0, 0, NULL}
+    {"DST_X_LEFT_TO_RIGHT", 0, 1, 0, NULL},
+    {"DST_Y_TOP_TO_BOTTOM", 1, 1, 0, NULL},
+    {"DST_Y_MAJOR", 2, 1, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t default_sc_bottom_right_fields[] = {
-    {"DEFAULT_SC_RIGHT", 0, 14, NULL},
-    {"DEFAULT_SC_BOTTOM", 16, 14, NULL},
-    {"(reserved)", 14, 2, NULL},
-    {"(reserved)", 30, 2, NULL},
-    {NULL, 0, 0, NULL}
+    {"DEFAULT_SC_RIGHT", 0, 14, 0, NULL},
+    {"DEFAULT_SC_BOTTOM", 16, 14, 0, NULL},
+    {"(reserved)", 14, 2, 0, NULL},
+    {"(reserved)", 30, 2, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t default_offset_fields[] = {
-    {"DEFAULT_OFFSET", 0, 26, NULL},
-    {NULL, 0, 0, NULL}
+    {"DEFAULT_OFFSET", 0, 26, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 static const field_entry_t default_pitch_fields[] = {
-    {"DEFAULT_PITCH", 0, 10, NULL},
-    {"DEFAULT_TILE", 16, 1, NULL},
-    {"(reserved)", 10, 6, NULL},
-    {"(reserved)", 17, 15, NULL},
-    {NULL, 0, 0, NULL}
+    {"DEFAULT_PITCH", 0, 10, 0, NULL},
+    {"DEFAULT_TILE", 16, 1, 0, NULL},
+    {"(reserved)", 10, 6, 0, NULL},
+    {"(reserved)", 17, 15, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 // ============================================================================
@@ -714,8 +724,8 @@ static const field_entry_t default_pitch_fields[] = {
 // ============================================================================
 
 static const field_entry_t pc_ngui_ctlstat_aliases[] = {
-    {"PC_FLUSH_ALL", 0, 8, NULL},
-    {NULL, 0, 0, NULL}
+    {"PC_FLUSH_ALL", 0, 8, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
 };
 
 // ============================================================================
@@ -844,7 +854,7 @@ enum {
   X(crtc_pitch, CRTC_PITCH, 0x22c, 0, NULL, NULL) \
   X(dac_cntl, DAC_CNTL, 0x58, 0, dac_cntl_fields, NULL) \
   X(palette_index, PALETTE_INDEX, 0xb0, 0, NULL, NULL) \
-  X(palette_data, PALETTE_DATA, 0xb4, REG_READ_SIDE_EFFECTS, NULL, NULL) \
+  X(palette_data, PALETTE_DATA, 0xb4, FLAG_READ_SIDE_EFFECTS, NULL, NULL) \
   X(gen_reset_cntl, GEN_RESET_CNTL, 0xf0, 0, gen_reset_cntl_fields, NULL) \
   X(pc_ngui_ctlstat, PC_NGUI_CTLSTAT, 0x184, 0, pc_ngui_ctlstat_fields, pc_ngui_ctlstat_aliases) \
   X(gen_int_cntl, GEN_INT_CNTL, 0x40, 0, gen_int_cntl_fields, NULL) \
@@ -870,14 +880,14 @@ enum {
   X(pm4_buffer_dl_wptr_delay, PM4_BUFFER_DL_WPTR_DELAY, 0x718, 0, NULL, NULL) \
   X(pm4_buffer_addr, PM4_BUFFER_ADDR, 0x7f0, 0, NULL, NULL) \
   X(pm4_micro_cntl, PM4_MICRO_CNTL, 0x7fc, 0, pm4_micro_cntl_fields, NULL) \
-  X(pm4_fifo_data_even, PM4_FIFO_DATA_EVEN, 0x1000, REG_NO_READ, NULL, NULL) \
-  X(pm4_fifo_data_odd, PM4_FIFO_DATA_ODD, 0x1004, REG_NO_READ, NULL, NULL) \
+  X(pm4_fifo_data_even, PM4_FIFO_DATA_EVEN, 0x1000, FLAG_NO_READ, NULL, NULL) \
+  X(pm4_fifo_data_odd, PM4_FIFO_DATA_ODD, 0x1004, FLAG_NO_READ, NULL, NULL) \
   X(pm4_microcode_addr, PM4_MICROCODE_ADDR, 0x7d4, 0, pm4_microcode_addr_fields, NULL) \
-  X(pm4_microcode_raddr, PM4_MICROCODE_RADDR, 0x7d8, REG_NO_READ, NULL, NULL) \
-  X(pm4_microcode_datah, PM4_MICROCODE_DATAH, 0x7dc, REG_INDIRECT, NULL, NULL) \
-  X(pm4_microcode_datal, PM4_MICROCODE_DATAL, 0x7e0, REG_READ_SIDE_EFFECTS | REG_INDIRECT, NULL, NULL) \
-  X(pm4_stat, PM4_STAT, 0x7b8, REG_NO_WRITE, pm4_stat_fields, NULL) \
-  X(gui_stat, GUI_STAT, 0x1740, REG_NO_WRITE, gui_stat_fields, NULL) \
+  X(pm4_microcode_raddr, PM4_MICROCODE_RADDR, 0x7d8, FLAG_NO_READ, NULL, NULL) \
+  X(pm4_microcode_datah, PM4_MICROCODE_DATAH, 0x7dc, FLAG_INDIRECT, NULL, NULL) \
+  X(pm4_microcode_datal, PM4_MICROCODE_DATAL, 0x7e0, FLAG_READ_SIDE_EFFECTS | FLAG_INDIRECT, NULL, NULL) \
+  X(pm4_stat, PM4_STAT, 0x7b8, FLAG_NO_WRITE, pm4_stat_fields, NULL) \
+  X(gui_stat, GUI_STAT, 0x1740, FLAG_NO_WRITE, gui_stat_fields, NULL) \
   X(dp_gui_master_cntl, DP_GUI_MASTER_CNTL, 0x146c, 0, dp_gui_master_cntl_fields, NULL) \
   X(dp_datatype, DP_DATATYPE, 0x16c4, 0, dp_datatype_fields, NULL) \
   X(dp_mix, DP_MIX, 0x16c8, 0, NULL, NULL) \
@@ -908,8 +918,8 @@ enum {
   X(dst_pitch, DST_PITCH, 0x1408, 0, NULL, NULL) \
   X(dst_x, DST_X, 0x141c, 0, NULL, NULL) \
   X(dst_y, DST_Y, 0x1420, 0, NULL, NULL) \
-  X(dst_x_y, DST_X_Y, 0x1594, REG_NO_READ, NULL, NULL) \
-  X(dst_y_x, DST_Y_X, 0x1438, REG_NO_READ, NULL, NULL) \
+  X(dst_x_y, DST_X_Y, 0x1594, FLAG_NO_READ, NULL, NULL) \
+  X(dst_y_x, DST_Y_X, 0x1438, FLAG_NO_READ, NULL, NULL) \
   X(dst_width, DST_WIDTH, 0x140c, 0, NULL, NULL) \
   X(dst_height, DST_HEIGHT, 0x1410, 0, NULL, NULL) \
   X(dst_width_height, DST_WIDTH_HEIGHT, 0x1598, 0, NULL, NULL) \
@@ -920,19 +930,19 @@ enum {
   X(src_pitch, SRC_PITCH, 0x15b0, 0, NULL, NULL) \
   X(src_x, SRC_X, 0x141c, 0, NULL, NULL) \
   X(src_y, SRC_Y, 0x1420, 0, NULL, NULL) \
-  X(src_x_y, SRC_X_Y, 0x1590, REG_NO_READ, NULL, NULL) \
-  X(src_y_x, SRC_Y_X, 0x1434, REG_NO_READ, NULL, NULL) \
+  X(src_x_y, SRC_X_Y, 0x1590, FLAG_NO_READ, NULL, NULL) \
+  X(src_y_x, SRC_Y_X, 0x1434, FLAG_NO_READ, NULL, NULL) \
   X(default_offset, DEFAULT_OFFSET, 0x16e0, 0, default_offset_fields, NULL) \
   X(default_pitch, DEFAULT_PITCH, 0x16e4, 0, default_pitch_fields, NULL) \
-  X(host_data0, HOST_DATA0, 0x17c0, REG_NO_READ, NULL, NULL) \
-  X(host_data1, HOST_DATA1, 0x17c4, REG_NO_READ, NULL, NULL) \
-  X(host_data2, HOST_DATA2, 0x17c8, REG_NO_READ, NULL, NULL) \
-  X(host_data3, HOST_DATA3, 0x17cc, REG_NO_READ, NULL, NULL) \
-  X(host_data4, HOST_DATA4, 0x17d0, REG_NO_READ, NULL, NULL) \
-  X(host_data5, HOST_DATA5, 0x17d4, REG_NO_READ, NULL, NULL) \
-  X(host_data6, HOST_DATA6, 0x17d8, REG_NO_READ, NULL, NULL) \
-  X(host_data7, HOST_DATA7, 0x17dc, REG_NO_READ, NULL, NULL) \
-  X(host_data_last, HOST_DATA_LAST, 0x17e0, REG_NO_READ, NULL, NULL) \
+  X(host_data0, HOST_DATA0, 0x17c0, FLAG_NO_READ, NULL, NULL) \
+  X(host_data1, HOST_DATA1, 0x17c4, FLAG_NO_READ, NULL, NULL) \
+  X(host_data2, HOST_DATA2, 0x17c8, FLAG_NO_READ, NULL, NULL) \
+  X(host_data3, HOST_DATA3, 0x17cc, FLAG_NO_READ, NULL, NULL) \
+  X(host_data4, HOST_DATA4, 0x17d0, FLAG_NO_READ, NULL, NULL) \
+  X(host_data5, HOST_DATA5, 0x17d4, FLAG_NO_READ, NULL, NULL) \
+  X(host_data6, HOST_DATA6, 0x17d8, FLAG_NO_READ, NULL, NULL) \
+  X(host_data7, HOST_DATA7, 0x17dc, FLAG_NO_READ, NULL, NULL) \
+  X(host_data_last, HOST_DATA_LAST, 0x17e0, FLAG_NO_READ, NULL, NULL) \
   X(scale_3d_cntl, SCALE_3D_CNTL, 0x1a00, 0, NULL, NULL)
 
 #endif // ATI_REGS_GEN_H

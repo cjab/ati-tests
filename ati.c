@@ -237,7 +237,7 @@ ati_dump_registers(ati_device_t *dev, int count, ...)
 
 #define X(func_name, const_name, offset_val, flags, fields, aliases)           \
     if (offset_val == offset) {                                                \
-        if ((flags) & REG_NO_READ) {                                           \
+        if ((flags) & FLAG_NO_READ) {                                           \
             printf(" %-30s " RED "[write-only]\n" RESET, #const_name ":");     \
         } else {                                                               \
             printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":",         \
@@ -265,7 +265,7 @@ ati_dump_all_registers(ati_device_t *dev)
     printf("\n============== Register State ==============\n");
 
 #define X(func_name, const_name, offset, flags, fields, aliases)               \
-    if ((flags) & REG_NO_READ) {                                               \
+    if ((flags) & FLAG_NO_READ) {                                               \
         printf(" %-30s " RED "[write-only]\n" RESET, #const_name ":");         \
     } else {                                                                   \
         printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":",             \

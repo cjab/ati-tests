@@ -166,19 +166,19 @@ print_flags(uint8_t flags)
     bool first = true;
     printf(" [");
 
-    if (flags & REG_READ_SIDE_EFFECTS) {
+    if (flags & FLAG_READ_SIDE_EFFECTS) {
         printf("\x1b[31m%sside-effects\x1b[0m", first ? "" : ", ");
         first = false;
     }
-    if (flags & REG_INDIRECT) {
+    if (flags & FLAG_INDIRECT) {
         printf("\x1b[35m%sindirect\x1b[0m", first ? "" : ", ");
         first = false;
     }
-    if (flags & REG_NO_READ) {
+    if (flags & FLAG_NO_READ) {
         printf("\x1b[33m%sno-read\x1b[0m", first ? "" : ", ");
         first = false;
     }
-    if (flags & REG_NO_WRITE) {
+    if (flags & FLAG_NO_WRITE) {
         printf("\x1b[36m%sno-write\x1b[0m", first ? "" : ", ");
         first = false;
     }
@@ -264,39 +264,82 @@ lookup_value_name(const field_value_t *values, uint32_t val)
     return NULL;
 }
 
+// Helper to build a padded field name string
+// Writes to buf (must be at least 64 bytes), returns visual width
+static int
+build_padded_name(char *buf, size_t buflen, const char *name,
+                  uint8_t flags, bool *has_re_fields)
+{
+    int len = strlen(name);
+    int target_width = 25;
+    char *p = buf;
+    char *end = buf + buflen - 1;
+
+    // Copy name
+    while (*name && p < end)
+        *p++ = *name++;
+
+    // Add RE dagger if needed (uses 1 visual column)
+    if (flags & FLAG_REVERSE_ENGINEERED) {
+        // Magenta
+        const char *dagger = "\x1b[35m\xe2\x80\xa0\x1b[0m";
+        while (*dagger && p < end)
+            *p++ = *dagger++;
+        len++;  // dagger takes 1 visual column
+        if (has_re_fields)
+            *has_re_fields = true;
+    }
+
+    // Pad with spaces
+    while (len < target_width && p < end) {
+        *p++ = ' ';
+        len++;
+    }
+
+    *p = '\0';
+    return len;
+}
+
 // Print a single field (known or unknown)
-// For unknown fields, pass NULL for values
+// For unknown fields, pass 0 for flags and NULL for values
 static void
 print_field(const char *name, uint8_t shift, uint8_t width,
-            const field_value_t *values, uint32_t val)
+            uint8_t flags, const field_value_t *values, uint32_t val,
+            bool *has_re_fields)
 {
     uint32_t mask = (width >= 32) ? 0xFFFFFFFF : ((1u << width) - 1);
     uint32_t field_val = (val >> shift) & mask;
 
+    // Build padded name (25 visual chars) with optional RE dagger
+    char padded_name[64];
+    build_padded_name(padded_name, sizeof(padded_name), name, flags,
+                      has_re_fields);
+
     if (width == 1) {
         // Single bit: [16]
         if (field_val)
-            printf("  \x1b[36m%-25s\x1b[0m [%5d]   = \x1b[33m1\x1b[0m\n", name,
-                   shift);
+            printf("  \x1b[36m%s\x1b[0m [%5d]   = \x1b[33m1\x1b[0m\n",
+                   padded_name, shift);
         else
-            printf("  \x1b[90m%-25s [%5d]   = 0\x1b[0m\n", name, shift);
+            printf("  \x1b[90m%s [%5d]   = 0\x1b[0m\n", padded_name, shift);
     } else {
         // Multi-bit: [11:0]
         const char *value_name = lookup_value_name(values, field_val);
         if (field_val) {
             if (value_name) {
-                printf("  \x1b[36m%-25s\x1b[0m [%2d:%-2d]   = \x1b[33m%-5u\x1b[0m "
+                printf("  \x1b[36m%s\x1b[0m [%2d:%-2d]   = \x1b[33m%-5u\x1b[0m "
                        "(0x%x) \x1b[32m%s\x1b[0m\n",
-                       name, shift + width - 1, shift, field_val, field_val,
-                       value_name);
+                       padded_name, shift + width - 1, shift,
+                       field_val, field_val, value_name);
             } else {
-                printf("  \x1b[36m%-25s\x1b[0m [%2d:%-2d]   = \x1b[33m%-5u\x1b[0m "
+                printf("  \x1b[36m%s\x1b[0m [%2d:%-2d]   = \x1b[33m%-5u\x1b[0m "
                        "(0x%x)\n",
-                       name, shift + width - 1, shift, field_val, field_val);
+                       padded_name, shift + width - 1, shift,
+                       field_val, field_val);
             }
         } else {
-            printf("  \x1b[90m%-25s [%2d:%-2d]   = 0\x1b[0m\n", name,
-                   shift + width - 1, shift);
+            printf("  \x1b[90m%s [%2d:%-2d]   = 0\x1b[0m\n",
+                   padded_name, shift + width - 1, shift);
         }
     }
 }
@@ -305,7 +348,8 @@ print_field(const char *name, uint8_t shift, uint8_t width,
 // Only prints if the field value changed
 static void
 print_field_diff(const char *name, uint8_t shift, uint8_t width,
-                 const field_value_t *values, uint32_t old_reg, uint32_t new_reg)
+                 uint8_t flags, const field_value_t *values,
+                 uint32_t old_reg, uint32_t new_reg, bool *has_re_fields)
 {
     uint32_t mask = (width >= 32) ? 0xFFFFFFFF : ((1u << width) - 1);
     uint32_t old_val = (old_reg >> shift) & mask;
@@ -314,17 +358,22 @@ print_field_diff(const char *name, uint8_t shift, uint8_t width,
     if (old_val == new_val)
         return;
 
+    // Build padded name (25 visual chars) with optional RE dagger
+    char padded_name[64];
+    build_padded_name(padded_name, sizeof(padded_name), name, flags,
+                      has_re_fields);
+
     if (width == 1) {
         // Single bit: [16]
-        printf("  \x1b[36m%-25s\x1b[0m [%5d]   : %u -> %u\n",
-               name, shift, old_val, new_val);
+        printf("  \x1b[36m%s\x1b[0m [%5d]   : %u -> %u\n",
+               padded_name, shift, old_val, new_val);
     } else {
         // Multi-bit: [11:0]
         const char *old_name = lookup_value_name(values, old_val);
         const char *new_name = lookup_value_name(values, new_val);
 
-        printf("  \x1b[36m%-25s\x1b[0m [%2d:%-2d]   : ", name,
-               shift + width - 1, shift);
+        printf("  \x1b[36m%s\x1b[0m [%2d:%-2d]   : ",
+               padded_name, shift + width - 1, shift);
 
         // Print old value
         if (old_val == 0) {
@@ -351,28 +400,31 @@ print_field_diff(const char *name, uint8_t shift, uint8_t width,
 }
 
 // Print field-level diff for a register
-static void
+// Returns true if any reverse-engineered fields were printed
+static bool
 print_reg_diff(const reg_entry_t *reg, uint32_t old_val, uint32_t new_val)
 {
+    bool has_re_fields = false;
     uint8_t bit = 0;
     while (bit < 32) {
         const field_entry_t *f = find_field_at_bit(reg->fields, bit);
 
         if (f) {
             // Known field
-            print_field_diff(f->name, f->shift, f->width, f->values,
-                             old_val, new_val);
+            print_field_diff(f->name, f->shift, f->width, f->flags, f->values,
+                             old_val, new_val, &has_re_fields);
             bit += f->width;
         } else {
             // Unknown gap - find where next known field starts
             uint8_t next_start = find_next_field_start(reg->fields, bit);
             uint8_t gap_width = next_start - bit;
 
-            print_field_diff("(unknown)", bit, gap_width, NULL,
-                             old_val, new_val);
+            print_field_diff("(unknown)", bit, gap_width, 0, NULL,
+                             old_val, new_val, &has_re_fields);
             bit = next_start;
         }
     }
+    return has_re_fields;
 }
 
 static void
@@ -383,20 +435,23 @@ print_reg_expanded(const reg_entry_t *reg, uint32_t val)
     print_flags(reg->flags);
     printf(" : \x1b[33m0x%08x\x1b[0m\n", val);
 
+    bool has_re_fields = false;
     uint8_t bit = 0;
     while (bit < 32) {
         const field_entry_t *f = find_field_at_bit(reg->fields, bit);
 
         if (f) {
             // Known field
-            print_field(f->name, f->shift, f->width, f->values, val);
+            print_field(f->name, f->shift, f->width, f->flags, f->values, val,
+                        &has_re_fields);
             bit += f->width;
         } else {
             // Unknown gap - find where next known field starts
             uint8_t next_start = find_next_field_start(reg->fields, bit);
             uint8_t gap_width = next_start - bit;
 
-            print_field("(unknown)", bit, gap_width, NULL, val);
+            print_field("(unknown)", bit, gap_width, 0, NULL, val,
+                        &has_re_fields);
             bit = next_start;
         }
     }
@@ -405,8 +460,15 @@ print_reg_expanded(const reg_entry_t *reg, uint32_t val)
     if (reg->aliases && reg->aliases[0].name != NULL) {
         printf("  \x1b[90m--- aliases ---\x1b[0m\n");
         for (const field_entry_t *a = reg->aliases; a->name != NULL; a++) {
-            print_field(a->name, a->shift, a->width, NULL, val);
+            print_field(a->name, a->shift, a->width, 0, NULL, val,
+                        &has_re_fields);
         }
+    }
+
+    // Print legend if any RE fields were displayed
+    if (has_re_fields) {
+        printf("\n\x1b[35m†\x1b[0m = reverse-engineered "
+               "(not found in documentation or drivers)\n");
     }
 }
 
@@ -638,7 +700,7 @@ cmd_reg_read_expanded(ati_device_t *dev, int argc, char **args)
 }
 
 // Flags that indicate we should skip readback after write
-#define REG_SKIP_READBACK (REG_NO_READ | REG_READ_SIDE_EFFECTS | REG_INDIRECT)
+#define REG_SKIP_READBACK (FLAG_NO_READ | FLAG_READ_SIDE_EFFECTS | FLAG_INDIRECT)
 
 static void
 cmd_reg_write(ati_device_t *dev, int argc, char **args)
@@ -796,7 +858,7 @@ cmd_test_list(void)
 }
 
 // Flags that indicate register is unsafe to read during snapshot
-#define REG_UNSAFE_READ (REG_NO_READ | REG_READ_SIDE_EFFECTS | REG_INDIRECT)
+#define REG_UNSAFE_READ (FLAG_NO_READ | FLAG_READ_SIDE_EFFECTS | FLAG_INDIRECT)
 
 static void
 regs_save(ati_device_t *dev)
@@ -820,6 +882,7 @@ regs_diff(ati_device_t *dev)
         printf("No snapshot taken. Use 'regs save' first.\n");
         return;
     }
+    bool has_re_fields = false;
     for (int i = 0; reg_table[i].name != NULL; i++) {
         if (reg_table[i].flags & REG_UNSAFE_READ)
             continue;
@@ -829,8 +892,14 @@ regs_diff(ati_device_t *dev)
         if (old_val != new_val) {
             printf("%s (0x%04x) : 0x%08x -> 0x%08x\n",
                    reg_table[i].name, offset, old_val, new_val);
-            print_reg_diff(&reg_table[i], old_val, new_val);
+            if (print_reg_diff(&reg_table[i], old_val, new_val))
+                has_re_fields = true;
         }
+    }
+    // Print legend if any RE fields were displayed
+    if (has_re_fields) {
+        printf("\n\x1b[35m†\x1b[0m = reverse-engineered "
+               "(not found in documentation or drivers)\n");
     }
 }
 
