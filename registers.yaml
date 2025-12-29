@@ -519,22 +519,33 @@ registers:
     group: misc
     ref: "linux:drivers/char/drm/r128_drv.h:311"
     fields:
-      PM4_PKT_DWORDS_REMAIN:
+      PM4_DEBUG_VALUE:
         bits: [0, 13]
         flags: [reverse_engineered]
         ref: "hardware:Rage128ProUltra(PCI 1002:5446)"
         description: |
-          Remaining 32-bit words to be processed in the current packet. When
-          idle this will be set to 0x3fff meaning a new packet can be sent.
-          Situations have been observed where this register seems to contain
-          garbage that persists across reboots until a full packet is processed
-          and the value returns to 0x3fff. This could use more investigation.
+          Debug output field depending on PM4_DEBUG_MODE. With mode 0
+          (default), shows DWORDS remaining in current packet (0x3fff when idle).
+          With mode 1, shows current target register address in >>2 encoding.
         values:
           IDLE: 0x3fff
+      PM4_DEBUG_MODE:
+        bits: [16, 20]
+        flags: [reverse_engineered]
+        ref: "hardware:Rage128ProUltra(PCI 1002:5446)"
+        description: |
+          Selects what PM4_DEBUG_VALUE displays. Modes 0x00 and 0x01 are confirmed.
+          Other modes (0x02-0x1f) show various internal state but their exact
+          meaning is not yet understood. Some appear to show DP_GUI_MASTER_CNTL
+          bit slices, packet header fields, or other internal registers.
+        values:
+          PKT_DWORDS_REMAIN: 0x0
+          PKT_CURR_REGISTER: 0x1
       PM4_MICRO_FREERUN:
         bit: 30
     unknown:
-      - bits: [14, 29]
+      - bits: [14, 15]
+      - bits: [21, 29]
       - bit: 31
 
   PM4_FIFO_DATA_EVEN:
