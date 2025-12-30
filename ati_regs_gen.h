@@ -919,11 +919,11 @@ enum {
   X(sc_top, SC_TOP, 0x1648, 0, NULL, NULL) \
   X(sc_right, SC_RIGHT, 0x1644, 0, NULL, NULL) \
   X(sc_bottom, SC_BOTTOM, 0x164c, 0, NULL, NULL) \
-  X(sc_top_left, SC_TOP_LEFT, 0x16ec, 0, NULL, NULL) \
-  X(sc_bottom_right, SC_BOTTOM_RIGHT, 0x16f0, 0, NULL, NULL) \
+  X(sc_top_left, SC_TOP_LEFT, 0x16ec, FLAG_NO_READ, NULL, NULL) \
+  X(sc_bottom_right, SC_BOTTOM_RIGHT, 0x16f0, FLAG_NO_READ, NULL, NULL) \
   X(src_sc_bottom, SRC_SC_BOTTOM, 0x165c, 0, NULL, NULL) \
   X(src_sc_right, SRC_SC_RIGHT, 0x1654, 0, NULL, NULL) \
-  X(src_sc_bottom_right, SRC_SC_BOTTOM_RIGHT, 0x16f4, 0, NULL, NULL) \
+  X(src_sc_bottom_right, SRC_SC_BOTTOM_RIGHT, 0x16f4, FLAG_NO_READ, NULL, NULL) \
   X(default_sc_bottom_right, DEFAULT_SC_BOTTOM_RIGHT, 0x16e8, 0, default_sc_bottom_right_fields, NULL) \
   X(aux_sc_cntl, AUX_SC_CNTL, 0x1660, 0, NULL, NULL) \
   X(dst_offset, DST_OFFSET, 0x1404, 0, NULL, NULL) \

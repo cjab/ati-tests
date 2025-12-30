@@ -881,10 +881,12 @@ registers:
   SC_TOP_LEFT:
     offset: 0x16ec
     group: scissor
+    flags: [no_read]
 
   SC_BOTTOM_RIGHT:
     offset: 0x16f0
     group: scissor
+    flags: [no_read]
 
   SRC_SC_BOTTOM:
     offset: 0x165c
@@ -897,6 +899,7 @@ registers:
   SRC_SC_BOTTOM_RIGHT:
     offset: 0x16f4
     group: scissor
+    flags: [no_read]
 
   DEFAULT_SC_BOTTOM_RIGHT:
     offset: 0x16e8
