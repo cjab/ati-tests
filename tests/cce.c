@@ -8,19 +8,34 @@ test_cce(ati_device_t *dev)
     // Initialize CCE engine for this test
     ati_init_cce_engine(dev);
 
-    uint32_t packets[] = {CCE_PKT0(GUI_SCRATCH_REG0, 0), 0xcafebabe};
+    /* Type-0 packets */
+    // Single register write
+    uint32_t packets[] = {CCE_PKT0(BIOS_0_SCRATCH, 1), 0xcafebabe};
     ati_cce_pio_submit(dev, packets, 2);
 
     ati_wait_for_idle(dev);
-    ASSERT_EQ(rd_gui_scratch_reg0(dev), packets[1]);
+    ASSERT_EQ(rd_bios_0_scratch(dev), packets[1]);
 
-    uint32_t packets2[] = {CCE_PKT0(GUI_SCRATCH_REG0, 1), 0xdeadbeef,
+    // Multi-register write
+    uint32_t packets2[] = {CCE_PKT0(BIOS_0_SCRATCH, 2), 0xdeadbeef,
                            0xbeefc0de};
     ati_cce_pio_submit(dev, packets2, 3);
 
     ati_wait_for_idle(dev);
-    ASSERT_EQ(rd_gui_scratch_reg0(dev), packets2[1]);
-    ASSERT_EQ(rd_gui_scratch_reg1(dev), packets2[2]);
+    ASSERT_EQ(rd_bios_0_scratch(dev), packets2[1]);
+    ASSERT_EQ(rd_bios_1_scratch(dev), packets2[2]);
+
+    // Write with one_reg_wr flag set
+    uint32_t packets3[] = {CCE_PKT0_ONE(BIOS_0_SCRATCH, 2), 0x11111111,
+                           0x22222222};
+    wr_bios_1_scratch(dev, 0x00000000);
+    ati_cce_pio_submit(dev, packets3, 3);
+
+    ati_wait_for_idle(dev);
+    ASSERT_EQ(rd_bios_0_scratch(dev), packets3[2]);
+    ASSERT_EQ(rd_bios_1_scratch(dev), 0x00000000);
+
+    ati_stop_cce_engine(dev);
 
     return true;
 }
@@ -60,6 +75,26 @@ test_cce_setup(ati_device_t *dev)
     // Reset to initial
     wr_dp_gui_master_cntl(dev, dp_gui_master_cntl);
     wr_pm4_buffer_cntl(dev, pm4_buffer_cntl);
+
+    return true;
+}
+
+bool
+test_cce_packet_submission(ati_device_t *dev)
+{
+    uint32_t packets[] = {CCE_PKT0(BIOS_0_SCRATCH, 1), 0xcafebabe};
+    ati_init_cce_engine(dev);
+
+    ASSERT_EQ(rd_pm4_stat(dev), 192);
+
+    wr_pm4_fifo_data_even(dev, packets[0]);
+    ati_wait_for_reg_value(dev, PM4_STAT, MICRO_BUSY | PM4_GUI_ACTIVE | 192);
+    ASSERT_EQ(rd_pm4_stat(dev), MICRO_BUSY | PM4_GUI_ACTIVE | 192);
+
+    wr_pm4_fifo_data_odd(dev, packets[1]);
+    ati_wait_for_reg_value(dev, PM4_STAT, 192);
+    ASSERT_EQ(rd_pm4_stat(dev), 192);
+
     return true;
 }
 
@@ -210,5 +245,6 @@ register_cce_tests(void)
 {
     REGISTER_TEST(test_cce, "cce");
     REGISTER_TEST(test_cce_setup, "cce setup");
+    REGISTER_TEST(test_cce_packet_submission, "cce packet submission");
     REGISTER_TEST(test_pm4_microcode, "pm4 microcode");
 }

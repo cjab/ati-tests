@@ -45,6 +45,7 @@ void ati_init_gui_engine(ati_device_t *dev);
 void ati_engine_flush(ati_device_t *dev);
 void ati_engine_reset(ati_device_t *dev);
 void ati_reset_for_test(ati_device_t *dev);
+void ati_wait_for_reg_value(ati_device_t *dev, uint32_t reg, uint32_t value);
 void ati_wait_for_fifo(ati_device_t *dev, uint32_t entries);
 void ati_wait_for_idle(ati_device_t *dev);
 void ati_init_cce_engine(ati_device_t *dev);

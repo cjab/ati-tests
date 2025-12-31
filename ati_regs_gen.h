@@ -799,6 +799,10 @@ enum {
     DP_BRUSH_FRGD_CLR = 0x1578,
     DP_SRC_BKGD_CLR = 0x15dc,
     DP_SRC_FRGD_CLR = 0x15d8,
+    BIOS_0_SCRATCH = 0x10,
+    BIOS_1_SCRATCH = 0x14,
+    BIOS_2_SCRATCH = 0x18,
+    BIOS_3_SCRATCH = 0x1c,
     GUI_SCRATCH_REG0 = 0x15e0,
     GUI_SCRATCH_REG1 = 0x15e4,
     GUI_SCRATCH_REG2 = 0x15e8,
@@ -909,6 +913,10 @@ enum {
   X(dp_brush_frgd_clr, DP_BRUSH_FRGD_CLR, 0x1578, 0, NULL, NULL) \
   X(dp_src_bkgd_clr, DP_SRC_BKGD_CLR, 0x15dc, 0, NULL, NULL) \
   X(dp_src_frgd_clr, DP_SRC_FRGD_CLR, 0x15d8, 0, NULL, NULL) \
+  X(bios_0_scratch, BIOS_0_SCRATCH, 0x10, 0, NULL, NULL) \
+  X(bios_1_scratch, BIOS_1_SCRATCH, 0x14, 0, NULL, NULL) \
+  X(bios_2_scratch, BIOS_2_SCRATCH, 0x18, 0, NULL, NULL) \
+  X(bios_3_scratch, BIOS_3_SCRATCH, 0x1c, 0, NULL, NULL) \
   X(gui_scratch_reg0, GUI_SCRATCH_REG0, 0x15e0, 0, NULL, NULL) \
   X(gui_scratch_reg1, GUI_SCRATCH_REG1, 0x15e4, 0, NULL, NULL) \
   X(gui_scratch_reg2, GUI_SCRATCH_REG2, 0x15e8, 0, NULL, NULL) \

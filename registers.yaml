@@ -835,6 +835,22 @@ registers:
   # ===========================================================================
   # GUI Scratch Registers
   # ===========================================================================
+  BIOS_0_SCRATCH:
+    offset: 0x0010
+    group: scratch_pad
+
+  BIOS_1_SCRATCH:
+    offset: 0x0014
+    group: scratch_pad
+
+  BIOS_2_SCRATCH:
+    offset: 0x0018
+    group: scratch_pad
+
+  BIOS_3_SCRATCH:
+    offset: 0x001c
+    group: scratch_pad
+
   GUI_SCRATCH_REG0:
     offset: 0x15e0
     group: scratch_pad

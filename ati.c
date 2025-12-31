@@ -489,6 +489,24 @@ ati_reset_for_test(ati_device_t *dev)
 }
 
 void
+ati_wait_for_reg_value(ati_device_t *dev, uint32_t reg, uint32_t value)
+{
+    uint32_t prev = ati_reg_read(dev, reg);
+    uint32_t timeout = 1000000;
+    while (timeout--) {
+        uint32_t next = ati_reg_read(dev, reg);
+        if (next != prev) {
+            printf("0x%x => 0x%x\n", prev, next);
+        }
+        if (next == value) {
+            return;
+        }
+    }
+    // Timed out
+    printf("ati_wait_for_value timed out! (waiting for 0x%x on reg 0x%x)\n", value, reg);
+}
+
+void
 ati_wait_for_fifo(ati_device_t *dev, uint32_t entries)
 {
     uint32_t timeout = 1000000;
