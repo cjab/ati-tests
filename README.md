@@ -17,6 +17,12 @@ Then: `make`
 
 # Setup
 
+## Baremetal
+By default this compiles a baremetal elf file that can be loaded via QEMU's
+`-kernel` argument. This mode requires much less setup and is the preferred
+way to run tests at this point. See "Running".
+
+## Linux
 There are a lot of assumptions made about the state of the system when running
 these tests. I've run them in QEMU and on real hardware running Debian Lenny and
 Debian Squeeze. Before running the tests it's required to start a minimal X
@@ -30,6 +36,28 @@ The setup is a bit involved, hopefully I can provide a QCOW2 image in the future
 
 # Running
 
+## Baremetal
+
+To start the baremetal repl:
+```
+qemu-system-x86_64 \
+  -accel kvm \
+  -vga none \
+  -device ati-vga,model=rage128p \
+  -machine pc \
+  -cpu athlon,3dnow=off,3dnowext=off \
+  -m 1024 \
+  -d unimp,guest_errors \
+  -D /tmp/qemu-debug.log \
+  -trace "ati_*" \
+  -kernel "ati_tests.elf" \
+  -append "repl" \
+  -serial mon:stdio
+```
+
+Type ? at the serial console for help at boot.
+
+## Linux
 To run all tests: `./run-tests`.
 
 Individual tests can be run with: `./run-tests <TEST_NAME1> <TEST_NAME2>`.
@@ -60,3 +88,4 @@ for comparison against later runs on the emulated card.
 * **pitch_offset_cntl**: Source/destination pitch and offset control registers
 * **host_data**: HOST_DATA FIFO, monochrome expansion, bit packing
 * **rop3**: ROP3 operations with color sources and memory blits
+* **cce**: CCE engine setup and packet processing
