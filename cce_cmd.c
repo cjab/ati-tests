@@ -14,6 +14,8 @@ typedef enum {
     CCE_CMD_R,
     CCE_CMD_W,
     CCE_CMD_PAINT,
+    CCE_CMD_STATMUX,
+    CCE_CMD_STEP,
     CCE_CMD_UNKNOWN
 } cce_cmd_t;
 
@@ -28,16 +30,18 @@ static const struct {
     const char *usage;
     const char *desc;
 } cce_cmd_table[] = {
-    {"init",   CCE_CMD_INIT,    NULL,              "full CCE init (load + mode + start)"},
-    {"start",  CCE_CMD_START,   NULL,              "start microengine"},
-    {"stop",   CCE_CMD_STOP,    NULL,              "stop microengine"},
-    {"mode",   CCE_CMD_MODE,    NULL,              "set PM4 PIO mode (no microcode load)"},
-    {"reload", CCE_CMD_RELOAD,  NULL,              "load microcode (no start/stop)"},
-    {"dump",   CCE_CMD_DUMP,    NULL,              "dump all 256 instructions"},
-    {"r",      CCE_CMD_R,       "<addr> [count]",  "read instruction(s) (0-255)"},
-    {"w",      CCE_CMD_W,       "<addr> <h> <l>",  "write instruction"},
-    {"paint",  CCE_CMD_PAINT,   "<x y w h>... <color>", "paint rectangle(s) via CCE"},
-    {NULL,     CCE_CMD_UNKNOWN, NULL,              NULL}
+    {"init",    CCE_CMD_INIT,    NULL,              "full CCE init (load + mode + start)"},
+    {"start",   CCE_CMD_START,   NULL,              "start microengine"},
+    {"stop",    CCE_CMD_STOP,    NULL,              "stop microengine"},
+    {"mode",    CCE_CMD_MODE,    NULL,              "set PM4 PIO mode (no microcode load)"},
+    {"reload",  CCE_CMD_RELOAD,  NULL,              "load microcode (no start/stop)"},
+    {"dump",    CCE_CMD_DUMP,    NULL,              "dump all 256 instructions"},
+    {"r",       CCE_CMD_R,       "<addr> [count]",  "read instruction(s) (0-255)"},
+    {"w",       CCE_CMD_W,       "<addr> <h> <l>",  "write instruction"},
+    {"paint",   CCE_CMD_PAINT,   "<x y w h>... <color>", "paint rectangle(s) via CCE"},
+    {"statmux", CCE_CMD_STATMUX, NULL,              "dump all 32 ME_STAT_MUX values"},
+    {"step",    CCE_CMD_STEP,    "[n]",             "single-step n instructions (default 1)"},
+    {NULL,      CCE_CMD_UNKNOWN, NULL,              NULL}
 };
 // clang-format on
 
@@ -320,6 +324,64 @@ cce_paint(ati_device_t *dev, int argc, char **args)
     printf("Painted %d rectangle(s) with color 0x%06x\n", num_rects, color);
 }
 
+static void
+cce_statmux(ati_device_t *dev)
+{
+    // Save current state
+    uint32_t saved_micro_cntl = rd_pm4_micro_cntl(dev);
+
+    // Stop the engine (clear FREERUN) but don't wait for idle -
+    // capture state as-is for debugging
+    wr_pm4_micro_cntl(dev, saved_micro_cntl & ~PM4_MICRO_FREERUN);
+
+    printf("ME_STAT_MUX dump:\n");
+
+    for (uint32_t mux = 0; mux < 32; mux++) {
+        // Set the mux value (keep FREERUN cleared)
+        wr_pm4_micro_cntl(dev, mux << ME_STAT_MUX_SHIFT);
+
+        // Read back and extract ME_STAT
+        uint32_t micro_cntl = rd_pm4_micro_cntl(dev);
+        uint32_t stat = micro_cntl & ME_STAT_MASK;
+
+        // Print with labels for known values
+        printf("  [%02x] 0x%04x", mux, stat);
+        if (mux == 0)
+            printf("  (PKT_DWORDS_REMAIN)");
+        else if (mux == 1)
+            printf("  (PKT_CURR_REGISTER)");
+        printf("\n");
+    }
+
+    // Restore original state
+    wr_pm4_micro_cntl(dev, saved_micro_cntl);
+}
+
+static void
+cce_step(ati_device_t *dev, int argc, char **args)
+{
+    uint32_t count = 1;
+
+    if (argc >= 3 && parse_int(args[2], &count) != 0) {
+        printf("Usage: cce step [n]\n");
+        return;
+    }
+
+    // Check if engine is in freerun mode
+    uint32_t micro_cntl = rd_pm4_micro_cntl(dev);
+    if (micro_cntl & PM4_MICRO_FREERUN) {
+        printf("Error: engine is running (use 'cce stop' first)\n");
+        return;
+    }
+
+    // Single-step by writing ME_STEP bit
+    for (uint32_t i = 0; i < count; i++) {
+        wr_pm4_micro_cntl(dev, ME_STEP);
+    }
+
+    printf("Stepped %u instruction%s\n", count, count == 1 ? "" : "s");
+}
+
 // Public functions
 
 void
@@ -372,6 +434,12 @@ cmd_cce(ati_device_t *dev, int argc, char **args)
         break;
     case CCE_CMD_PAINT:
         cce_paint(dev, argc, args);
+        break;
+    case CCE_CMD_STATMUX:
+        cce_statmux(dev);
+        break;
+    case CCE_CMD_STEP:
+        cce_step(dev, argc, args);
         break;
     case CCE_CMD_UNKNOWN:
         printf("Unknown cce command: %s\n", args[1]);

@@ -211,14 +211,15 @@ enum {
 
 // PM4_MICRO_CNTL fields
 enum {
-    PM4_DEBUG_VALUE_SHIFT = 0,
-    PM4_DEBUG_VALUE_MASK = 0x3fffu,
-    PM4_DEBUG_VALUE_IDLE = 0x3fffu,
-    PM4_DEBUG_MODE_SHIFT = 16,
-    PM4_DEBUG_MODE_MASK = 0x1f0000u,
-    PM4_DEBUG_MODE_PKT_DWORDS_REMAIN = 0u,
-    PM4_DEBUG_MODE_PKT_CURR_REGISTER = 0x10000u,
+    ME_STAT_SHIFT = 0,
+    ME_STAT_MASK = 0xffffu,
+    ME_STAT_IDLE = 0x3fffu,
+    ME_STAT_MUX_SHIFT = 16,
+    ME_STAT_MUX_MASK = 0x1f0000u,
+    ME_STAT_MUX_PKT_DWORDS_REMAIN = 0u,
+    ME_STAT_MUX_PKT_CURR_REGISTER = 0x10000u,
     PM4_MICRO_FREERUN = (1u << 30),
+    ME_STEP = (1u << 31),
 };
 
 // PM4_MICROCODE_ADDR fields
@@ -388,12 +389,12 @@ static const field_value_t pm4_buffer_mode_values[] = {
     {NULL, 0}
 };
 
-static const field_value_t pm4_debug_value_values[] = {
+static const field_value_t me_stat_values[] = {
     {"IDLE", 16383},
     {NULL, 0}
 };
 
-static const field_value_t pm4_debug_mode_values[] = {
+static const field_value_t me_stat_mux_values[] = {
     {"PKT_DWORDS_REMAIN", 0},
     {"PKT_CURR_REGISTER", 1},
     {NULL, 0}
@@ -612,12 +613,11 @@ static const field_entry_t pm4_buffer_cntl_fields[] = {
 };
 
 static const field_entry_t pm4_micro_cntl_fields[] = {
-    {"PM4_DEBUG_VALUE", 0, 14, FLAG_REVERSE_ENGINEERED, pm4_debug_value_values},
-    {"PM4_DEBUG_MODE", 16, 5, FLAG_REVERSE_ENGINEERED, pm4_debug_mode_values},
+    {"ME_STAT", 0, 16, 0, me_stat_values},
+    {"ME_STAT_MUX", 16, 5, 0, me_stat_mux_values},
     {"PM4_MICRO_FREERUN", 30, 1, 0, NULL},
-    {"(unknown)", 14, 2, 0, NULL},
+    {"ME_STEP", 31, 1, 0, NULL},
     {"(unknown)", 21, 9, 0, NULL},
-    {"(unknown)", 31, 1, 0, NULL},
     {NULL, 0, 0, 0, NULL}
 };
 
