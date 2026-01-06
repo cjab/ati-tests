@@ -40,7 +40,7 @@ static const uint32_t data[] = {
 bool
 test_rop3_16x16(ati_device_t *dev)
 {
-    ati_screen_clear(dev);
+    ati_screen_clear(dev, 0);
 
     unsigned rows = 16;
     unsigned cols = 16;

@@ -21,7 +21,7 @@ test_host_data_32x32(ati_device_t *dev)
     unsigned width = 32;
     unsigned height = 32;
 
-    ati_screen_clear(dev);
+    ati_screen_clear(dev, 0);
 
     wr_dp_src_frgd_clr(dev, red);
     wr_dp_src_bkgd_clr(dev, green);
@@ -118,7 +118,7 @@ test_host_data_mono_is_bit_packed(ati_device_t *dev)
     unsigned width = 2;
     unsigned height = 2;
 
-    ati_screen_clear(dev);
+    ati_screen_clear(dev, 0);
 
     wr_dp_src_frgd_clr(dev, red);
     wr_dp_src_bkgd_clr(dev, green);

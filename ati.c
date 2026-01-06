@@ -166,10 +166,10 @@ ati_screen_compare_fixture(ati_device_t *dev, const char *fixture_name)
 }
 
 void
-ati_screen_clear(ati_device_t *dev)
+ati_screen_clear(ati_device_t *dev, uint32_t color)
 {
     size_t screen_size = 640 * 480 * 4;
-    memset(dev->bar[0], 0, screen_size);
+    memset(dev->bar[0], color, screen_size);
 }
 
 void
@@ -487,7 +487,7 @@ ati_reset_for_test(ati_device_t *dev)
 
     ati_engine_reset(dev);
     ati_wait_for_idle(dev);
-    ati_screen_clear(dev);
+    ati_screen_clear(dev, 0);
     ati_init_gui_engine(dev);
 }
 

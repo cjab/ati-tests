@@ -34,6 +34,7 @@ typedef enum {
     CMD_VW,
     CMD_PR,
     CMD_PW,
+    CMD_CLR,
     CMD_MR,
     CMD_T,
     CMD_TL,
@@ -58,6 +59,7 @@ static const struct {
     {"vw",       CMD_VW,       "<offset> <val> [count]", "vram write"},
     {"pr",       CMD_PR,       "<pixel> [count]",        "pixel read"},
     {"pw",       CMD_PW,       "<pixel> <val> [count]",  "pixel write"},
+    {"clr",      CMD_CLR,      "[color]",                "clear the screen"},
     {"mr",       CMD_MR,       "<addr> [count]",         "system memory read"},
     {"t",        CMD_T,        "[test_name]",            "run test(s)"},
     {"tl",       CMD_TL,       NULL,                     "list tests"},
@@ -822,6 +824,20 @@ cmd_pixel_write(ati_device_t *dev, int argc, char **args)
     }
 }
 
+
+static void
+cmd_clr(ati_device_t *dev, int argc, char **args)
+{
+    uint32_t color = 0x00000000;
+
+    if (argc >= 2 && parse_int(args[1], &color) != 0) {
+        print_usage(CMD_CLR);
+        return;
+    }
+
+    ati_screen_clear(dev, color);
+}
+
 static void
 cmd_mem_read(int argc, char **args)
 {
@@ -979,6 +995,9 @@ repl(ati_device_t *dev)
             break;
         case CMD_PW:
             cmd_pixel_write(dev, argc, args);
+            break;
+        case CMD_CLR:
+            cmd_clr(dev, argc, args);
             break;
         case CMD_MR:
             cmd_mem_read(argc, args);

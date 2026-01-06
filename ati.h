@@ -28,7 +28,7 @@ uint32_t ati_vram_read(ati_device_t *dev, uint32_t offset);
 void ati_vram_write(ati_device_t *dev, uint32_t offset, uint32_t value);
 uint64_t ati_vram_search(ati_device_t *dev, uint32_t needle);
 void ati_vram_clear(ati_device_t *dev);
-void ati_screen_clear(ati_device_t *dev);
+void ati_screen_clear(ati_device_t *dev, uint32_t color);
 void ati_vram_dump(ati_device_t *dev, const char *filename);
 void ati_screen_dump(ati_device_t *dev, const char *filename);
 void ati_vram_memcpy(ati_device_t *dev, uint32_t dst_offset, const void *src,
