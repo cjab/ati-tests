@@ -803,6 +803,19 @@ registers:
     offset: 0x16c8
     group: datapath
     ref: "RRG:189"
+    fields:
+      DP_SRC_SOURCE:
+        bits: [8, 10]
+        values:
+          MEMORY: 2
+          HOST_DATA: 3
+          HOST_DATA_ALIGNED: 4
+      DP_ROP3:
+        bits: [16, 23]
+    reserved:
+      - bits: [0, 7]
+      - bits: [11, 15]
+      - bits: [24, 31]
 
   DP_WRITE_MSK:
     offset: 0x16cc

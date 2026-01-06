@@ -328,6 +328,17 @@ enum {
     DP_CONVERSION_TEMP = (1u << 31),
 };
 
+// DP_MIX fields
+enum {
+    DP_SRC_SOURCE_SHIFT = 8,
+    DP_SRC_SOURCE_MASK = 0x700u,
+    DP_SRC_SOURCE_MEMORY = 0x200u,
+    DP_SRC_SOURCE_HOST_DATA = 0x300u,
+    DP_SRC_SOURCE_HOST_DATA_ALIGNED = 0x400u,
+    DP_ROP3_SHIFT = 16,
+    DP_ROP3_MASK = 0xff0000u,
+};
+
 // DP_CNTL fields
 enum {
     DST_X_LEFT_TO_RIGHT = (1u << 0),
@@ -448,6 +459,13 @@ static const field_value_t gmc_rop3_values[] = {
 };
 
 static const field_value_t gmc_src_source_values[] = {
+    {"MEMORY", 2},
+    {"HOST_DATA", 3},
+    {"HOST_DATA_ALIGNED", 4},
+    {NULL, 0}
+};
+
+static const field_value_t dp_src_source_values[] = {
     {"MEMORY", 2},
     {"HOST_DATA", 3},
     {"HOST_DATA_ALIGNED", 4},
@@ -703,6 +721,15 @@ static const field_entry_t dp_datatype_fields[] = {
     {NULL, 0, 0, 0, NULL}
 };
 
+static const field_entry_t dp_mix_fields[] = {
+    {"DP_SRC_SOURCE", 8, 3, 0, dp_src_source_values},
+    {"DP_ROP3", 16, 8, 0, NULL},
+    {"(reserved)", 0, 8, 0, NULL},
+    {"(reserved)", 11, 5, 0, NULL},
+    {"(reserved)", 24, 8, 0, NULL},
+    {NULL, 0, 0, 0, NULL}
+};
+
 static const field_entry_t dp_cntl_fields[] = {
     {"DST_X_LEFT_TO_RIGHT", 0, 1, 0, NULL},
     {"DST_Y_TOP_TO_BOTTOM", 1, 1, 0, NULL},
@@ -906,7 +933,7 @@ enum {
   X(gui_stat, GUI_STAT, 0x1740, FLAG_NO_WRITE, gui_stat_fields, NULL) \
   X(dp_gui_master_cntl, DP_GUI_MASTER_CNTL, 0x146c, 0, dp_gui_master_cntl_fields, NULL) \
   X(dp_datatype, DP_DATATYPE, 0x16c4, 0, dp_datatype_fields, NULL) \
-  X(dp_mix, DP_MIX, 0x16c8, 0, NULL, NULL) \
+  X(dp_mix, DP_MIX, 0x16c8, 0, dp_mix_fields, NULL) \
   X(dp_write_msk, DP_WRITE_MSK, 0x16cc, 0, NULL, NULL) \
   X(dp_cntl, DP_CNTL, 0x16c0, 0, dp_cntl_fields, NULL) \
   X(dp_brush_bkgd_clr, DP_BRUSH_BKGD_CLR, 0x15dc, 0, NULL, NULL) \
