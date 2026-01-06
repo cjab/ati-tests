@@ -152,10 +152,47 @@ test_host_data_mono_is_bit_packed(ati_device_t *dev)
     return true;
 }
 
+bool
+test_host_data_morphos(ati_device_t *dev)
+{
+    ati_screen_clear(dev, 0);
+    // Adjusted from MorphOS output for 640x480 screen
+    wr_dst_offset(dev, 0x0);
+    wr_dst_pitch(dev, 0x50);  // 640 pixels at 32bpp
+    wr_dp_datatype(dev, 0x6);  // 32bpp
+    wr_dp_mix(dev, 0xcc0300);  // SRCCOPY
+
+    wr_sc_top_left(dev, 0x0);
+    wr_default_sc_bottom_right(dev, 0x1fff1fff);
+    wr_sc_top_left(dev, 0x0);
+    wr_sc_bottom_right(dev, 0x1fff1fff);
+
+    wr_dp_cntl(dev, 0x3);  // L->R, T->B
+    wr_dp_src_frgd_clr(dev, 0xff000000);   // black
+    wr_dp_src_bkgd_clr(dev, 0xffececec);   // light gray
+    wr_dst_y_x(dev, (100 << 16) | 100);    // y=100, x=100
+    wr_src_y_x(dev, 0x0);
+    wr_dst_width_height(dev, 0x200008);    // 32x8 = 256 pixels
+    // 8 writes to HOST_DATA0, no HOST_DATA_LAST
+    // MorphOS style, all to same register
+    wr_host_data0(dev, 0xce007c);
+    wr_host_data0(dev, 0x38de00ce);
+    wr_host_data0(dev, 0xf638de);
+    wr_host_data0(dev, 0xe600f6);
+    wr_host_data0(dev, 0xc600e6);
+    wr_host_data0(dev, 0x187c00c6);
+    wr_host_data0(dev, 0x7c00187c);
+    wr_host_data0(dev, 0x7c00);
+    ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_morphos_all_data0"));
+
+    return true;
+}
+
 void
 register_host_data_tests(void)
 {
     REGISTER_TEST(test_host_data_32x32, "host_data 32x32");
     REGISTER_TEST(test_host_data_mono_is_bit_packed,
                   "host_data mono is bit packed");
+    REGISTER_TEST(test_host_data_morphos, "test host data morphos");
 }
