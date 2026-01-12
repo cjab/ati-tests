@@ -55,6 +55,8 @@ test_host_data_32x32(ati_device_t *dev)
     wr_host_data3(dev, 0x00000000);
     ASSERT_TRUE(ati_screen_async_compare_fixture(
         dev, "host_data_mono_32x32_partial_1"));
+    ASSERT_EQ(rd_dst_x(dev), 0x0);
+    ASSERT_EQ(rd_dst_y(dev), 0x0);
 
     wr_host_data4(dev, 0x0ffffff0);
     wr_host_data5(dev, 0x0ffffff0);
@@ -103,6 +105,10 @@ test_host_data_32x32(ati_device_t *dev)
     wr_host_data6(dev, 0x00000000);
     wr_host_data_last(dev, 0x00000000);
     ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_mono_32x32"));
+
+    /* surprisingly, dst_x and dst_y are NOT updated after the blit */
+    ASSERT_EQ(rd_dst_x(dev), 0x0);
+    ASSERT_EQ(rd_dst_y(dev), 0x0);
 
     return true;
 }

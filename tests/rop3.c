@@ -78,6 +78,9 @@ test_rop3_16x16(ati_device_t *dev)
     wr_dst_width_height(dev, (16 << 16) | 16);
 
     ASSERT_TRUE(ati_screen_compare_fixture(dev, "rop3_color_16x16"));
+    /* The dst_x and dst_y registers are not updated */
+    ASSERT_EQ(rd_dst_x(dev), 0x10);
+    ASSERT_EQ(rd_dst_y(dev), 0x10);
 
     return true;
 }
