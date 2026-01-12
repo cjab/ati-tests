@@ -2,6 +2,7 @@
 #include "ati.h"
 #include "cce_cmd.h"
 #include "common.h"
+#include "dump_cmd.h"
 #include "platform/platform.h"
 
 // Generate register name lookup table from X-macro
@@ -40,6 +41,7 @@ typedef enum {
     CMD_TL,
     CMD_CCE,
     CMD_REGS,
+    CMD_DUMP,
     CMD_HELP,
     CMD_UNKNOWN
 } cmd_t;
@@ -65,6 +67,7 @@ static const struct {
     {"tl",       CMD_TL,       NULL,                     "list tests"},
     {"cce",      CMD_CCE,      "<cmd>",                  "CCE control (init/start/stop/r/w)"},
     {"regs",     CMD_REGS,     "<save|diff>",            "register snapshot/diff"},
+    {"dump",     CMD_DUMP,     "<cmd>",                  "dump data (screen/vram)"},
     {"help",     CMD_HELP,     NULL,                     NULL},
     {"?",        CMD_HELP,     NULL,                     NULL},
     {NULL,       CMD_UNKNOWN,  NULL,                     NULL}
@@ -1013,6 +1016,9 @@ repl(ati_device_t *dev)
             break;
         case CMD_REGS:
             cmd_regs(dev, argc, args);
+            break;
+        case CMD_DUMP:
+            cmd_dump(dev, argc, args);
             break;
         case CMD_HELP:
             cmd_help(argc, args);

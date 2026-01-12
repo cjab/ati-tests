@@ -28,7 +28,7 @@ else
 	FIXTURE_REGISTRY =
 endif
 
-COMMON_SRCS = main.c ati.c cce.c cce_cmd.c repl.c $(wildcard tests/*.c)
+COMMON_SRCS = main.c ati.c cce.c cce_cmd.c dump_cmd.c repl.c $(wildcard tests/*.c)
 SRCS = $(COMMON_SRCS) $(PLATFORM_SRC)
 OBJS = $(filter %.o,$(SRCS:.c=.o) $(SRCS:.S=.o)) $(FIXTURE_OBJS) $(FIXTURE_REGISTRY)
 
