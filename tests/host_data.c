@@ -194,6 +194,142 @@ test_host_data_morphos(ati_device_t *dev)
     return true;
 }
 
+/* Helper macro to write a 32x32 box outline pattern via HOST_DATA. */
+#define WRITE_BOX_32X32(dev)                                                   \
+    do {                                                                       \
+        uint32_t edge = 0xffffffff;                                            \
+        uint32_t middle = 0xe0000007;                                          \
+        /* rows 0-7: top edge + 7 middle rows */                               \
+        wr_host_data0(dev, edge);                                              \
+        wr_host_data1(dev, edge);                                              \
+        wr_host_data2(dev, edge);                                              \
+        wr_host_data3(dev, middle);                                            \
+        wr_host_data4(dev, middle);                                            \
+        wr_host_data5(dev, middle);                                            \
+        wr_host_data6(dev, middle);                                            \
+        wr_host_data7(dev, middle);                                            \
+        /* rows 8-15 */                                                        \
+        wr_host_data0(dev, middle);                                            \
+        wr_host_data1(dev, middle);                                            \
+        wr_host_data2(dev, middle);                                            \
+        wr_host_data3(dev, middle);                                            \
+        wr_host_data4(dev, middle);                                            \
+        wr_host_data5(dev, middle);                                            \
+        wr_host_data6(dev, middle);                                            \
+        wr_host_data7(dev, middle);                                            \
+        /* rows 16-23 */                                                       \
+        wr_host_data0(dev, middle);                                            \
+        wr_host_data1(dev, middle);                                            \
+        wr_host_data2(dev, middle);                                            \
+        wr_host_data3(dev, middle);                                            \
+        wr_host_data4(dev, middle);                                            \
+        wr_host_data5(dev, middle);                                            \
+        wr_host_data6(dev, middle);                                            \
+        wr_host_data7(dev, middle);                                            \
+        /* rows 24-31: 7 middle rows + bottom edge */                          \
+        wr_host_data0(dev, middle);                                            \
+        wr_host_data1(dev, middle);                                            \
+        wr_host_data2(dev, middle);                                            \
+        wr_host_data3(dev, middle);                                            \
+        wr_host_data4(dev, middle);                                            \
+        wr_host_data5(dev, edge);                                              \
+        wr_host_data6(dev, edge);                                              \
+        wr_host_data_last(dev, edge);                                          \
+    } while (0)
+
+bool
+test_host_data_clipping(ati_device_t *dev)
+{
+    uint32_t red = 0x00ff0000;
+    uint32_t green = 0x0000ff00;
+
+    /* Common setup */
+    wr_dst_offset(dev, 0x0);
+    wr_dst_pitch(dev, 0x50);           /* 640 pixels / 8 = 80 = 0x50 */
+    wr_dp_datatype(dev, 0x40000006);   /* 32bpp + LSB_TO_MSB byte order */
+    wr_dp_mix(dev, 0xcc0300);          /* SRCCOPY + HOST_DATA source */
+    wr_dp_cntl(dev, 0x3);              /* L->R, T->B */
+    wr_dp_src_frgd_clr(dev, red);
+    wr_dp_src_bkgd_clr(dev, green);
+    wr_default_sc_bottom_right(dev, 0x1fff1fff);
+    wr_dp_write_msk(dev, 0xffffffff);
+    wr_dst_y_x(dev, (10 << 16) | 10);
+
+    /* Completely clipped */
+    ati_screen_clear(dev, 0);
+    wr_sc_top_left(dev, (100 << 16) | 100);
+    wr_sc_bottom_right(dev, (200 << 16) | 200);
+    wr_dst_width_height(dev, (32 << 16) | 32);
+    WRITE_BOX_32X32(dev);
+    ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_completely_clipped"));
+
+    /* No clipping */
+    ati_screen_clear(dev, 0);
+    wr_sc_top_left(dev, (10 << 16) | 10);
+    wr_sc_bottom_right(dev, (41 << 16) | 41);
+    wr_dst_width_height(dev, (32 << 16) | 32);
+    WRITE_BOX_32X32(dev);
+    ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_no_clip"));
+
+    /* Right clipping */
+    ati_screen_clear(dev, 0);
+    wr_sc_top_left(dev, (10 << 16) | 10);
+    wr_sc_bottom_right(dev, (41 << 16) | 38);
+    wr_dst_width_height(dev, (32 << 16) | 32);
+    WRITE_BOX_32X32(dev);
+    ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_clip_right"));
+
+    /* Left clipping */
+    ati_screen_clear(dev, 0);
+    wr_sc_top_left(dev, (10 << 16) | 13);
+    wr_sc_bottom_right(dev, (41 << 16) | 41);
+    wr_dst_width_height(dev, (32 << 16) | 32);
+    WRITE_BOX_32X32(dev);
+    ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_clip_left"));
+
+    /* Left and right clipping */
+    ati_screen_clear(dev, 0);
+    wr_sc_top_left(dev, (10 << 16) | 13);
+    wr_sc_bottom_right(dev, (41 << 16) | 38);
+    wr_dst_width_height(dev, (32 << 16) | 32);
+    WRITE_BOX_32X32(dev);
+    ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_clip_left_right"));
+
+    /* Top clipping */
+    ati_screen_clear(dev, 0);
+    wr_sc_top_left(dev, (13 << 16) | 10);
+    wr_sc_bottom_right(dev, (41 << 16) | 41);
+    wr_dst_width_height(dev, (32 << 16) | 32);
+    WRITE_BOX_32X32(dev);
+    ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_clip_top"));
+
+    /* Bottom clipping */
+    ati_screen_clear(dev, 0);
+    wr_sc_top_left(dev, (10 << 16) | 10);
+    wr_sc_bottom_right(dev, (38 << 16) | 41);
+    wr_dst_width_height(dev, (32 << 16) | 32);
+    WRITE_BOX_32X32(dev);
+    ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_clip_bottom"));
+
+    /* Top and bottom clipping */
+    ati_screen_clear(dev, 0);
+    wr_sc_top_left(dev, (13 << 16) | 10);
+    wr_sc_bottom_right(dev, (38 << 16) | 41);
+    wr_dst_width_height(dev, (32 << 16) | 32);
+    WRITE_BOX_32X32(dev);
+    ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_clip_top_bottom"));
+
+    /* All sides clipping */
+    ati_screen_clear(dev, 0);
+    wr_sc_top_left(dev, (13 << 16) | 13);
+    wr_sc_bottom_right(dev, (38 << 16) | 38);
+    wr_dst_width_height(dev, (32 << 16) | 32);
+    WRITE_BOX_32X32(dev);
+    ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_clip_all"));
+
+    return true;
+}
+
 void
 register_host_data_tests(void)
 {
@@ -201,4 +337,5 @@ register_host_data_tests(void)
     REGISTER_TEST(test_host_data_mono_is_bit_packed,
                   "host_data mono is bit packed");
     REGISTER_TEST(test_host_data_morphos, "test host data morphos");
+    REGISTER_TEST(test_host_data_clipping, "host_data clipping");
 }
