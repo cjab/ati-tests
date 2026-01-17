@@ -4,8 +4,8 @@
 #include "platform/platform.h"
 // IWYU pragma: end_exports
 
-#include "ati.h"
-#include "common.h"
+#include "ati/ati.h"
+#include "tests/test.h"
 #include "repl/repl.h"
 
 #define MAX_TESTS 100

@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef TEST_H
+#define TEST_H
 
 // IWYU pragma: begin_exports
-#include "platform/platform.h"
+#include "../platform/platform.h"
 // IWYU pragma: end_exports
 
-#include "ati.h"
+#include "../ati/ati.h"
 
 #define YELLOW "\033[33m"
 #define GREEN "\033[32m"

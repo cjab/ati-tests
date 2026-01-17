@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 // IWYU pragma: begin_exports
-#include "platform/platform.h"
+#include "../platform/platform.h"
 // IWYU pragma: end_exports
 
 // ============================================================================
@@ -103,11 +103,11 @@ void ati_top_cce_engine(ati_device_t *dev);
 // Example: reg |= GMC_BRUSH_DATATYPE_SOLIDCOLOR | GMC_ROP3_SRCCOPY;
 
 // Common registers - shared between R128 and R100
-#include "common_regs_gen.h"
+#include "registers/common_regs_gen.h"
 
 // Chip-specific registers
-#include "r128_regs_gen.h"
-#include "r100_regs_gen.h"
+#include "registers/r128_regs_gen.h"
+#include "registers/r100_regs_gen.h"
 
 // ============================================================================
 // Read/Write Function Declarations - Common Registers

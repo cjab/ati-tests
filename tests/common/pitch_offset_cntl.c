@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#include "../../ati.h"
-#include "../../common.h"
+#include "../../ati/ati.h"
+#include "../test.h"
 
 bool
 test_src_pitch_offset_cntl_latching(ati_device_t *dev)

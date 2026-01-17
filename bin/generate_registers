@@ -13,7 +13,7 @@ require 'yaml'
 require 'optparse'
 
 SCRIPT_DIR = __dir__
-REGISTERS_DIR = File.join(SCRIPT_DIR, '..', 'registers')
+REGISTERS_DIR = File.join(SCRIPT_DIR, '..', 'ati', 'registers')
 
 # Flag name to C constant mapping
 FLAG_MAP = {

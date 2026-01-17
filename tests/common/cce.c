@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#include "../../cce.h"
-#include "../../common.h"
+#include "../../ati/cce.h"
+#include "../test.h"
 
 bool
 test_cce(ati_device_t *dev)

@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include <stdarg.h>
 
-#include "platform/platform.h"
+#include "../platform/platform.h"
 
 #include "ati.h"
 #include "cce.h"
-#include "common.h"
+#include "../tests/test.h"
 
 #define NUM_BARS 8
 

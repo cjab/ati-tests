@@ -11,7 +11,7 @@ $(shell echo "LAST_PLATFORM=$(PLATFORM)" > .platform)
 
 ifeq ($(PLATFORM),baremetal)
 	CFLAGS += -ffreestanding -fno-stack-protector -fno-pic -no-pie -m32 -DPLATFORM_BAREMETAL
-	LDFLAGS = -nostdlib -T linker.ld -m32 -no-pie
+	LDFLAGS = -nostdlib -T platform/baremetal/linker.ld -m32 -no-pie
 	PLATFORM_SRC = platform/baremetal/baremetal.c platform/baremetal/serial.c platform/baremetal/boot.S platform/baremetal/tinyprintf.c
 	TARGET = ati_tests.elf
 	ISO = ati_tests.iso
@@ -31,16 +31,16 @@ endif
 # Test source files from all test directories
 TEST_SRCS = $(wildcard tests/common/*.c) $(wildcard tests/r128/*.c) $(wildcard tests/r100/*.c)
 
-COMMON_SRCS = main.c ati.c cce.c repl/repl.c repl/cce_cmd.c repl/dump_cmd.c $(TEST_SRCS)
+COMMON_SRCS = main.c ati/ati.c ati/cce.c repl/repl.c repl/cce_cmd.c repl/dump_cmd.c $(TEST_SRCS)
 SRCS = $(COMMON_SRCS) $(PLATFORM_SRC)
 OBJS = $(filter %.o,$(SRCS:.c=.o) $(SRCS:.S=.o)) $(FIXTURE_OBJS) $(FIXTURE_REGISTRY)
 
 # Generated register definitions
-REGS_DIR = registers
+REGS_DIR = ati/registers
 REGS_GEN = bin/generate_registers
-COMMON_REGS_HDR = common_regs_gen.h
-R128_REGS_HDR = r128_regs_gen.h
-R100_REGS_HDR = r100_regs_gen.h
+COMMON_REGS_HDR = $(REGS_DIR)/common_regs_gen.h
+R128_REGS_HDR = $(REGS_DIR)/r128_regs_gen.h
+R100_REGS_HDR = $(REGS_DIR)/r100_regs_gen.h
 ALL_REGS_HDRS = $(COMMON_REGS_HDR) $(R128_REGS_HDR) $(R100_REGS_HDR)
 
 all: $(ALL_REGS_HDRS) $(TARGET)
@@ -100,9 +100,9 @@ endif
 
 clean:
 	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests
-	rm -f platform/*/*.o tests/*/*.o fixtures/*.o fixtures/fixtures_registry.c repl/*.o
+	rm -f ati/*.o platform/*/*.o tests/*/*.o fixtures/*.o fixtures/fixtures_registry.c repl/*.o
 	rm -f ati_tests.iso .platform
-	rm -f *.d tests/*/*.d platform/*/*.d repl/*.d
+	rm -f *.d ati/*.d tests/*/*.d platform/*/*.d repl/*.d
 	rm -f $(ALL_REGS_HDRS)
 
 # Regenerate all register headers

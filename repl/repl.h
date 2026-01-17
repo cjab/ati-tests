@@ -2,7 +2,7 @@
 #ifndef REPL_H
 #define REPL_H
 
-#include "../ati.h"
+#include "../ati/ati.h"
 #include <stdint.h>
 
 void repl(ati_device_t *dev);

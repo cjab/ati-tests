@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "dump_cmd.h"
-#include "../common.h"
+#include "../tests/test.h"
 
 typedef enum {
     DUMP_CMD_SCREEN,

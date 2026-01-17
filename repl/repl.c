@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#include "../ati.h"
+#include "../ati/ati.h"
 #include "cce_cmd.h"
-#include "../common.h"
+#include "../tests/test.h"
 #include "dump_cmd.h"
 #include "../platform/platform.h"
 
