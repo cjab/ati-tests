@@ -10,3 +10,4 @@ compile_commands.json
 fixtures/fixtures_registry.c
 .platform
 tmp/
+build/
