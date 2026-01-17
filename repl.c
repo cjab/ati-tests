@@ -31,6 +31,7 @@ static bool snapshot_valid = false;
 // Command enum for dispatch
 typedef enum {
     CMD_REBOOT,
+    CMD_INFO,
     CMD_R,
     CMD_RX,
     CMD_W,
@@ -57,6 +58,7 @@ static const struct {
     const char *desc;
 } cmd_table[] = {
     {"reboot",   CMD_REBOOT,   NULL,                     "reboot system (baremetal)"},
+    {"info",     CMD_INFO,     NULL,                     "display system info"},
     {"r",        CMD_R,        "<addr|reg>",             "register read"},
     {"rx",       CMD_RX,       "<addr|reg>",             "register read (expanded)"},
     {"w",        CMD_W,        "<addr|reg> <val>",       "register write"},
@@ -980,6 +982,9 @@ repl(ati_device_t *dev)
         switch (lookup_cmd(args[0])) {
         case CMD_REBOOT:
             cmd_reboot();
+            break;
+        case CMD_INFO:
+            ati_print_info(dev);
             break;
         case CMD_R:
             cmd_reg_read(dev, argc, args);

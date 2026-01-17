@@ -70,6 +70,7 @@ bool ati_screen_async_compare_fixture(ati_device_t *dev,
                                       const char *fixture_name);
 bool ati_screen_compare_fixture(ati_device_t *dev, const char *fixture_name);
 void ati_dump_mode(ati_device_t *dev);
+void ati_print_info(ati_device_t *dev);
 
 // ============================================================================
 // Engine Control

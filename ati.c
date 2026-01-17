@@ -36,6 +36,7 @@ static const struct {
     { 0x534C, CHIP_R128, "Rage 128 SL" },
     { 0x534D, CHIP_R128, "Rage 128 SM" },
     { 0x534E, CHIP_R128, "Rage 128 SN" },
+    { 0x5446, CHIP_R128, "Rage 128 PRO Ultra AGP 4x" },
     // Radeon R100 / RV100 / M6
     { 0x5144, CHIP_R100, "Radeon QD" },
     { 0x5145, CHIP_R100, "Radeon QE" },
@@ -119,10 +120,22 @@ ati_device_init(platform_pci_device_t *pci_dev)
     platform_pci_get_name(ati->pci_dev, ati->name, sizeof(ati->name));
     
     // Print device info
-    printf("Detected: %s [%04x] (%s family)\n", 
-           get_chip_name(ati->device_id),
+    const char *color;
+    switch (ati->family) {
+    case CHIP_R128:
+        color = "\033[36m";  // cyan
+        break;
+    case CHIP_R100:
+        color = "\033[35m";  // magenta
+        break;
+    default:
+        color = "\033[31m";  // red
+        break;
+    }
+    printf("Detected: %s%s\033[0m [%04x] (%s%s\033[0m family)\n",
+           color, get_chip_name(ati->device_id),
            ati->device_id,
-           ati_chip_family_name(ati->family));
+           color, ati_chip_family_name(ati->family));
     
     if (ati->family == CHIP_UNKNOWN) {
         printf("WARNING: Unknown chip family, behavior may be unpredictable\n");
@@ -313,6 +326,33 @@ ati_dump_mode(ati_device_t *dev)
                    CRTC_V_TOTAL_DISP, CRTC_V_SYNC_STRT_WID, CRTC_GEN_CNTL,
                    CRTC_EXT_CNTL, CRTC_OFFSET, CRTC_OFFSET_CNTL, CRTC_PITCH,
                    DAC_CNTL);
+}
+
+void
+ati_print_info(ati_device_t *dev)
+{
+    const char *color;
+    switch (dev->family) {
+    case CHIP_R128:
+        color = "\033[36m";  // cyan
+        break;
+    case CHIP_R100:
+        color = "\033[35m";  // magenta
+        break;
+    default:
+        color = "\033[31m";  // red
+        break;
+    }
+
+    size_t vram_size = platform_pci_get_bar_size(dev->pci_dev, 0);
+    size_t mmio_size = platform_pci_get_bar_size(dev->pci_dev, 2);
+
+    printf("=== ATI Device ===\n");
+    printf("Name:    %s%s\033[0m\n", color, get_chip_name(dev->device_id));
+    printf("ID:      0x%04x\n", dev->device_id);
+    printf("Family:  %s%s\033[0m\n", color, ati_chip_family_name(dev->family));
+    printf("VRAM:    %p (%zu MB)\n", dev->bar[0], vram_size / (1024 * 1024));
+    printf("MMIO:    %p (%zu KB)\n", dev->bar[2], mmio_size / 1024);
 }
 
 // ============================================================================
