@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "cce_cmd.h"
-#include "cce.h"
-#include "common.h"
+#include "../cce.h"
+#include "../common.h"
 #include "repl.h"
 
 typedef enum {

@@ -2,7 +2,7 @@
 #ifndef DUMP_CMD_H
 #define DUMP_CMD_H
 
-#include "ati.h"
+#include "../ati.h"
 
 void cmd_dump(ati_device_t *dev, int argc, char **args);
 void dump_cmd_help(void);

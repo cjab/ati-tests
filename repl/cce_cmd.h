@@ -2,7 +2,7 @@
 #ifndef CCE_CMD_H
 #define CCE_CMD_H
 
-#include "ati.h"
+#include "../ati.h"
 
 void cmd_cce(ati_device_t *dev, int argc, char **args);
 void cce_cmd_help(void);

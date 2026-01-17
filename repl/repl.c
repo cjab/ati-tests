@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#include "ati.h"
+#include "../ati.h"
 #include "cce_cmd.h"
-#include "common.h"
+#include "../common.h"
 #include "dump_cmd.h"
-#include "platform/platform.h"
+#include "../platform/platform.h"
 
 // Generate register name lookup table from X-macro
 typedef struct {

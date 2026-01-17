@@ -6,7 +6,7 @@
 
 #include "ati.h"
 #include "common.h"
-#include "repl.h"
+#include "repl/repl.h"
 
 #define MAX_TESTS 100
 

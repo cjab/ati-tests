@@ -31,7 +31,7 @@ endif
 # Test source files from all test directories
 TEST_SRCS = $(wildcard tests/common/*.c) $(wildcard tests/r128/*.c) $(wildcard tests/r100/*.c)
 
-COMMON_SRCS = main.c ati.c cce.c cce_cmd.c dump_cmd.c repl.c $(TEST_SRCS)
+COMMON_SRCS = main.c ati.c cce.c repl/repl.c repl/cce_cmd.c repl/dump_cmd.c $(TEST_SRCS)
 SRCS = $(COMMON_SRCS) $(PLATFORM_SRC)
 OBJS = $(filter %.o,$(SRCS:.c=.o) $(SRCS:.S=.o)) $(FIXTURE_OBJS) $(FIXTURE_REGISTRY)
 
@@ -100,9 +100,9 @@ endif
 
 clean:
 	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests boot.o
-	rm -f platform/*/*.o tests/*/*.o fixtures/*.o fixtures/fixtures_registry.c
+	rm -f platform/*/*.o tests/*/*.o fixtures/*.o fixtures/fixtures_registry.c repl/*.o
 	rm -f ati_tests.iso .platform
-	rm -f *.d tests/*/*.d platform/*/*.d
+	rm -f *.d tests/*/*.d platform/*/*.d repl/*.d
 	rm -f $(ALL_REGS_HDRS)
 
 # Regenerate all register headers
