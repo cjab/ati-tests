@@ -11,3 +11,4 @@ fixtures/fixtures_registry.c
 .platform
 tmp/
 build/
+ati/registers/*_gen.h
