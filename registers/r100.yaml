@@ -1,0 +1,14 @@
+# ATI Radeon R100 (Mobility M6) Chip-Specific Register Definitions
+#
+# This file contains registers that are ONLY present on R100,
+# or registers that exist on both chips but have DIFFERENT layouts/behavior.
+#
+# Registers that are identical on both R128 and R100 belong in common.yaml.
+#
+# Reference key:
+#   M6RG:<page>     - Rage Mobility M6 Register Reference Guide (PDF page number)
+#   xorg:<file>     - xserver-xorg-video-ati/radeon driver source
+#   linux:<file>    - Linux kernel radeon DRM driver source
+#   hardware:<card> - Discovered through hardware experimentation
+
+registers: {}

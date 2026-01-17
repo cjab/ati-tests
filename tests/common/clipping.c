@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#include "../ati.h"
-#include "../common.h"
+#include "../../ati.h"
+#include "../../common.h"
 
 bool
 test_src_clipping_latches(ati_device_t *dev)

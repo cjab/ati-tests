@@ -35,6 +35,7 @@ void *platform_pci_map_bar(platform_pci_device_t *dev, int bar_idx);
 void platform_pci_unmap_bar(platform_pci_device_t *dev, void *addr,
                             int bar_idx);
 size_t platform_pci_get_bar_size(platform_pci_device_t *dev, int bar_idx);
+uint16_t platform_pci_get_device_id(platform_pci_device_t *dev);
 
 /* Timing */
 void udelay(unsigned int us);

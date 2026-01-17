@@ -271,6 +271,12 @@ platform_pci_get_bar_size(platform_pci_device_t *dev, int bar_idx)
     return ~size_mask + 1;
 }
 
+uint16_t
+platform_pci_get_device_id(platform_pci_device_t *dev)
+{
+    return dev->device_id;
+}
+
 // Fixture registry - generated at build time
 typedef struct {
     const char *name;

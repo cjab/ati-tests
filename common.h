@@ -41,11 +41,30 @@
         exit(1);                                                               \
     } while (0)
 
-void register_test(const char *id, const char *display_name,
-                   bool (*func)(ati_device_t *));
+// ============================================================================
+// Test Registration
+// ============================================================================
 
+// Register a test with chip compatibility info
+void register_test_internal(const char *id, const char *display_name,
+                            bool (*func)(ati_device_t *),
+                            ati_chip_family_t chips);
+
+// Register a test that runs on all chips (default)
 #define REGISTER_TEST(func, display_name)                                      \
-    register_test(#func, display_name, func)
+    register_test_internal(#func, display_name, func, CHIP_ALL)
+
+// Register a test for specific chip(s)
+#define REGISTER_TEST_FOR(func, display_name, chips)                           \
+    register_test_internal(#func, display_name, func, chips)
+
+// Legacy compatibility - maps to internal function
+static inline void
+register_test(const char *id, const char *display_name,
+              bool (*func)(ati_device_t *))
+{
+    register_test_internal(id, display_name, func, (ati_chip_family_t)CHIP_ALL);
+}
 
 void register_all_tests(void);
 void run_all_tests(ati_device_t *dev);

@@ -8,7 +8,25 @@
 // IWYU pragma: begin_exports
 #include "platform/platform.h"
 // IWYU pragma: end_exports
-//
+
+// ============================================================================
+// Chip Family Detection
+// ============================================================================
+
+typedef enum {
+    CHIP_UNKNOWN = 0,
+    CHIP_R128    = (1 << 0),
+    CHIP_R100    = (1 << 1),
+} ati_chip_family_t;
+
+#define CHIP_ALL (CHIP_R128 | CHIP_R100)
+
+// Get string name for chip family
+const char *ati_chip_family_name(ati_chip_family_t family);
+
+// ============================================================================
+// Device Constants
+// ============================================================================
 
 #define X_RES 640
 #define Y_RES 480
@@ -17,10 +35,25 @@
 #define FIFO_MAX 64
 #define VRAM_NOT_FOUND UINT64_MAX
 
+// ============================================================================
+// Device Structure
+// ============================================================================
+
 typedef struct ati_device ati_device_t;
+
+// Get chip family for a device
+ati_chip_family_t ati_get_chip_family(ati_device_t *dev);
+
+// ============================================================================
+// Device Lifecycle
+// ============================================================================
 
 ati_device_t *ati_device_init(platform_pci_device_t *pci_dev);
 void ati_device_destroy(ati_device_t *dev);
+
+// ============================================================================
+// Register and VRAM Access
+// ============================================================================
 
 uint32_t ati_reg_read(ati_device_t *dev, uint32_t offset);
 void ati_reg_write(ati_device_t *dev, uint32_t offset, uint32_t value);
@@ -37,6 +70,10 @@ bool ati_screen_async_compare_fixture(ati_device_t *dev,
                                       const char *fixture_name);
 bool ati_screen_compare_fixture(ati_device_t *dev, const char *fixture_name);
 void ati_dump_mode(ati_device_t *dev);
+
+// ============================================================================
+// Engine Control
+// ============================================================================
 
 void ati_dump_all_registers(ati_device_t *dev);
 void ati_dump_registers(ati_device_t *dev, int count, ...);
@@ -63,26 +100,67 @@ void ati_top_cce_engine(ati_device_t *dev);
 // Include generated register constants, field enums, and field tables.
 // Field values are PRE-SHIFTED and can be ORed directly into register values.
 // Example: reg |= GMC_BRUSH_DATATYPE_SOLIDCOLOR | GMC_ROP3_SRCCOPY;
-#include "ati_regs_gen.h"
+
+// Common registers - shared between R128 and R100
+#include "common_regs_gen.h"
+
+// Chip-specific registers
+#include "r128_regs_gen.h"
+#include "r100_regs_gen.h"
 
 // ============================================================================
-// Read/Write Function Declarations
+// Read/Write Function Declarations - Common Registers
 // ============================================================================
-// These use the ATI_REGISTERS macro from the generated header.
-// All registers get both read and write declarations - the flags just
-// indicate runtime behavior, not whether the functions should exist.
+// These use the COMMON_REGISTERS macro from common_regs_gen.h.
+// Common register accessors have no prefix.
 
-// Read functions
+// Read functions for common registers
 #define X(func_name, const_name, offset, flags, fields, aliases) \
   uint32_t rd_##func_name(ati_device_t *dev);
-ATI_REGISTERS
+COMMON_REGISTERS
 #undef X
 
-// Write functions
+// Write functions for common registers
 #define X(func_name, const_name, offset, flags, fields, aliases) \
   void wr_##func_name(ati_device_t *dev, uint32_t val);
-ATI_REGISTERS
+COMMON_REGISTERS
 #undef X
+
+// ============================================================================
+// Read/Write Function Declarations - R128-Specific Registers
+// ============================================================================
+// R128-specific register accessors have r128_ prefix.
+// They will assert if called on non-R128 hardware.
+
+#ifdef R128_REGISTERS
+#define X(func_name, const_name, offset, flags, fields, aliases) \
+  uint32_t rd_##func_name(ati_device_t *dev);
+R128_REGISTERS
+#undef X
+
+#define X(func_name, const_name, offset, flags, fields, aliases) \
+  void wr_##func_name(ati_device_t *dev, uint32_t val);
+R128_REGISTERS
+#undef X
+#endif
+
+// ============================================================================
+// Read/Write Function Declarations - R100-Specific Registers
+// ============================================================================
+// R100-specific register accessors have r100_ prefix.
+// They will assert if called on non-R100 hardware.
+
+#ifdef R100_REGISTERS
+#define X(func_name, const_name, offset, flags, fields, aliases) \
+  uint32_t rd_##func_name(ati_device_t *dev);
+R100_REGISTERS
+#undef X
+
+#define X(func_name, const_name, offset, flags, fields, aliases) \
+  void wr_##func_name(ati_device_t *dev, uint32_t val);
+R100_REGISTERS
+#undef X
+#endif
 
 // ============================================================================
 // Helper Functions

@@ -5,7 +5,7 @@ PLATFORM ?= baremetal
 # Auto-clean when platform changes
 -include .platform
 ifneq ($(LAST_PLATFORM),$(PLATFORM))
-$(shell rm -f *.o tests/*.o platform/*/*.o fixtures/*.o .platform)
+$(shell rm -f *.o tests/*/*.o platform/*/*.o fixtures/*.o .platform)
 endif
 $(shell echo "LAST_PLATFORM=$(PLATFORM)" > .platform)
 
@@ -28,20 +28,32 @@ else
 	FIXTURE_REGISTRY =
 endif
 
-COMMON_SRCS = main.c ati.c cce.c cce_cmd.c dump_cmd.c repl.c $(wildcard tests/*.c)
+# Test source files from all test directories
+TEST_SRCS = $(wildcard tests/common/*.c) $(wildcard tests/r128/*.c) $(wildcard tests/r100/*.c)
+
+COMMON_SRCS = main.c ati.c cce.c cce_cmd.c dump_cmd.c repl.c $(TEST_SRCS)
 SRCS = $(COMMON_SRCS) $(PLATFORM_SRC)
 OBJS = $(filter %.o,$(SRCS:.c=.o) $(SRCS:.S=.o)) $(FIXTURE_OBJS) $(FIXTURE_REGISTRY)
 
 # Generated register definitions
-REGS_YAML = registers.yaml
+REGS_DIR = registers
 REGS_GEN = bin/generate_registers
-REGS_HDR = ati_regs_gen.h
+COMMON_REGS_HDR = common_regs_gen.h
+R128_REGS_HDR = r128_regs_gen.h
+R100_REGS_HDR = r100_regs_gen.h
+ALL_REGS_HDRS = $(COMMON_REGS_HDR) $(R128_REGS_HDR) $(R100_REGS_HDR)
 
-all: $(REGS_HDR) $(TARGET)
+all: $(ALL_REGS_HDRS) $(TARGET)
 
-# Regenerate register header from YAML
-$(REGS_HDR): $(REGS_YAML) $(REGS_GEN)
-	$(REGS_GEN) -o $(REGS_HDR)
+# Regenerate register headers from YAML
+$(COMMON_REGS_HDR): $(REGS_DIR)/common.yaml $(REGS_GEN)
+	$(REGS_GEN) --chip common -o $@
+
+$(R128_REGS_HDR): $(REGS_DIR)/r128.yaml $(REGS_GEN)
+	$(REGS_GEN) --chip r128 --prefix R128_ -o $@
+
+$(R100_REGS_HDR): $(REGS_DIR)/r100.yaml $(REGS_GEN)
+	$(REGS_GEN) --chip r100 --prefix R100_ -o $@
 
 $(TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
@@ -87,12 +99,17 @@ fixtures/%.o: fixtures/%.bin
 endif
 
 clean:
-	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests boot.o platform/*/*.o fixtures/*.o fixtures/fixtures_registry.c ati_tests.iso .platform
-	rm -f *.d tests/*.d platform/*/*.d
+	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests boot.o
+	rm -f platform/*/*.o tests/*/*.o fixtures/*.o fixtures/fixtures_registry.c
+	rm -f ati_tests.iso .platform
+	rm -f *.d tests/*/*.d platform/*/*.d
+	rm -f $(ALL_REGS_HDRS)
 
-# Regenerate register header
+# Regenerate all register headers
 regen:
-	$(REGS_GEN) -o $(REGS_HDR)
+	$(REGS_GEN) --chip common -o $(COMMON_REGS_HDR)
+	$(REGS_GEN) --chip r128 --prefix R128_ -o $(R128_REGS_HDR)
+	$(REGS_GEN) --chip r100 --prefix R100_ -o $(R100_REGS_HDR)
 
 compile_commands.json:
 	bear -- $(MAKE) clean

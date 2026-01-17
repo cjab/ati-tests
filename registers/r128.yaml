@@ -1,0 +1,14 @@
+# ATI Rage 128 Pro Chip-Specific Register Definitions
+#
+# This file contains registers that are ONLY present on R128,
+# or registers that exist on both chips but have DIFFERENT layouts/behavior.
+#
+# Registers that are identical on both R128 and R100 belong in common.yaml.
+#
+# Reference key:
+#   RRG:<page>      - Rage 128 Pro Register Reference Guide (PDF page number)
+#   xorg:<file>     - xserver-xorg-video-r128 driver source
+#   linux:<file>    - Linux kernel r128 DRM driver source
+#   hardware:<card> - Discovered through hardware experimentation
+
+registers: {}

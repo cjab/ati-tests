@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#include "../ati.h"
-#include "../common.h"
+#include "../../ati.h"
+#include "../../common.h"
 
 // clang-format off
 #define GMC_SRC_DATATYPE_COLOR          0x00003000

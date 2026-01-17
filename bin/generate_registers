@@ -1,18 +1,19 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Generate C code from registers.yaml
+# Generate C code from register YAML files
 #
 # Usage:
-#   ./generate_registers                    # Output to stdout
-#   ./generate_registers -o ati_regs_gen.h  # Output to file
-#   ./generate_registers --check ati.h      # Check if file is up to date
+#   ./generate_registers --chip common -o common_regs_gen.h
+#   ./generate_registers --chip r128 --prefix R128_ -o r128_regs_gen.h
+#   ./generate_registers --chip r100 --prefix R100_ -o r100_regs_gen.h
+#   ./generate_registers --chip common --check common_regs_gen.h
 
 require 'yaml'
 require 'optparse'
 
 SCRIPT_DIR = __dir__
-YAML_PATH = File.join(SCRIPT_DIR, '..', 'registers.yaml')
+REGISTERS_DIR = File.join(SCRIPT_DIR, '..', 'registers')
 
 # Flag name to C constant mapping
 FLAG_MAP = {
@@ -23,8 +24,12 @@ FLAG_MAP = {
   'reverse_engineered' => 'FLAG_REVERSE_ENGINEERED'
 }.freeze
 
-def load_registers
-  YAML.load_file(YAML_PATH)
+def load_registers(chip)
+  yaml_path = File.join(REGISTERS_DIR, "#{chip}.yaml")
+  unless File.exist?(yaml_path)
+    raise "Register file not found: #{yaml_path}"
+  end
+  YAML.load_file(yaml_path)
 end
 
 # Convert flags array to C expression
@@ -90,39 +95,43 @@ def check_enum_duplicate(name, value)
 end
 
 # Emit a single-bit flag: NAME = (1u << bit)
-def emit_enum_bit(name, bit, lines)
+def emit_enum_bit(name, bit, lines, prefix)
   value = 1 << bit
-  return if check_enum_duplicate(name, value)
+  full_name = "#{prefix}#{name}"
+  return if check_enum_duplicate(full_name, value)
 
-  lines << "    #{name} = (1u << #{bit}),"
+  lines << "    #{full_name} = (1u << #{bit}),"
 end
 
 # Emit a shift constant: NAME_SHIFT = N
-def emit_enum_shift(name, shift, lines)
-  return if check_enum_duplicate(name, shift)
+def emit_enum_shift(name, shift, lines, prefix)
+  full_name = "#{prefix}#{name}"
+  return if check_enum_duplicate(full_name, shift)
 
-  lines << "    #{name} = #{shift},"
+  lines << "    #{full_name} = #{shift},"
 end
 
 # Emit a mask constant: NAME_MASK = 0xNNNu
-def emit_enum_mask(name, mask, lines)
-  return if check_enum_duplicate(name, mask)
+def emit_enum_mask(name, mask, lines, prefix)
+  full_name = "#{prefix}#{name}"
+  return if check_enum_duplicate(full_name, mask)
 
-  lines << "    #{name} = 0x#{mask.to_s(16)}u,"
+  lines << "    #{full_name} = 0x#{mask.to_s(16)}u,"
 end
 
 # Emit a pre-shifted value constant
-def emit_enum_value(name, value, lines)
-  return if check_enum_duplicate(name, value)
+def emit_enum_value(name, value, lines, prefix)
+  full_name = "#{prefix}#{name}"
+  return if check_enum_duplicate(full_name, value)
 
   if value > 9
-    lines << "    #{name} = 0x#{value.to_s(16)}u,"
+    lines << "    #{full_name} = 0x#{value.to_s(16)}u,"
   else
-    lines << "    #{name} = #{value}u,"
+    lines << "    #{full_name} = #{value}u,"
   end
 end
 
-def generate_field_enums(reg_name, fields, aliases = nil)
+def generate_field_enums(reg_name, fields, aliases, prefix)
   return '' if (fields.nil? || fields.empty?) && (aliases.nil? || aliases.empty?)
 
   lines = []
@@ -135,12 +144,12 @@ def generate_field_enums(reg_name, fields, aliases = nil)
 
       if width == 1
         # Single bit flag: NAME = (1u << bit)
-        emit_enum_bit(field_name, shift, lines)
+        emit_enum_bit(field_name, shift, lines, prefix)
       else
         # Multi-bit field: NAME_SHIFT and NAME_MASK
         mask = ((1 << width) - 1) << shift
-        emit_enum_shift("#{field_name}_SHIFT", shift, lines)
-        emit_enum_mask("#{field_name}_MASK", mask, lines)
+        emit_enum_shift("#{field_name}_SHIFT", shift, lines, prefix)
+        emit_enum_mask("#{field_name}_MASK", mask, lines, prefix)
       end
 
       # Generate named values if present (pre-shifted, ready to OR)
@@ -149,7 +158,7 @@ def generate_field_enums(reg_name, fields, aliases = nil)
           # Prefix with field name to avoid collisions
           const_name = "#{field_name}_#{value_name}"
           shifted_value = value << shift
-          emit_enum_value(const_name, shifted_value, lines)
+          emit_enum_value(const_name, shifted_value, lines, prefix)
         end
       end
     end
@@ -163,11 +172,11 @@ def generate_field_enums(reg_name, fields, aliases = nil)
       width = field_width(alias_def)
 
       if width == 1
-        emit_enum_bit(alias_name, shift, lines)
+        emit_enum_bit(alias_name, shift, lines, prefix)
       else
         mask = ((1 << width) - 1) << shift
-        emit_enum_shift("#{alias_name}_SHIFT", shift, lines)
-        emit_enum_mask("#{alias_name}_MASK", mask, lines)
+        emit_enum_shift("#{alias_name}_SHIFT", shift, lines, prefix)
+        emit_enum_mask("#{alias_name}_MASK", mask, lines, prefix)
       end
     end
   end
@@ -176,10 +185,10 @@ def generate_field_enums(reg_name, fields, aliases = nil)
 end
 
 # Generate a value table for a field (if it has values)
-def generate_value_table(field_name, field)
+def generate_value_table(field_name, field, prefix)
   return nil unless field['values'] && !field['values'].empty?
 
-  table_name = "#{field_name.downcase}_values"
+  table_name = "#{prefix.downcase}#{field_name.downcase}_values"
   lines = ["static const field_value_t #{table_name}[] = {"]
 
   field['values'].each do |value_name, value|
@@ -193,24 +202,24 @@ def generate_value_table(field_name, field)
 end
 
 # Generate all value tables for a register's fields
-def generate_value_tables(reg_name, fields)
+def generate_value_tables(reg_name, fields, prefix)
   return [] if fields.nil? || fields.empty?
 
   tables = []
   fields.each do |field_name, field|
-    result = generate_value_table(field_name, field)
+    result = generate_value_table(field_name, field, prefix)
     tables << result[1] if result
   end
   tables
 end
 
-def generate_field_table(reg_name, fields, reserved = nil, unknown = nil)
+def generate_field_table(reg_name, fields, reserved, unknown, prefix)
   has_fields = fields && !fields.empty?
   has_unknown = unknown && !unknown.empty?
   has_reserved = reserved && !reserved.empty?
   return 'NULL' unless has_fields || has_unknown || has_reserved
 
-  table_name = "#{reg_name.downcase}_fields"
+  table_name = "#{prefix.downcase}#{reg_name.downcase}_fields"
   lines = ["static const field_entry_t #{table_name}[] = {"]
 
   # Add regular fields
@@ -220,7 +229,7 @@ def generate_field_table(reg_name, fields, reserved = nil, unknown = nil)
       width = field_width(field)
       field_flags = flags_to_c(field['flags'])
       values_ptr = if field['values'] && !field['values'].empty?
-                     "#{field_name.downcase}_values"
+                     "#{prefix.downcase}#{field_name.downcase}_values"
                    else
                      'NULL'
                    end
@@ -252,10 +261,10 @@ def generate_field_table(reg_name, fields, reserved = nil, unknown = nil)
   lines.join("\n")
 end
 
-def generate_alias_table(reg_name, aliases)
+def generate_alias_table(reg_name, aliases, prefix)
   return 'NULL' if aliases.nil? || aliases.empty?
 
-  table_name = "#{reg_name.downcase}_aliases"
+  table_name = "#{prefix.downcase}#{reg_name.downcase}_aliases"
   lines = ["static const field_entry_t #{table_name}[] = {"]
 
   aliases.each do |alias_name, alias_def|
@@ -270,26 +279,44 @@ def generate_alias_table(reg_name, aliases)
   lines.join("\n")
 end
 
-def generate_c_code(data)
+def generate_c_code(data, chip, prefix)
   reset_emitted_enums
   output = []
 
+  # Determine header guard and macro names based on chip
+  guard_name = "#{prefix.upcase.gsub(/_$/, '')}_REGS_GEN_H"
+  guard_name = "COMMON_REGS_GEN_H" if chip == 'common'
+  
+  macro_name = "#{prefix.upcase.gsub(/_$/, '')}_REGISTERS"
+  macro_name = "COMMON_REGISTERS" if chip == 'common'
+
+  chip_desc = case chip
+              when 'common' then 'Common (shared between R128 and R100)'
+              when 'r128' then 'ATI Rage 128 Pro specific'
+              when 'r100' then 'ATI Radeon R100 (Mobility M6) specific'
+              else chip
+              end
+
   output << <<~HEADER
-    // Auto-generated from registers.yaml - DO NOT EDIT
-    // Generated by: bin/generate_registers
+    // Auto-generated from registers/#{chip}.yaml - DO NOT EDIT
+    // Generated by: bin/generate_registers --chip #{chip}#{prefix.empty? ? '' : " --prefix #{prefix}"}
     //
-    // This file contains register offset constants, field enums, and field tables
-    // for the ATI Rage 128 Pro graphics controller.
+    // #{chip_desc} register definitions.
     //
     // Field values are PRE-SHIFTED and can be ORed directly into register values.
-    // Example: reg |= GMC_BRUSH_DATATYPE_SOLIDCOLOR | GMC_ROP3_SRCCOPY;
+    // Example: reg |= #{prefix}GMC_BRUSH_DATATYPE_SOLIDCOLOR | #{prefix}GMC_ROP3_SRCCOPY;
 
-    #ifndef ATI_REGS_GEN_H
-    #define ATI_REGS_GEN_H
+    #ifndef #{guard_name}
+    #define #{guard_name}
 
     #include <stdint.h>
     #include <stddef.h>
 
+  HEADER
+
+  # Only emit type definitions in common header to avoid redefinition
+  if chip == 'common'
+    output << <<~TYPES
     // Named value entry for multi-bit fields
     typedef struct {
         const char *name;
@@ -314,7 +341,21 @@ def generate_c_code(data)
         FLAG_REVERSE_ENGINEERED = (1 << 4), // Discovered through hardware testing
     };
 
-  HEADER
+    TYPES
+  else
+    output << "// Note: field_value_t, field_entry_t, and flag enums are defined in common_regs_gen.h\n"
+    output << "#include \"common_regs_gen.h\"\n\n"
+  end
+
+  registers = data['registers'] || {}
+  
+  if registers.empty?
+    # Empty register file - just emit empty macro
+    output << "// No registers defined for #{chip}\n"
+    output << "#define #{macro_name} /* empty */\n\n"
+    output << "#endif // #{guard_name}\n"
+    return output.join("\n")
+  end
 
   # Generate field enums
   output << '// ============================================================================'
@@ -322,14 +363,14 @@ def generate_c_code(data)
   output << '// ============================================================================'
   output << ''
 
-  data['registers'].each do |reg_name, reg|
+  registers.each do |reg_name, reg|
     has_fields = reg['fields'] && !reg['fields'].empty?
     has_aliases = reg['aliases'] && !reg['aliases'].empty?
     next unless has_fields || has_aliases
 
-    output << "// #{reg_name} fields"
+    output << "// #{prefix}#{reg_name} fields"
     output << 'enum {'
-    output << generate_field_enums(reg_name, reg['fields'], reg['aliases'])
+    output << generate_field_enums(reg_name, reg['fields'], reg['aliases'], prefix)
     output << '};'
     output << ''
   end
@@ -340,10 +381,10 @@ def generate_c_code(data)
   output << '// ============================================================================'
   output << ''
 
-  data['registers'].each do |_reg_name, reg|
+  registers.each do |_reg_name, reg|
     next unless reg['fields'] && !reg['fields'].empty?
 
-    value_tables = generate_value_tables(_reg_name, reg['fields'])
+    value_tables = generate_value_tables(_reg_name, reg['fields'], prefix)
     value_tables.each do |table|
       output << table
       output << ''
@@ -356,13 +397,13 @@ def generate_c_code(data)
   output << '// ============================================================================'
   output << ''
 
-  data['registers'].each do |reg_name, reg|
+  registers.each do |reg_name, reg|
     has_fields = reg['fields'] && !reg['fields'].empty?
     has_unknown = reg['unknown'] && !reg['unknown'].empty?
     has_reserved = reg['reserved'] && !reg['reserved'].empty?
     next unless has_fields || has_unknown || has_reserved
 
-    output << generate_field_table(reg_name, reg['fields'], reg['reserved'], reg['unknown'])
+    output << generate_field_table(reg_name, reg['fields'], reg['reserved'], reg['unknown'], prefix)
     output << ''
   end
 
@@ -372,10 +413,10 @@ def generate_c_code(data)
   output << '// ============================================================================'
   output << ''
 
-  data['registers'].each do |reg_name, reg|
+  registers.each do |reg_name, reg|
     next unless reg['aliases'] && !reg['aliases'].empty?
 
-    output << generate_alias_table(reg_name, reg['aliases'])
+    output << generate_alias_table(reg_name, reg['aliases'], prefix)
     output << ''
   end
 
@@ -386,49 +427,60 @@ def generate_c_code(data)
   output << ''
   output << 'enum {'
 
-  data['registers'].each do |reg_name, reg|
-    output << "    #{reg_name} = 0x#{reg['offset'].to_s(16)},"
+  registers.each do |reg_name, reg|
+    output << "    #{prefix}#{reg_name} = 0x#{reg['offset'].to_s(16)},"
   end
 
   output << '};'
   output << ''
 
-  # Generate ATI_REGISTERS macro
+  # Generate REGISTERS macro
   output << '// ============================================================================'
-  output << '// ATI_REGISTERS X-macro'
+  output << "// #{macro_name} X-macro"
   output << '// Used to generate read/write functions, register tables, etc.'
   output << '// X(func_name, const_name, offset, flags, fields, aliases)'
   output << '// ============================================================================'
   output << ''
-  output << '#define ATI_REGISTERS \\'
+  output << "#define #{macro_name} \\"
 
-  data['registers'].each_with_index do |(reg_name, reg), idx|
+  registers.each_with_index do |(reg_name, reg), idx|
     flags = flags_to_c(reg['flags'])
     has_fields = reg['fields'] && !reg['fields'].empty?
     has_reserved = reg['reserved'] && !reg['reserved'].empty?
-    fields = (has_fields || has_reserved) ? "#{reg_name.downcase}_fields" : 'NULL'
-    aliases = reg['aliases'] && !reg['aliases'].empty? ? "#{reg_name.downcase}_aliases" : 'NULL'
-    last = idx == data['registers'].size - 1
+    fields = (has_fields || has_reserved) ? "#{prefix.downcase}#{reg_name.downcase}_fields" : 'NULL'
+    aliases = reg['aliases'] && !reg['aliases'].empty? ? "#{prefix.downcase}#{reg_name.downcase}_aliases" : 'NULL'
+    last = idx == registers.size - 1
     cont = last ? '' : ' \\'
-    output << "  X(#{reg_name.downcase}, #{reg_name}, 0x#{reg['offset'].to_s(16)}, #{flags}, #{fields}, #{aliases})#{cont}"
+    func_prefix = prefix.downcase.gsub(/_$/, '_')
+    func_prefix = '' if chip == 'common'
+    output << "  X(#{func_prefix}#{reg_name.downcase}, #{prefix}#{reg_name}, 0x#{reg['offset'].to_s(16)}, #{flags}, #{fields}, #{aliases})#{cont}"
   end
 
   output << ''
-  output << '#endif // ATI_REGS_GEN_H'
+  output << "#endif // #{guard_name}"
 
   output.join("\n")
 end
 
 def main
-  options = {}
+  options = { chip: nil, prefix: '', output: nil, check: nil }
+  
   OptionParser.new do |opts|
     opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
+
+    opts.on('-c', '--chip CHIP', 'Chip type: common, r128, or r100 (required)') do |c|
+      options[:chip] = c
+    end
+
+    opts.on('-p', '--prefix PREFIX', 'Prefix for constants (e.g., R128_)') do |p|
+      options[:prefix] = p
+    end
 
     opts.on('-o', '--output FILE', 'Write output to FILE') do |f|
       options[:output] = f
     end
 
-    opts.on('-c', '--check FILE', 'Check if FILE is up to date') do |f|
+    opts.on('--check FILE', 'Check if FILE is up to date') do |f|
       options[:check] = f
     end
 
@@ -438,8 +490,18 @@ def main
     end
   end.parse!
 
-  data = load_registers
-  generated = generate_c_code(data)
+  unless options[:chip]
+    warn "Error: --chip is required (common, r128, or r100)"
+    exit 1
+  end
+
+  unless %w[common r128 r100].include?(options[:chip])
+    warn "Error: --chip must be common, r128, or r100"
+    exit 1
+  end
+
+  data = load_registers(options[:chip])
+  generated = generate_c_code(data, options[:chip], options[:prefix])
 
   if options[:check]
     if File.exist?(options[:check])
@@ -449,12 +511,12 @@ def main
         exit 0
       else
         warn "#{options[:check]} is out of date, regenerate with:"
-        warn "  #{$PROGRAM_NAME} -o #{options[:check]}"
+        warn "  #{$PROGRAM_NAME} --chip #{options[:chip]}#{options[:prefix].empty? ? '' : " --prefix #{options[:prefix]}"} -o #{options[:check]}"
         exit 1
       end
     else
       warn "#{options[:check]} does not exist, generate with:"
-      warn "  #{$PROGRAM_NAME} -o #{options[:check]}"
+      warn "  #{$PROGRAM_NAME} --chip #{options[:chip]}#{options[:prefix].empty? ? '' : " --prefix #{options[:prefix]}"} -o #{options[:check]}"
       exit 1
     end
   elsif options[:output]

@@ -14,9 +14,12 @@ typedef struct {
     const field_entry_t *aliases;
 } reg_entry_t;
 
+// Build table from common registers (shared between R128 and R100)
+// TODO: When chip-specific registers are added, this could be extended
+// to include them conditionally based on detected chip
 #define X(func_name, const_name, offset, flags, fields, aliases)               \
     {#const_name, offset, flags, fields, aliases},
-static const reg_entry_t reg_table[] = {ATI_REGISTERS{NULL, 0, 0, NULL, NULL}};
+static const reg_entry_t reg_table[] = {COMMON_REGISTERS{NULL, 0, 0, NULL, NULL}};
 #undef X
 
 // Register snapshot storage - indexed by offset/4

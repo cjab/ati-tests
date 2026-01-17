@@ -9,21 +9,125 @@
 
 #define NUM_BARS 8
 
+// ============================================================================
+// Chip Detection
+// ============================================================================
+
+// Device ID to chip family mapping
+static const struct {
+    uint16_t device_id;
+    ati_chip_family_t family;
+    const char *name;
+} chip_id_table[] = {
+    // Rage 128 Pro
+    { 0x5046, CHIP_R128, "Rage 128 Pro PF" },
+    { 0x5050, CHIP_R128, "Rage 128 Pro PP" },
+    { 0x5052, CHIP_R128, "Rage 128 Pro PR" },
+    { 0x5245, CHIP_R128, "Rage 128 RE" },
+    { 0x5246, CHIP_R128, "Rage 128 RF" },
+    { 0x5247, CHIP_R128, "Rage 128 RG" },
+    { 0x524B, CHIP_R128, "Rage 128 RK" },
+    { 0x524C, CHIP_R128, "Rage 128 RL" },
+    { 0x5345, CHIP_R128, "Rage 128 SE" },
+    { 0x5346, CHIP_R128, "Rage 128 SF" },
+    { 0x5347, CHIP_R128, "Rage 128 SG" },
+    { 0x5348, CHIP_R128, "Rage 128 SH" },
+    { 0x534B, CHIP_R128, "Rage 128 SK" },
+    { 0x534C, CHIP_R128, "Rage 128 SL" },
+    { 0x534D, CHIP_R128, "Rage 128 SM" },
+    { 0x534E, CHIP_R128, "Rage 128 SN" },
+    // Radeon R100 / RV100 / M6
+    { 0x5144, CHIP_R100, "Radeon QD" },
+    { 0x5145, CHIP_R100, "Radeon QE" },
+    { 0x5146, CHIP_R100, "Radeon QF" },
+    { 0x5147, CHIP_R100, "Radeon QG" },
+    { 0x5159, CHIP_R100, "Radeon QY (RV100)" },
+    { 0x515A, CHIP_R100, "Radeon QZ (RV100)" },
+    { 0x4C59, CHIP_R100, "Mobility M6 LY" },
+    { 0x4C5A, CHIP_R100, "Mobility M6 LZ" },
+    { 0, CHIP_UNKNOWN, NULL }
+};
+
+static ati_chip_family_t
+detect_chip_family(uint16_t device_id)
+{
+    for (int i = 0; chip_id_table[i].name != NULL; i++) {
+        if (chip_id_table[i].device_id == device_id) {
+            return chip_id_table[i].family;
+        }
+    }
+    return CHIP_UNKNOWN;
+}
+
+static const char *
+get_chip_name(uint16_t device_id)
+{
+    for (int i = 0; chip_id_table[i].name != NULL; i++) {
+        if (chip_id_table[i].device_id == device_id) {
+            return chip_id_table[i].name;
+        }
+    }
+    return "Unknown ATI Device";
+}
+
+const char *
+ati_chip_family_name(ati_chip_family_t family)
+{
+    switch (family) {
+    case CHIP_R128:
+        return "R128";
+    case CHIP_R100:
+        return "R100";
+    default:
+        return "Unknown";
+    }
+}
+
+// ============================================================================
+// Device Structure
+// ============================================================================
+
 struct ati_device {
     platform_pci_device_t *pci_dev;
+    ati_chip_family_t family;
+    uint16_t device_id;
     char name[256];
     void *bar[NUM_BARS];
 };
+
+ati_chip_family_t
+ati_get_chip_family(ati_device_t *dev)
+{
+    return dev->family;
+}
+
+// ============================================================================
+// Device Lifecycle
+// ============================================================================
 
 ati_device_t *
 ati_device_init(platform_pci_device_t *pci_dev)
 {
     static ati_device_t ati_dev;
     ati_device_t *ati = &ati_dev;
+    
     ati->pci_dev = pci_dev;
+    ati->device_id = platform_pci_get_device_id(pci_dev);
+    ati->family = detect_chip_family(ati->device_id);
     ati->bar[0] = platform_pci_map_bar(ati->pci_dev, 0);
     ati->bar[2] = platform_pci_map_bar(ati->pci_dev, 2);
     platform_pci_get_name(ati->pci_dev, ati->name, sizeof(ati->name));
+    
+    // Print device info
+    printf("Detected: %s [%04x] (%s family)\n", 
+           get_chip_name(ati->device_id),
+           ati->device_id,
+           ati_chip_family_name(ati->family));
+    
+    if (ati->family == CHIP_UNKNOWN) {
+        printf("WARNING: Unknown chip family, behavior may be unpredictable\n");
+    }
+    
     return ati;
 }
 
@@ -38,6 +142,10 @@ ati_device_destroy(ati_device_t *dev)
     }
     platform_pci_destroy(dev->pci_dev);
 }
+
+// ============================================================================
+// Register and VRAM Access
+// ============================================================================
 
 static inline uint32_t
 reg_read(void *base, uint32_t offset)
@@ -207,26 +315,99 @@ ati_dump_mode(ati_device_t *dev)
                    DAC_CNTL);
 }
 
-/* Register accessor functions */
-/* All registers get read/write implementations - flags indicate runtime behavior */
+// ============================================================================
+// Register Accessor Functions - Common Registers
+// ============================================================================
 
-/* Reads */
+/* Reads for common registers */
 #define X(func_name, const_name, offset, flags, fields, aliases)               \
     uint32_t rd_##func_name(ati_device_t *dev)                                 \
     {                                                                          \
         return ati_reg_read(dev, const_name);                                  \
     }
-ATI_REGISTERS
+COMMON_REGISTERS
 #undef X
 
-/* Writes */
+/* Writes for common registers */
 #define X(func_name, const_name, offset, flags, fields, aliases)               \
     void wr_##func_name(ati_device_t *dev, uint32_t val)                       \
     {                                                                          \
         ati_reg_write(dev, const_name, val);                                   \
     }
-ATI_REGISTERS
+COMMON_REGISTERS
 #undef X
+
+// ============================================================================
+// Register Accessor Functions - R128-Specific Registers
+// ============================================================================
+
+#ifdef R128_REGISTERS
+/* Reads for R128-specific registers (with chip guard) */
+#define X(func_name, const_name, offset, flags, fields, aliases)               \
+    uint32_t rd_##func_name(ati_device_t *dev)                                 \
+    {                                                                          \
+        if (dev->family != CHIP_R128) {                                        \
+            printf("ERROR: " #func_name " is R128-only (current: %s)\n",       \
+                   ati_chip_family_name(dev->family));                         \
+            return 0;                                                          \
+        }                                                                      \
+        return ati_reg_read(dev, const_name);                                  \
+    }
+R128_REGISTERS
+#undef X
+
+/* Writes for R128-specific registers (with chip guard) */
+#define X(func_name, const_name, offset, flags, fields, aliases)               \
+    void wr_##func_name(ati_device_t *dev, uint32_t val)                       \
+    {                                                                          \
+        if (dev->family != CHIP_R128) {                                        \
+            printf("ERROR: " #func_name " is R128-only (current: %s)\n",       \
+                   ati_chip_family_name(dev->family));                         \
+            return;                                                            \
+        }                                                                      \
+        ati_reg_write(dev, const_name, val);                                   \
+    }
+R128_REGISTERS
+#undef X
+#endif
+
+// ============================================================================
+// Register Accessor Functions - R100-Specific Registers
+// ============================================================================
+
+#ifdef R100_REGISTERS
+/* Reads for R100-specific registers (with chip guard) */
+#define X(func_name, const_name, offset, flags, fields, aliases)               \
+    uint32_t rd_##func_name(ati_device_t *dev)                                 \
+    {                                                                          \
+        if (dev->family != CHIP_R100) {                                        \
+            printf("ERROR: " #func_name " is R100-only (current: %s)\n",       \
+                   ati_chip_family_name(dev->family));                         \
+            return 0;                                                          \
+        }                                                                      \
+        return ati_reg_read(dev, const_name);                                  \
+    }
+R100_REGISTERS
+#undef X
+
+/* Writes for R100-specific registers (with chip guard) */
+#define X(func_name, const_name, offset, flags, fields, aliases)               \
+    void wr_##func_name(ati_device_t *dev, uint32_t val)                       \
+    {                                                                          \
+        if (dev->family != CHIP_R100) {                                        \
+            printf("ERROR: " #func_name " is R100-only (current: %s)\n",       \
+                   ati_chip_family_name(dev->family));                         \
+            return;                                                            \
+        }                                                                      \
+        ati_reg_write(dev, const_name, val);                                   \
+    }
+R100_REGISTERS
+#undef X
+#endif
+
+// ============================================================================
+// Register Dump Functions
+// ============================================================================
 
 void
 ati_dump_registers(ati_device_t *dev, int count, ...)
@@ -241,7 +422,7 @@ ati_dump_registers(ati_device_t *dev, int count, ...)
 
 #define X(func_name, const_name, offset_val, flags, fields, aliases)           \
     if (offset_val == offset) {                                                \
-        if ((flags) & FLAG_NO_READ) {                                           \
+        if ((flags) & FLAG_NO_READ) {                                          \
             printf(" %-30s " RED "[write-only]\n" RESET, #const_name ":");     \
         } else {                                                               \
             printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":",         \
@@ -250,7 +431,7 @@ ati_dump_registers(ati_device_t *dev, int count, ...)
         found = true;                                                          \
     }
 
-        ATI_REGISTERS
+        COMMON_REGISTERS
 
 #undef X
 
@@ -269,17 +450,21 @@ ati_dump_all_registers(ati_device_t *dev)
     printf("\n============== Register State ==============\n");
 
 #define X(func_name, const_name, offset, flags, fields, aliases)               \
-    if ((flags) & FLAG_NO_READ) {                                               \
+    if ((flags) & FLAG_NO_READ) {                                              \
         printf(" %-30s " RED "[write-only]\n" RESET, #const_name ":");         \
     } else {                                                                   \
         printf(" %-30s " YELLOW "0x%08x\n" RESET, #const_name ":",             \
                rd_##func_name(dev));                                           \
     }
 
-    ATI_REGISTERS
+    COMMON_REGISTERS
 #undef X
     printf("============================================\n");
 }
+
+// ============================================================================
+// Display Mode Setup
+// ============================================================================
 
 void
 ati_set_display_mode(ati_device_t *dev)
@@ -377,6 +562,10 @@ ati_set_display_mode(ati_device_t *dev)
                            ~CRTC_DISPLAY_DIS) |
                               VGA_ATI_LINEAR | VGA_XCRT_CNT_EN | CRTC_CRT_ON);
 }
+
+// ============================================================================
+// GUI Engine Control
+// ============================================================================
 
 void
 ati_init_gui_engine(ati_device_t *dev)
