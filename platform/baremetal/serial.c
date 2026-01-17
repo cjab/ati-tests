@@ -7,12 +7,6 @@
 #define SERIAL_PORT 0x3F8
 #define RLE_ESCAPE 0xFF
 
-#define HISTORY_SIZE 8
-#define HISTORY_LINE_MAX 64
-static char history[HISTORY_SIZE][HISTORY_LINE_MAX];
-static int history_count = 0; // Number of entries (max HISTORY_SIZE)
-static int history_write = 0; // Next write position (circular)
-
 // CRC-32 (IEEE 802.3 polynomial, same as zlib)
 static uint32_t
 crc32(const uint8_t *data, size_t len)
@@ -109,147 +103,33 @@ serial_getc(void)
     return inb(SERIAL_PORT);
 }
 
-// Escape sequence types
-typedef enum {
-    ESC_OTHER,
-    ESC_UP,
-    ESC_DOWN,
-} escape_key_t;
-
-// Parse an escape sequence after seeing '\x1b'.
-// Consumes remaining bytes and returns the key type.
-static escape_key_t
-parse_escape_sequence(void)
-{
-    char next = serial_getc();
-    if (next != '[')
-        return ESC_OTHER;
-
-    // Read until terminator (a letter)
-    char term;
-    do {
-        term = serial_getc();
-    } while (term &&
-             !((term >= 'A' && term <= 'Z') || (term >= 'a' && term <= 'z')));
-
-    switch (term) {
-    case 'A':
-        return ESC_UP;
-    case 'B':
-        return ESC_DOWN;
-    default:
-        return ESC_OTHER;
-    }
-}
-
-// Clear current line and redraw prompt with buffer contents
-static void
-redraw_line(const char *buf, int len)
-{
-    serial_puts("\x1b[B\r> "); // Cursor down, carriage return, prompt
-    for (int j = 0; j < len; j++) {
-        serial_raw_putc(NULL, buf[j]);
-    }
-    serial_puts("\x1b[K"); // Clear to end of line
-}
-
-// Save command to history (if non-empty)
-static void
-history_save(const char *buf)
-{
-    if (buf[0] == '\0')
-        return;
-
-    // Copy into history at write position
-    int j;
-    for (j = 0; buf[j] && j < HISTORY_LINE_MAX - 1; j++) {
-        history[history_write][j] = buf[j];
-    }
-    history[history_write][j] = '\0';
-
-    // Advance write position
-    history_write = (history_write + 1) % HISTORY_SIZE;
-    if (history_count < HISTORY_SIZE)
-        history_count++;
-}
-
-// Load history entry into buffer, return new length
-static int
-history_load(char *buf, int maxlen, int index)
-{
-    int j;
-    for (j = 0; history[index][j] && j < maxlen - 1; j++) {
-        buf[j] = history[index][j];
-    }
-    buf[j] = '\0';
-    return j;
-}
-
-// Navigate back in history. Returns new buffer length, updates *browse_ptr.
-static int
-history_back(char *buf, int maxlen, int *browse_ptr)
-{
-    int history_browse = *browse_ptr;
-
-    if (history_count == 0)
-        return -1; // No history
-
-    int prev = (history_browse - 1 + HISTORY_SIZE) % HISTORY_SIZE;
-    int oldest = (history_count < HISTORY_SIZE) ? 0 : history_write;
-
-    int can_go = 0;
-    if (history_browse == history_write) {
-        // At end, can always go back if there's history
-        can_go = 1;
-    } else if (history_count < HISTORY_SIZE) {
-        // Not full yet, check bounds
-        can_go = (history_browse > 0);
-    } else {
-        // Full circular buffer
-        can_go = (history_browse != oldest);
-    }
-
-    if (can_go) {
-        *browse_ptr = prev;
-        return history_load(buf, maxlen, prev);
-    }
-    return -1; // Can't go back further
-}
-
-// Navigate forward in history. Returns new buffer length, updates *browse_ptr.
-// Returns 0 and clears buf if we're back at the current (empty) line.
-static int
-history_forward(char *buf, int maxlen, int *browse_ptr)
-{
-    int history_browse = *browse_ptr;
-
-    if (history_browse == history_write)
-        return -1; // Already at end
-
-    int next_idx = (history_browse + 1) % HISTORY_SIZE;
-    if (next_idx == history_write) {
-        // Back to current (empty) line
-        *browse_ptr = history_write;
-        buf[0] = '\0';
-        return 0;
-    } else {
-        *browse_ptr = next_idx;
-        return history_load(buf, maxlen, next_idx);
-    }
-}
-
 int
 serial_gets(char *buf, int maxlen)
 {
     int i = 0;
-    int history_browse = history_write; // Start at "end" (no selection)
+    char c;
 
     while (i < maxlen - 1) {
-        char c = serial_getc();
-        if (c == '\r' || c == '\n') {
+        c = serial_getc();
+        if (c == '\r') {
             serial_putc(NULL, '\n');
             buf[i] = '\0';
-            history_save(buf);
+            // Consume trailing \n after \r if present (CRLF sequence)
+            // Small delay to allow the \n to arrive
+            for (volatile int j = 0; j < 1000; j++)
+                ;
+            if (serial_data_ready()) {
+                char next = serial_getc();
+                if (next != '\n') {
+                    // Not a CRLF, but we can't push back - just drop it
+                    // This shouldn't happen in normal use
+                }
+            }
+            break;
+        }
+        if (c == '\n') {
+            serial_putc(NULL, '\n');
+            buf[i] = '\0';
             break;
         }
         if (c == 127 || c == '\b') {
@@ -257,45 +137,6 @@ serial_gets(char *buf, int maxlen)
                 i--;
                 serial_puts("\b \b");
             }
-            continue;
-        }
-        // Ctrl-P: history back
-        if (c == 0x10) {
-            int len = history_back(buf, maxlen, &history_browse);
-            if (len >= 0) {
-                i = len;
-                redraw_line(buf, i);
-            }
-            continue;
-        }
-        // Ctrl-N: history forward
-        if (c == 0x0e) {
-            int len = history_forward(buf, maxlen, &history_browse);
-            if (len >= 0) {
-                i = len;
-                redraw_line(buf, i);
-            }
-            continue;
-        }
-        if (c == '\x1b') {
-            escape_key_t key = parse_escape_sequence();
-            switch (key) {
-            case ESC_UP: {
-                int len = history_back(buf, maxlen, &history_browse);
-                if (len >= 0)
-                    i = len;
-                break;
-            }
-            case ESC_DOWN: {
-                int len = history_forward(buf, maxlen, &history_browse);
-                if (len >= 0)
-                    i = len;
-                break;
-            }
-            default:
-                break;
-            }
-            redraw_line(buf, i);
             continue;
         }
         serial_putc(NULL, c);

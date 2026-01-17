@@ -946,6 +946,9 @@ cmd_regs(ati_device_t *dev, int argc, char **args)
 
 // Main REPL
 
+// End-of-transmission marker - signals command completion to client
+#define EOT '\x04'
+
 void
 repl(ati_device_t *dev)
 {
@@ -954,7 +957,7 @@ repl(ati_device_t *dev)
     int argc;
     char *p;
 
-    printf("Type ? for help\n> ");
+    printf("Type ? for help\n%c> ", EOT);
     fflush(stdout);
 
     while (fgets(buf, sizeof(buf), stdin)) {
@@ -974,7 +977,7 @@ repl(ati_device_t *dev)
 
         if (argc == 0) {
             // Empty line
-            printf("> ");
+            printf("%c> ", EOT);
             fflush(stdout);
             continue;
         }
@@ -1036,7 +1039,7 @@ repl(ati_device_t *dev)
             break;
         }
 
-        printf("> ");
+        printf("%c> ", EOT);
         fflush(stdout);
     }
 }
