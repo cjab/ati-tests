@@ -286,13 +286,44 @@ typedef struct {
 
 extern const fixture_entry_t fixture_registry[];
 
+// 32MB buffer for decompressed fixtures (in BSS, doesn't bloat ELF)
+#define FIXTURE_BUFFER_SIZE (32 * 1024 * 1024)
+static uint8_t fixture_buffer[FIXTURE_BUFFER_SIZE];
+
+// RLE decode: 0xFF <count> <byte> for runs, raw bytes otherwise
+static size_t
+rle_decode(const uint8_t *src, size_t src_len, uint8_t *dst, size_t dst_max)
+{
+    const uint8_t *src_end = src + src_len;
+    uint8_t *dst_start = dst;
+    uint8_t *dst_end = dst + dst_max;
+
+    while (src < src_end && dst < dst_end) {
+        if (*src == 0xFF) {
+            if (src + 2 >= src_end)
+                break;  // Incomplete escape sequence
+            uint8_t count = src[1];
+            uint8_t value = src[2];
+            src += 3;
+            while (count-- && dst < dst_end)
+                *dst++ = value;
+        } else {
+            *dst++ = *src++;
+        }
+    }
+
+    return dst - dst_start;
+}
+
 const uint8_t *
 platform_get_fixture(const char *name, size_t *size_out)
 {
     for (int i = 0; fixture_registry[i].name != NULL; i++) {
         if (strcmp(fixture_registry[i].name, name) == 0) {
-            *size_out = fixture_registry[i].end - fixture_registry[i].start;
-            return fixture_registry[i].start;
+            size_t compressed_size = fixture_registry[i].end - fixture_registry[i].start;
+            *size_out = rle_decode(fixture_registry[i].start, compressed_size,
+                                   fixture_buffer, FIXTURE_BUFFER_SIZE);
+            return fixture_buffer;
         }
     }
     *size_out = 0;
@@ -302,7 +333,7 @@ platform_get_fixture(const char *name, size_t *size_out)
 void
 platform_free_fixture(const uint8_t *data)
 {
-    // No-op for baremetal - data is in rodata section
+    // No-op for baremetal - data is in static buffer
     (void) data;
 }
 

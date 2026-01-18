@@ -8,8 +8,8 @@ echo "#include <stdint.h>"
 echo ""
 
 # Forward declarations
-for binfile in "$@"; do
-    name=$(basename "$binfile" .bin)
+for rlefile in "$@"; do
+    name=$(basename "$rlefile" .rle)
     echo "extern const uint8_t fixture_${name}_start[];"
     echo "extern const uint8_t fixture_${name}_end[];"
 done
@@ -23,8 +23,8 @@ echo "} fixture_entry_t;"
 echo ""
 echo "const fixture_entry_t fixture_registry[] = {"
 
-for binfile in "$@"; do
-    name=$(basename "$binfile" .bin)
+for rlefile in "$@"; do
+    name=$(basename "$rlefile" .rle)
     echo "    {\"$name\", fixture_${name}_start, fixture_${name}_end},"
 done
 

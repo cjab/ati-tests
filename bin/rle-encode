@@ -1,0 +1,63 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# RLE encode a binary file
+# Format: 0xFF <count> <byte> for runs of 3+, raw bytes otherwise
+# Same format as the serial protocol in console
+
+RLE_ESCAPE = 0xFF
+
+def rle_encode(data)
+  result = []
+  i = 0
+
+  while i < data.bytesize
+    byte = data.getbyte(i)
+    run = 1
+
+    # Count run length (max 255)
+    while i + run < data.bytesize && data.getbyte(i + run) == byte && run < 255
+      run += 1
+    end
+
+    # Encode runs of 3+ or escape bytes as RLE
+    if run >= 3 || byte == RLE_ESCAPE
+      result << RLE_ESCAPE << run << byte
+      i += run
+    else
+      result << byte
+      i += 1
+    end
+  end
+
+  result.pack('C*')
+end
+
+if ARGV.empty?
+  warn "Usage: #{$PROGRAM_NAME} <input.bin> [output.rle]"
+  warn "       #{$PROGRAM_NAME} --all  # Convert all fixtures/*.bin to .rle"
+  exit 1
+end
+
+if ARGV[0] == '--all'
+  # Batch convert all .bin files in fixtures/
+  Dir.glob(File.join(__dir__, '../fixtures/*.bin')).each do |bin_path|
+    rle_path = bin_path.sub(/\.bin$/, '.rle')
+    data = File.binread(bin_path)
+    encoded = rle_encode(data)
+    File.binwrite(rle_path, encoded)
+    ratio = encoded.bytesize.to_f / data.bytesize * 100
+    puts "#{File.basename(bin_path)} -> #{File.basename(rle_path)}: " \
+         "#{data.bytesize} -> #{encoded.bytesize} bytes (#{'%.1f' % ratio}%)"
+  end
+else
+  input_path = ARGV[0]
+  output_path = ARGV[1] || input_path.sub(/\.bin$/, '.rle')
+
+  data = File.binread(input_path)
+  encoded = rle_encode(data)
+  File.binwrite(output_path, encoded)
+
+  ratio = encoded.bytesize.to_f / data.bytesize * 100
+  puts "#{data.bytesize} -> #{encoded.bytesize} bytes (#{'%.1f' % ratio}%)"
+end

@@ -16,9 +16,9 @@ ifeq ($(PLATFORM),baremetal)
 	TARGET = ati_tests.elf
 	ISO = ati_tests.iso
 	
-	# Fixture handling for baremetal
-	FIXTURE_BINS := $(wildcard fixtures/*.bin)
-	FIXTURE_OBJS := $(patsubst fixtures/%.bin,$(BUILD_DIR)/fixtures/%.o,$(FIXTURE_BINS))
+	# Fixture handling for baremetal (RLE compressed)
+	FIXTURE_RLES := $(wildcard fixtures/*.rle)
+	FIXTURE_OBJS := $(patsubst fixtures/%.rle,$(BUILD_DIR)/fixtures/%.o,$(FIXTURE_RLES))
 	FIXTURE_REGISTRY = $(BUILD_DIR)/fixtures/fixtures_registry.o
 else
 	LDFLAGS = -lpci
@@ -93,20 +93,20 @@ iso: $(TARGET)
 	rm -rf iso
 	@echo "Created $(ISO) - write to USB with: sudo dd if=$(ISO) of=/dev/sdX bs=4M status=progress"
 
-# Fixture build rules (baremetal only)
-$(BUILD_DIR)/fixtures/fixtures_registry.c: $(FIXTURE_BINS) bin/generate_fixture_registry.sh
+# Fixture build rules (baremetal only, RLE compressed)
+$(BUILD_DIR)/fixtures/fixtures_registry.c: $(FIXTURE_RLES) bin/generate_fixture_registry.sh
 	@mkdir -p $(dir $@)
-	bash bin/generate_fixture_registry.sh $(FIXTURE_BINS) > $@
+	bash bin/generate_fixture_registry.sh $(FIXTURE_RLES) > $@
 
 $(BUILD_DIR)/fixtures/fixtures_registry.o: $(BUILD_DIR)/fixtures/fixtures_registry.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/fixtures/%.o: fixtures/%.bin
+$(BUILD_DIR)/fixtures/%.o: fixtures/%.rle
 	@mkdir -p $(dir $@)
 	objcopy -I binary -O elf32-i386 -B i386 \
 	    --rename-section .data=.rodata.fixtures,alloc,load,readonly,data,contents \
-	    --redefine-sym _binary_fixtures_$(subst -,_,$(notdir $*))_bin_start=fixture_$(subst -,_,$(notdir $*))_start \
-	    --redefine-sym _binary_fixtures_$(subst -,_,$(notdir $*))_bin_end=fixture_$(subst -,_,$(notdir $*))_end \
+	    --redefine-sym _binary_fixtures_$(subst -,_,$(notdir $*))_rle_start=fixture_$(subst -,_,$(notdir $*))_start \
+	    --redefine-sym _binary_fixtures_$(subst -,_,$(notdir $*))_rle_end=fixture_$(subst -,_,$(notdir $*))_end \
 	    --add-section .note.GNU-stack=/dev/null \
 	    --set-section-flags .note.GNU-stack=contents,readonly \
 	    $< $@
