@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Launch QEMU with test kernel and connect interactive console
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+TESTS_DIR="$(dirname "$SCRIPT_DIR")"
+WORKSPACE_DIR="$(dirname "$TESTS_DIR")"
+
+# QEMU detection (precedence: env var > workspace build > system)
+QEMU_BUILD_DIR=""
+if [ -n "$QEMU" ]; then
+    : # use provided QEMU
+elif [ -x "$WORKSPACE_DIR/qemu/build/qemu-system-x86_64" ]; then
+    QEMU="$WORKSPACE_DIR/qemu/build/qemu-system-x86_64"
+    QEMU_BUILD_DIR="$WORKSPACE_DIR/qemu/build"
+else
+    QEMU="qemu-system-x86_64"
+fi
+
+# Verify QEMU exists
+if ! command -v "$QEMU" &>/dev/null && [ ! -x "$QEMU" ]; then
+    echo "Error: QEMU not found: $QEMU" >&2
+    exit 1
+fi
+
+# Warn if workspace QEMU build is out of date (uses ninja dry-run)
+if [ -n "$QEMU_BUILD_DIR" ]; then
+    STALE_COUNT=$(ninja -C "$QEMU_BUILD_DIR" -n 2>/dev/null | grep -cv "Regenerating build files" || true)
+    if [ "$STALE_COUNT" -gt 0 ]; then
+        echo -e "\033[1;33mWarning:\033[0m QEMU build may be out of date. Run 'ninja' in qemu/build/ to rebuild."
+    fi
+fi
+
+# Configuration
+PORT=9001
+KERNEL="$TESTS_DIR/ati_tests.elf"
+
+# Build the kernel (silent if up-to-date)
+if ! make -C "$TESTS_DIR" --no-print-directory PLATFORM=baremetal -q 2>/dev/null; then
+    make -C "$TESTS_DIR" --no-print-directory PLATFORM=baremetal
+    echo ""
+fi
+
+echo -e "\033[1;36mUsing QEMU:\033[0m $QEMU"
+
+# Start QEMU in background with serial over TCP
+$QEMU \
+    -accel kvm \
+    -vga none \
+    -device ati-vga,model=rage128p \
+    -display sdl \
+    -machine pc \
+    -cpu athlon,3dnow=off,3dnowext=off \
+    -m 1024 \
+    -d unimp,guest_errors \
+    -D /tmp/qemu-debug.log \
+    -kernel "$KERNEL" \
+    -append "repl" \
+    -serial tcp:localhost:$PORT,server,nowait \
+    &
+
+QEMU_PID=$!
+
+# Cleanup on exit
+trap "kill $QEMU_PID 2>/dev/null" EXIT
+
+# Wait for QEMU to start listening
+sleep 0.5
+
+# Connect console
+"$SCRIPT_DIR/console" --host localhost --port $PORT
