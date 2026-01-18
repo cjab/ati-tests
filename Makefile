@@ -94,9 +94,9 @@ iso: $(TARGET)
 	@echo "Created $(ISO) - write to USB with: sudo dd if=$(ISO) of=/dev/sdX bs=4M status=progress"
 
 # Fixture build rules (baremetal only, RLE compressed)
-$(BUILD_DIR)/fixtures/fixtures_registry.c: $(FIXTURE_RLES) bin/generate_fixture_registry.sh
+$(BUILD_DIR)/fixtures/fixtures_registry.c: $(FIXTURE_RLES) bin/generate_fixture_registry
 	@mkdir -p $(dir $@)
-	bash bin/generate_fixture_registry.sh $(FIXTURE_RLES) > $@
+	bin/generate_fixture_registry $(FIXTURE_RLES) > $@
 
 $(BUILD_DIR)/fixtures/fixtures_registry.o: $(BUILD_DIR)/fixtures/fixtures_registry.c
 	$(CC) $(CFLAGS) -c $< -o $@

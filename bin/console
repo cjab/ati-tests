@@ -182,8 +182,8 @@ def process_response(data, output_dir)
       warn "ERROR: CRC mismatch for #{filename}: expected #{expected_crc.to_s(16).rjust(8, '0')}, got #{actual_crc.to_s(16).rjust(8, '0')}"
     end
 
-    # Write file as RLE-compressed (change .bin to .rle)
-    output_path = File.join(output_dir, filename.sub(/\.bin$/, '.rle'))
+    # Write file (already RLE-compressed from firmware)
+    output_path = File.join(output_dir, filename)
     FileUtils.mkdir_p(File.dirname(output_path))
     File.binwrite(output_path, encoded_data)
 

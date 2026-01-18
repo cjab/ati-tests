@@ -34,7 +34,7 @@ lookup_dump_cmd(const char *name)
 static void
 dump_screen(ati_device_t *dev, int argc, char **args)
 {
-    const char *filename = "screen_dump.bin";
+    const char *filename = "screen_dump.rle";
     if (argc >= 3)
         filename = args[2];
     ati_screen_dump(dev, filename);
@@ -43,7 +43,7 @@ dump_screen(ati_device_t *dev, int argc, char **args)
 static void
 dump_vram(ati_device_t *dev, int argc, char **args)
 {
-    const char *filename = "vram_dump.bin";
+    const char *filename = "vram_dump.rle";
     if (argc >= 3)
         filename = args[2];
     ati_vram_dump(dev, filename);
