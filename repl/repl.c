@@ -636,6 +636,33 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
 
 // Command handlers
 
+// Print usage string with colored arguments
+// <required> in cyan, [optional] in gray
+static void
+print_usage_colored(const char *usage)
+{
+    const char *p = usage;
+    while (*p) {
+        if (*p == '<') {
+            printf("\x1b[36m");
+            while (*p && *p != '>')
+                printf("%c", *p++);
+            if (*p == '>')
+                printf("%c", *p++);
+            printf("\x1b[0m");
+        } else if (*p == '[') {
+            printf("\x1b[90m");
+            while (*p && *p != ']')
+                printf("%c", *p++);
+            if (*p == ']')
+                printf("%c", *p++);
+            printf("\x1b[0m");
+        } else {
+            printf("%c", *p++);
+        }
+    }
+}
+
 static void
 cmd_help(int argc, char **args)
 {
@@ -645,21 +672,34 @@ cmd_help(int argc, char **args)
             cce_cmd_help();
             return;
         }
+        if (strcmp(args[1], "dump") == 0) {
+            dump_cmd_help();
+            return;
+        }
         printf("Unknown help topic: %s\n", args[1]);
         return;
     }
 
-    char buf[32];
     for (int i = 0; cmd_table[i].name != NULL; i++) {
         if (cmd_table[i].desc == NULL)
             continue;
+
+        // Print command name (bold)
+        printf("  \x1b[1m%-8s\x1b[0m", cmd_table[i].name);
+
+        // Print usage args (colored) or padding
         if (cmd_table[i].usage) {
-            snprintf(buf, sizeof(buf), "%s %s", cmd_table[i].name,
-                     cmd_table[i].usage);
+            print_usage_colored(cmd_table[i].usage);
+            // Calculate padding needed (target 22 chars for usage field)
+            int len = strlen(cmd_table[i].usage);
+            for (int j = len; j < 22; j++)
+                printf(" ");
         } else {
-            snprintf(buf, sizeof(buf), "%s", cmd_table[i].name);
+            printf("%-22s", "");
         }
-        printf("  %-30s - %s\n", buf, cmd_table[i].desc);
+
+        // Print description (gray angle quote separator)
+        printf("\x1b[90m\xe2\x80\xba\x1b[0m %s\n", cmd_table[i].desc);
     }
 }
 

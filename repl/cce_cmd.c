@@ -384,18 +384,52 @@ cce_step(ati_device_t *dev, int argc, char **args)
 
 // Public functions
 
+// Print usage string with colored arguments
+// <required> in cyan, [optional] in gray
+static void
+print_usage_colored(const char *usage)
+{
+    const char *p = usage;
+    while (*p) {
+        if (*p == '<') {
+            printf("\x1b[36m");
+            while (*p && *p != '>')
+                printf("%c", *p++);
+            if (*p == '>')
+                printf("%c", *p++);
+            printf("\x1b[0m");
+        } else if (*p == '[') {
+            printf("\x1b[90m");
+            while (*p && *p != ']')
+                printf("%c", *p++);
+            if (*p == ']')
+                printf("%c", *p++);
+            printf("\x1b[0m");
+        } else {
+            printf("%c", *p++);
+        }
+    }
+}
+
 void
 cce_cmd_help(void)
 {
-    char buf[32];
     for (int i = 0; cce_cmd_table[i].name != NULL; i++) {
+        // Print command name (bold)
+        printf("  \x1b[1m%-8s\x1b[0m", cce_cmd_table[i].name);
+
+        // Print usage args (colored) or padding
         if (cce_cmd_table[i].usage) {
-            snprintf(buf, sizeof(buf), "%s %s", cce_cmd_table[i].name,
-                     cce_cmd_table[i].usage);
+            print_usage_colored(cce_cmd_table[i].usage);
+            int len = strlen(cce_cmd_table[i].usage);
+            for (int j = len; j < 22; j++)
+                printf(" ");
         } else {
-            snprintf(buf, sizeof(buf), "%s", cce_cmd_table[i].name);
+            printf("%-22s", "");
         }
-        printf("  %-20s - %s\n", buf, cce_cmd_table[i].desc);
+
+        // Print description
+        printf("\x1b[90m\xe2\x80\xba\x1b[0m %s\n", cce_cmd_table[i].desc);
     }
 }
 
