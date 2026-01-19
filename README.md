@@ -55,3 +55,9 @@ for comparison against later runs on the emulated card.
 * **host_data**: HOST_DATA FIFO, monochrome expansion, bit packing
 * **rop3**: ROP3 operations with color sources and memory blits
 * **cce**: CCE engine setup and packet processing
+
+> [!NOTE]
+> This testing framework and repl was developed with AI assistance. I have mixed
+> feelings about this. I'm not particularly happy with the quality of the
+> codebase but it has enabled tooling that I may not otherwise have the time to
+> build in service of my QEMU work.
