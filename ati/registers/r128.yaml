@@ -11,4 +11,58 @@
 #   linux:<file>    - Linux kernel r128 DRM driver source
 #   hardware:<card> - Discovered through hardware experimentation
 
-registers: {}
+registers:
+  # ===========================================================================
+  # DDA Registers (Display FIFO Arbitration)
+  # R128 only - R100 uses GRPH_BUFFER_CNTL at 0x2F0 instead
+  # On R100, these addresses (0x2E0-0x2E4) are DVI I2C controller registers!
+  # ===========================================================================
+  DDA_CONFIG:
+    offset: 0x02e0
+    group: memory_buffer
+    ref: "RRG:93"
+
+  DDA_ON_OFF:
+    offset: 0x02e4
+    group: memory_buffer
+    ref: "RRG:93"
+
+  # ===========================================================================
+  # Default Pitch/Offset Registers
+  # R128 has separate registers; R100 uses combined DEFAULT_PITCH_OFFSET
+  # ===========================================================================
+  DEFAULT_OFFSET:
+    offset: 0x16e0
+    group: datapath
+    ref: "RRG:243"
+    fields:
+      DEFAULT_OFFSET:
+        bits: [0, 25]
+
+  DEFAULT_PITCH:
+    offset: 0x16e4
+    group: datapath
+    ref: "RRG:243"
+    fields:
+      DEFAULT_PITCH:
+        bits: [0, 9]
+      DEFAULT_TILE:
+        bit: 16
+    reserved:
+      - bits: [10, 15]
+      - bits: [17, 31]
+
+  # ===========================================================================
+  # CRTC Pitch Register
+  # R128 has 10-bit pitch field only, no stereo support
+  # ===========================================================================
+  CRTC_PITCH:
+    offset: 0x022c
+    group: crtc
+    ref: "RRG:74"
+    fields:
+      CRTC_PITCH:
+        bits: [0, 9]
+        description: "Display line pitch in (pixels * 8)"
+    reserved:
+      - bits: [10, 31]
