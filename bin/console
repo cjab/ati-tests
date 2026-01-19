@@ -5,6 +5,7 @@
 # Supports interactive mode with readline, completion, and history
 # Also supports non-interactive mode for scripting
 
+require 'base64'
 require 'socket'
 require 'zlib'
 require 'fileutils'
@@ -143,7 +144,7 @@ def process_response(data, output_dir)
       next
     end
 
-    if encoding != 'rle'
+    if encoding != 'rle+base64'
       warn "Warning: Unknown encoding '#{encoding}' for #{filename}"
       result << FILE_START_MARKER
       data = data[(start_idx + FILE_START_MARKER.bytesize)..]
@@ -160,13 +161,16 @@ def process_response(data, output_dir)
       break
     end
 
-    # Extract and decode
+    # Extract and decode: Base64 -> RLE -> raw
     encoded_data = data[data_start...end_marker_idx]
 
     begin
-      decoded_data = rle_decode(encoded_data)
+      # Base64 decode (handles line wrapping automatically)
+      rle_data = Base64.decode64(encoded_data)
+      # RLE decode
+      decoded_data = rle_decode(rle_data)
     rescue StandardError => e
-      warn "Warning: RLE decode failed for #{filename}: #{e}"
+      warn "Warning: Decode failed for #{filename}: #{e}"
       data = data[(end_marker_idx + FILE_END_MARKER.bytesize)..]
       next
     end
@@ -182,14 +186,14 @@ def process_response(data, output_dir)
       warn "ERROR: CRC mismatch for #{filename}: expected #{expected_crc.to_s(16).rjust(8, '0')}, got #{actual_crc.to_s(16).rjust(8, '0')}"
     end
 
-    # Write file (already RLE-compressed from firmware)
+    # Write file (RLE-compressed data, after Base64 decoding)
     output_path = File.join(output_dir, filename)
     FileUtils.mkdir_p(File.dirname(output_path))
-    File.binwrite(output_path, encoded_data)
+    File.binwrite(output_path, rle_data)
 
     files_captured += 1
-    ratio = encoded_data.bytesize.to_f / decoded_data.bytesize * 100 rescue 0
-    warn "Captured: #{output_path} (#{decoded_data.bytesize} -> #{encoded_data.bytesize} bytes, #{'%.1f' % ratio}% compression)"
+    ratio = rle_data.bytesize.to_f / decoded_data.bytesize * 100 rescue 0
+    warn "Captured: #{output_path} (#{decoded_data.bytesize} -> #{rle_data.bytesize} bytes, #{'%.1f' % ratio}% compression)"
 
     # Continue after this file block
     data = data[(end_marker_idx + FILE_END_MARKER.bytesize)..]
@@ -263,46 +267,45 @@ class Connection
   # Read until we see the full prompt (EOT + "> ")
   # Yields chunks as they arrive for streaming (without the EOT and prompt)
   # If no block given, returns complete response
+  # Uses idle timeout - resets each time data is received
   def read_until_eot(timeout: TIMEOUT)
     data = ''.b
     yielded_bytes = 0
-    deadline = Time.now + timeout
     eot_prompt = "#{EOT}> ".b
 
     loop do
-      remaining = deadline - Time.now
-      raise 'Timeout waiting for response' if remaining <= 0
+      # Idle timeout - resets each time we check for data
+      ready = IO.select([@io], nil, nil, timeout)
+      raise 'Timeout waiting for response' unless ready
 
-      ready = IO.select([@io], nil, nil, [remaining, 0.1].min)
-      if ready
-        begin
-          chunk = @io.read_nonblock(4096)
-          if chunk
-            data << chunk
+      begin
+        chunk = @io.read_nonblock(4096)
+        next unless chunk
 
-            if block_given?
-              # Check if we've received the full EOT + prompt
-              if data.include?(eot_prompt)
-                # Yield any remaining data before EOT that hasn't been yielded
-                before_eot = data.split(EOT, 2).first
-                remaining_data = before_eot[yielded_bytes..]
-                yield remaining_data if remaining_data && !remaining_data.empty?
-                break
-              elsif !data.include?(EOT)
-                # No EOT yet, safe to yield this chunk
-                yield chunk
-                yielded_bytes += chunk.bytesize
-              end
-              # If we have EOT but not full prompt yet, hold the data
-            end
+        data << chunk
 
-            break if data.include?(eot_prompt)
+        if block_given?
+          # Check if we've received the full EOT + prompt
+          if data.include?(eot_prompt)
+            # Yield any remaining data before EOT that hasn't been yielded
+            before_eot = data.split(EOT, 2).first
+            remaining_data = before_eot[yielded_bytes..]
+            yield remaining_data if remaining_data && !remaining_data.empty?
+            break
+          elsif !data.include?(EOT)
+            # No EOT yet, safe to yield this chunk
+            yield chunk
+            yielded_bytes += chunk.bytesize
           end
-        rescue IO::WaitReadable
-          # continue
-        rescue EOFError
-          break
+          # If we have EOT but not full prompt yet, hold the data
         end
+
+        break if data.include?(eot_prompt)
+
+      rescue IO::WaitReadable
+        # continue
+      rescue EOFError
+        break
       end
     end
     data

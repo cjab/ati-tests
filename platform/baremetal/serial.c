@@ -2,10 +2,43 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "base64.h"
 #include "serial.h"
 
 #define SERIAL_PORT 0x3F8
 #define RLE_ESCAPE 0xFF
+
+// Forward declaration
+void serial_raw_putc(void *p, char c);
+
+// Base64 streaming: 57 RLE bytes -> 76 Base64 chars per line
+#define B64_CHUNK_SIZE 57
+static uint8_t b64_chunk[B64_CHUNK_SIZE];
+static size_t b64_chunk_len = 0;
+
+static void
+b64_flush(void)
+{
+    if (b64_chunk_len > 0) {
+        char b64_out[80];
+        size_t b64_len = base64_encode(b64_chunk, b64_chunk_len, b64_out);
+        for (size_t i = 0; i < b64_len; i++) {
+            serial_raw_putc(NULL, b64_out[i]);
+        }
+        serial_raw_putc(NULL, '\r');
+        serial_raw_putc(NULL, '\n');
+        b64_chunk_len = 0;
+    }
+}
+
+static void
+b64_putc(uint8_t byte)
+{
+    b64_chunk[b64_chunk_len++] = byte;
+    if (b64_chunk_len == B64_CHUNK_SIZE) {
+        b64_flush();
+    }
+}
 
 // CRC-32 (IEEE 802.3 polynomial, same as zlib)
 static uint32_t
@@ -146,13 +179,14 @@ serial_gets(char *buf, int maxlen)
     return i;
 }
 
-// RLE encode data and stream directly to serial.
+// RLE encode data and stream to Base64 encoder.
 // Format: runs of 3+ identical bytes become <0xFF> <count> <byte>
 //         0xFF itself becomes <0xFF> <0x01> <0xFF>
 //         other bytes are output directly
-// Returns number of bytes written to serial.
-size_t
-rle_encode_to_serial(const uint8_t *data, size_t len)
+// Output is Base64-encoded with 76-char line wrapping.
+// Returns number of RLE bytes produced (before Base64 encoding).
+static size_t
+rle_encode_to_b64(const uint8_t *data, size_t len)
 {
     size_t encoded_size = 0;
     size_t i = 0;
@@ -168,14 +202,14 @@ rle_encode_to_serial(const uint8_t *data, size_t len)
 
         if (count >= 3 || byte == RLE_ESCAPE) {
             // Encode as: <escape> <count> <byte>
-            serial_raw_putc(NULL, RLE_ESCAPE);
-            serial_raw_putc(NULL, count);
-            serial_raw_putc(NULL, byte);
+            b64_putc(RLE_ESCAPE);
+            b64_putc(count);
+            b64_putc(byte);
             encoded_size += 3;
         } else {
             // Output bytes directly
             for (uint8_t j = 0; j < count; j++) {
-                serial_raw_putc(NULL, byte);
+                b64_putc(byte);
             }
             encoded_size += count;
         }
@@ -190,14 +224,20 @@ send_file_to_serial(const char *path, const void *data, size_t size)
 {
     uint32_t checksum = crc32((const uint8_t *) data, size);
 
+    // Reset Base64 streaming buffer
+    b64_chunk_len = 0;
+
     // Send start marker and header
-    // Format: path:rle:original_size:crc32_hex
+    // Format: path:rle+base64:original_size:crc32_hex
     serial_puts(FILE_START_MARKER);
     serial_putc(NULL, '\n');
-    printf("%s:rle:%zu:%08x\n", path, size, checksum);
+    printf("%s:rle+base64:%zu:%08x\n", path, size, checksum);
 
-    // Stream RLE-encoded data directly to serial
-    size_t encoded_size = rle_encode_to_serial((const uint8_t *) data, size);
+    // Stream RLE-encoded data through Base64 encoder
+    size_t encoded_size = rle_encode_to_b64((const uint8_t *) data, size);
+
+    // Flush any remaining Base64 data
+    b64_flush();
 
     // Send end marker
     serial_puts(FILE_END_MARKER);
@@ -206,7 +246,7 @@ send_file_to_serial(const char *path, const void *data, size_t size)
     // Use integer math to avoid FPU - compute ratio as percentage * 10 for one
     // decimal
     unsigned ratio_x10 = (unsigned) (encoded_size * 1000 / size);
-    printf("Sent %s (%zu bytes encoded, %zu bytes original, %u.%u%% ratio)\n",
+    printf("Sent %s (%zu bytes RLE, %zu bytes original, %u.%u%% ratio)\n",
            path, encoded_size, size, ratio_x10 / 10, ratio_x10 % 10);
 
     return size;
