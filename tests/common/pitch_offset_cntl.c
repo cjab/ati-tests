@@ -2,21 +2,30 @@
 #include "../../ati/ati.h"
 #include "../test.h"
 
+// These tests are R128-specific as they test the separate DEFAULT_OFFSET
+// and DEFAULT_PITCH registers. On R100, these are combined into a single
+// DEFAULT_PITCH_OFFSET register with different bit layouts.
+
 bool
 test_src_pitch_offset_cntl_latching(ati_device_t *dev)
 {
+    if (ati_get_chip_family(dev) != CHIP_R128) {
+        printf("  (skipped - R128 only)\n");
+        return true;
+    }
+
     uint32_t dp_gui_master_cntl;
 
     // Setting initial state
     wr_dp_gui_master_cntl(dev, 0x0);
-    wr_default_offset(dev, 0x000000aa);
-    wr_default_pitch(dev, 0x000000bb);
+    wr_r128_default_offset(dev, 0x000000aa);
+    wr_r128_default_pitch(dev, 0x000000bb);
     wr_src_offset(dev, 0x00000011);
     wr_src_pitch(dev, 0x00000022);
 
     ASSERT_EQ(rd_dp_gui_master_cntl(dev), 0x00000000);
-    ASSERT_EQ(rd_default_offset(dev), 0x000000a0);
-    ASSERT_EQ(rd_default_pitch(dev), 0x000000bb);
+    ASSERT_EQ(rd_r128_default_offset(dev), 0x000000a0);
+    ASSERT_EQ(rd_r128_default_pitch(dev), 0x000000bb);
     ASSERT_EQ(rd_src_offset(dev), 0x00000010);
     ASSERT_EQ(rd_src_pitch(dev), 0x00000022);
 
@@ -26,8 +35,8 @@ test_src_pitch_offset_cntl_latching(ati_device_t *dev)
 
     // src_offset and src_pitch should latch default
     ASSERT_EQ(rd_dp_gui_master_cntl(dev), dp_gui_master_cntl & ~0x1);
-    ASSERT_EQ(rd_default_offset(dev), 0x000000a0);
-    ASSERT_EQ(rd_default_pitch(dev), 0x000000bb);
+    ASSERT_EQ(rd_r128_default_offset(dev), 0x000000a0);
+    ASSERT_EQ(rd_r128_default_pitch(dev), 0x000000bb);
     ASSERT_EQ(rd_src_offset(dev), 0x000000a0);
     ASSERT_EQ(rd_src_pitch(dev), 0x000000bb);
 
@@ -37,8 +46,8 @@ test_src_pitch_offset_cntl_latching(ati_device_t *dev)
 
     // src_offset and src_pitch should remain default
     ASSERT_EQ(rd_dp_gui_master_cntl(dev), dp_gui_master_cntl | 0x1);
-    ASSERT_EQ(rd_default_offset(dev), 0x000000a0);
-    ASSERT_EQ(rd_default_pitch(dev), 0x000000bb);
+    ASSERT_EQ(rd_r128_default_offset(dev), 0x000000a0);
+    ASSERT_EQ(rd_r128_default_pitch(dev), 0x000000bb);
     ASSERT_EQ(rd_src_offset(dev), 0x000000a0);
     ASSERT_EQ(rd_src_pitch(dev), 0x000000bb);
 
@@ -48,18 +57,23 @@ test_src_pitch_offset_cntl_latching(ati_device_t *dev)
 bool
 test_dst_pitch_offset_cntl_latching(ati_device_t *dev)
 {
+    if (ati_get_chip_family(dev) != CHIP_R128) {
+        printf("  (skipped - R128 only)\n");
+        return true;
+    }
+
     uint32_t dp_gui_master_cntl;
 
     // Setting initial state
     wr_dp_gui_master_cntl(dev, 0x0);
-    wr_default_offset(dev, 0x000000a0);
-    wr_default_pitch(dev, 0x000000bb);
+    wr_r128_default_offset(dev, 0x000000a0);
+    wr_r128_default_pitch(dev, 0x000000bb);
     wr_dst_offset(dev, 0x00000010);
     wr_dst_pitch(dev, 0x00000022);
 
     ASSERT_EQ(rd_dp_gui_master_cntl(dev), 0x00000000);
-    ASSERT_EQ(rd_default_offset(dev), 0x000000a0);
-    ASSERT_EQ(rd_default_pitch(dev), 0x000000bb);
+    ASSERT_EQ(rd_r128_default_offset(dev), 0x000000a0);
+    ASSERT_EQ(rd_r128_default_pitch(dev), 0x000000bb);
     ASSERT_EQ(rd_dst_offset(dev), 0x00000010);
     ASSERT_EQ(rd_dst_pitch(dev), 0x00000022);
 
@@ -69,8 +83,8 @@ test_dst_pitch_offset_cntl_latching(ati_device_t *dev)
 
     // dst_offset and dst_pitch should latch default
     ASSERT_EQ(rd_dp_gui_master_cntl(dev), dp_gui_master_cntl & ~0x2);
-    ASSERT_EQ(rd_default_offset(dev), 0x000000a0);
-    ASSERT_EQ(rd_default_pitch(dev), 0x000000bb);
+    ASSERT_EQ(rd_r128_default_offset(dev), 0x000000a0);
+    ASSERT_EQ(rd_r128_default_pitch(dev), 0x000000bb);
     ASSERT_EQ(rd_dst_offset(dev), 0x000000a0);
     ASSERT_EQ(rd_dst_pitch(dev), 0x000000bb);
 
@@ -80,8 +94,8 @@ test_dst_pitch_offset_cntl_latching(ati_device_t *dev)
 
     // dst_offset and dst_pitch should remain default
     ASSERT_EQ(rd_dp_gui_master_cntl(dev), dp_gui_master_cntl | 0x2);
-    ASSERT_EQ(rd_default_offset(dev), 0x000000a0);
-    ASSERT_EQ(rd_default_pitch(dev), 0x000000bb);
+    ASSERT_EQ(rd_r128_default_offset(dev), 0x000000a0);
+    ASSERT_EQ(rd_r128_default_pitch(dev), 0x000000bb);
     ASSERT_EQ(rd_dst_offset(dev), 0x000000a0);
     ASSERT_EQ(rd_dst_pitch(dev), 0x000000bb);
 

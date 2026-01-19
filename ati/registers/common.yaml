@@ -236,10 +236,6 @@ registers:
     offset: 0x0228
     group: crtc
 
-  CRTC_PITCH:
-    offset: 0x022c
-    group: crtc
-
   # ===========================================================================
   # DAC Registers
   # ===========================================================================
@@ -373,17 +369,6 @@ registers:
       - bits: [11, 15]
       - bits: [20, 23]
       - bits: [25, 31]
-
-  # ===========================================================================
-  # DDA Registers (Display FIFO Arbitration)
-  # ===========================================================================
-  DDA_CONFIG:
-    offset: 0x02e0
-    group: memory_buffer
-
-  DDA_ON_OFF:
-    offset: 0x02e4
-    group: memory_buffer
 
   # ===========================================================================
   # Overscan Registers
@@ -1031,28 +1016,6 @@ registers:
     offset: 0x1434
     group: gui_source
     flags: [no_read]
-
-  # ===========================================================================
-  # Default Registers
-  # ===========================================================================
-  DEFAULT_OFFSET:
-    offset: 0x16e0
-    group: datapath
-    fields:
-      DEFAULT_OFFSET:
-        bits: [0, 25]
-
-  DEFAULT_PITCH:
-    offset: 0x16e4
-    group: datapath
-    fields:
-      DEFAULT_PITCH:
-        bits: [0, 9]
-      DEFAULT_TILE:
-        bit: 16
-    reserved:
-      - bits: [10, 15]
-      - bits: [17, 31]
 
   # ===========================================================================
   # Host Data Registers

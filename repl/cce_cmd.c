@@ -287,10 +287,19 @@ cce_paint(ati_device_t *dev, int argc, char **args)
         }
     }
 
-    // Get current display settings
+    // Get current display settings - chip-specific register layouts
     uint32_t dst_datatype = get_dst_datatype(dev);
-    uint32_t pitch = rd_default_pitch(dev);
-    uint32_t offset = rd_default_offset(dev);
+    uint32_t pitch, offset;
+    if (ati_get_chip_family(dev) == CHIP_R100) {
+        // R100: Combined register - extract pitch from bits 29:22, offset from bits 21:0
+        uint32_t combined = rd_r100_default_pitch_offset(dev);
+        pitch = (combined >> 22) & 0xFF;
+        offset = (combined & 0x3FFFFF) << 10; // Convert from 1KB units to bytes
+    } else {
+        // R128: Separate registers
+        pitch = rd_r128_default_pitch(dev);
+        offset = rd_r128_default_offset(dev);
+    }
 
     // Build GMC value (dst_datatype is already pre-shifted)
     uint32_t gmc = GMC_DST_PITCH_OFFSET_CNTL |

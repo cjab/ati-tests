@@ -52,8 +52,7 @@ test_rop3_16x16(ati_device_t *dev)
 
     wr_src_x_y(dev, 0x0);
 
-    wr_default_pitch(dev, pitch);
-    wr_default_offset(dev, 0x0);
+    ati_set_default_pitch_offset(dev, pitch, 0x0);
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
 

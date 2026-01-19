@@ -89,6 +89,10 @@ void ati_wait_for_idle(ati_device_t *dev);
 void ati_init_cce_engine(ati_device_t *dev);
 void ati_top_cce_engine(ati_device_t *dev);
 
+// Chip-agnostic helpers for pitch/offset (abstracts R128 vs R100 register layout)
+void ati_set_default_pitch_offset(ati_device_t *dev, uint32_t pitch, uint32_t offset);
+void ati_get_default_pitch_offset(ati_device_t *dev, uint32_t *pitch, uint32_t *offset);
+
 // clang-format off
 #define DUMP_REGISTERS(dev, ...) \
   ati_dump_registers(dev, \

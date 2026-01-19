@@ -11,4 +11,104 @@
 #   linux:<file>    - Linux kernel radeon DRM driver source
 #   hardware:<card> - Discovered through hardware experimentation
 
-registers: {}
+registers:
+  # ===========================================================================
+  # Display FIFO Arbitration
+  # R100 only - replaces R128's DDA_CONFIG/DDA_ON_OFF registers
+  # ===========================================================================
+  GRPH_BUFFER_CNTL:
+    offset: 0x02f0
+    group: memory_buffer
+    ref: "M6RG:2-67"
+    fields:
+      GRPH_START_REQ:
+        bits: [0, 6]
+        description: "Watermark to start memory requests (bits 0:1 hardwired to 0)"
+      GRPH_STOP_REQ:
+        bits: [8, 14]
+        description: "Watermark to stop memory requests (bits 0:1 hardwired to 0)"
+      GRPH_CRITICAL_POINT:
+        bits: [16, 22]
+        description: "Watermark for high-priority requests; 0x00 = always high priority"
+      GRPH_CRITICAL_CNTL:
+        bit: 28
+      GRPH_BUFFER_SIZE:
+        bit: 29
+        description: "0=64 entries max, 1=96 entries max (should be 1)"
+      GRPH_CRITICAL_AT_SOF:
+        bit: 30
+      GRPH_STOP_CNTL:
+        bit: 31
+    reserved:
+      - bit: 7
+      - bit: 15
+      - bits: [23, 27]
+
+  # ===========================================================================
+  # Default Pitch/Offset Register (Combined)
+  # R100 only - R128 uses separate DEFAULT_OFFSET (0x16E0) and DEFAULT_PITCH (0x16E4)
+  # ===========================================================================
+  DEFAULT_PITCH_OFFSET:
+    offset: 0x16e0
+    group: datapath
+    ref: "M6RG:2-91"
+    fields:
+      DEFAULT_OFFSET:
+        bits: [0, 21]
+        description: "Offset in 1KB units (bits 9:0 hardwired to 0 on write)"
+      DEFAULT_PITCH:
+        bits: [22, 29]
+        description: "Pitch in 64-byte units"
+      DEFAULT_TILE:
+        bits: [30, 31]
+        values:
+          LINEAR: 0
+          TILED: 1
+          MICROTILED: 2
+          TILED_MICROTILED: 3
+
+  # ===========================================================================
+  # Display Base Address
+  # R100 only - On R128, CRTC_OFFSET is absolute. On R100, display address
+  # is CRTC_OFFSET + DISPLAY_BASE_ADDR
+  # ===========================================================================
+  DISPLAY_BASE_ADDR:
+    offset: 0x023c
+    group: crtc
+    ref: "M6RG:2-142"
+    description: "Base address added to CRTC_OFFSET. Should equal MC_FB_LOCATION.MC_FB_START << 16"
+
+  # ===========================================================================
+  # Memory Controller Framebuffer Location
+  # Defines where framebuffer sits in internal 32-bit address space
+  # ===========================================================================
+  MC_FB_LOCATION:
+    offset: 0x0148
+    group: memory_buffer
+    ref: "M6RG:2-68"
+    fields:
+      MC_FB_START:
+        bits: [0, 15]
+        description: "Start of framebuffer in internal address space (upper 16 bits, lower 22 bits are 0)"
+      MC_FB_TOP:
+        bits: [16, 31]
+        description: "End of framebuffer in internal address space"
+
+  # ===========================================================================
+  # CRTC Pitch Register
+  # R100 has 11-bit pitch field plus CRTC_PITCH_RIGHT for stereo display
+  # ===========================================================================
+  CRTC_PITCH:
+    offset: 0x022c
+    group: crtc
+    ref: "M6RG:2-206"
+    fields:
+      CRTC_PITCH:
+        bits: [0, 10]
+        description: "Display line pitch in (pixels * 8). For stereo mode, left image pitch."
+      CRTC_PITCH_RIGHT:
+        bits: [16, 26]
+        description: "Right image pitch for stereo display mode"
+    reserved:
+      - bits: [11, 15]
+      - bits: [27, 31]

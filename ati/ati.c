@@ -5,6 +5,8 @@
 
 #include "ati.h"
 #include "cce.h"
+#include "r128.h"
+#include "r100.h"
 #include "../tests/test.h"
 
 #define NUM_BARS 8
@@ -322,9 +324,10 @@ ati_screen_dump(ati_device_t *dev, const char *filename)
 void
 ati_dump_mode(ati_device_t *dev)
 {
+    // Note: CRTC_PITCH is chip-specific but at the same offset (0x022c) for both
     DUMP_REGISTERS(dev, CRTC_H_TOTAL_DISP, CRTC_H_SYNC_STRT_WID,
                    CRTC_V_TOTAL_DISP, CRTC_V_SYNC_STRT_WID, CRTC_GEN_CNTL,
-                   CRTC_EXT_CNTL, CRTC_OFFSET, CRTC_OFFSET_CNTL, CRTC_PITCH,
+                   CRTC_EXT_CNTL, CRTC_OFFSET, CRTC_OFFSET_CNTL, R128_CRTC_PITCH,
                    DAC_CNTL);
 }
 
@@ -509,98 +512,17 @@ ati_dump_all_registers(ati_device_t *dev)
 void
 ati_set_display_mode(ati_device_t *dev)
 {
-    // Disable display while programming CRTC registers
-    uint32_t crtc_ext_cntl = rd_crtc_ext_cntl(dev);
-    wr_crtc_ext_cntl(dev, crtc_ext_cntl | CRTC_HSYNC_DIS | CRTC_VSYNC_DIS |
-                              CRTC_DISPLAY_DIS | VGA_ATI_LINEAR |
-                              VGA_XCRT_CNT_EN | CRTC_CRT_ON);
-
-    // Clear common registers that could interfere with CRTC settings
-    wr_ovr_clr(dev, 0x0);
-    wr_ovr_wid_left_right(dev, 0x0);
-    wr_ovr_wid_top_bottom(dev, 0x0);
-    wr_ov0_scale_cntl(dev, 0x0);
-    wr_mpp_tb_config(dev, 0x0);
-    wr_mpp_gp_config(dev, 0x0);
-    wr_subpic_cntl(dev, 0x0);
-    wr_viph_control(dev, 0x0);
-    wr_i2c_cntl_1(dev, 0x0);
-    wr_gen_int_cntl(dev, 0x0);
-    wr_cap0_trig_cntl(dev, 0x0);
-    wr_cap1_trig_cntl(dev, 0x0);
-
-    uint32_t dac_cntl = rd_dac_cntl(dev);
-    wr_dac_cntl(dev,
-                (dac_cntl & ~DAC_TVO_EN & ~DAC_VGA_ADR_EN & ~DAC_MASK_MASK) |
-                    DAC_8BIT_EN | (0xff << DAC_MASK_SHIFT));
-
-    // Enable acceleration
-    uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
-    wr_crtc_gen_cntl(dev, (crtc_gen_cntl & ~CRTC_PIX_WIDTH_MASK & ~CRTC_CUR_EN &
-                           ~CRTC_C_SYNC_EN) |
-                              CRTC_EXT_DISP_EN | CRTC_EN |
-                              CRTC_PIX_WIDTH_32BPP);
-
-    // VESA 640x480@60Hz standard timings
-    // Horizontal: 640 visible + 16 front porch + 96 sync + 48 back porch = 800
-    // total Vertical: 480 visible + 10 front porch + 2 sync + 33 back porch =
-    // 525 total Pixel clock: 25.175 MHz
-
-    // Horizontal timing (in 8-pixel characters)
-    uint32_t h_disp = ((640 / 8) - 1);  // 79 (640 pixels / 8 - 1)
-    uint32_t h_total = ((800 / 8) - 1); // 99 (800 pixels / 8 - 1)
-    wr_crtc_h_total_disp(dev, (h_disp << CRTC_H_DISP_SHIFT) |
-                                  (h_total << CRTC_H_TOTAL_SHIFT));
-
-    // Horizontal sync: starts at 640 + 16 = 656, width = 96 pixels
-    uint32_t h_sync_strt = (640 + 16) / 8; // 82 characters
-    uint32_t h_sync_wid = 96 / 8;          // 12 characters
-    // Negative sync polarity for 640x480@60Hz
-    wr_crtc_h_sync_strt_wid(dev, (h_sync_strt << CRTC_H_SYNC_STRT_CHAR_SHIFT) |
-                                     (h_sync_wid << CRTC_H_SYNC_WID_SHIFT) |
-                                     CRTC_H_SYNC_POL);
-
-    // Vertical timing (in lines)
-    uint32_t v_disp = 480 - 1;  // 479
-    uint32_t v_total = 525 - 1; // 524
-    wr_crtc_v_total_disp(dev, (v_disp << CRTC_V_DISP_SHIFT) |
-                                  (v_total << CRTC_V_TOTAL_SHIFT));
-
-    // Vertical sync: starts at 480 + 10 = 490, width = 2 lines
-    uint32_t v_sync_strt = 480 + 10; // 490
-    uint32_t v_sync_wid = 2;         // 2 lines
-    // Negative sync polarity for 640x480@60Hz
-    wr_crtc_v_sync_strt_wid(dev, (v_sync_strt << CRTC_V_SYNC_STRT_SHIFT) |
-                                     (v_sync_wid << CRTC_V_SYNC_WID_SHIFT) |
-                                     CRTC_V_SYNC_POL);
-
-    wr_crtc_offset(dev, 0x0);
-    wr_crtc_offset_cntl(dev, 0x0);
-    wr_crtc_pitch(dev, X_RES / 8);
-
-    // Program DDA registers for display FIFO arbitration
-    // These values are calculated for:
-    //   XCLK = 134 MHz (memory clock from BIOS)
-    //   VCLK = 67 MHz (BIOS-configured pixel clock, not 25MHz)
-    //   32bpp, 640x480, FIFO depth=32, FIFO width=128 bits
-    // Using Linux's known-working values for now:
-    wr_dda_config(dev, 0x01060220);
-    wr_dda_on_off(dev, 0x05e03b80);
-
-    // Initialize linear palette for 32bpp gamma correction
-    // In 32bpp mode, each color component (R,G,B) is looked up through
-    // the palette. Entry N should map to (N,N,N) for correct colors.
-    wr_palette_index(dev, 0); // Start at entry 0
-    for (int i = 0; i < 256; i++) {
-        uint32_t val = (i << 16) | (i << 8) | i; // R=G=B=i
-        wr_palette_data(dev, val);
+    switch (dev->family) {
+    case CHIP_R128:
+        r128_set_display_mode(dev);
+        break;
+    case CHIP_R100:
+        r100_set_display_mode(dev);
+        break;
+    default:
+        r128_set_display_mode(dev);
+        break;
     }
-
-    // Re-enable the display
-    crtc_ext_cntl = rd_crtc_ext_cntl(dev);
-    wr_crtc_ext_cntl(dev, (crtc_ext_cntl & ~CRTC_HSYNC_DIS & ~CRTC_VSYNC_DIS &
-                           ~CRTC_DISPLAY_DIS) |
-                              VGA_ATI_LINEAR | VGA_XCRT_CNT_EN | CRTC_CRT_ON);
 }
 
 // ============================================================================
@@ -619,9 +541,18 @@ ati_init_gui_engine(ati_device_t *dev)
     // Wait for engine to be idle after reset
     ati_wait_for_idle(dev);
 
-    // Set default offset and pitch
-    wr_default_offset(dev, 0x0);
-    wr_default_pitch(dev, X_RES / 8);
+    // Set default offset and pitch - chip-specific register layouts
+    if (dev->family == CHIP_R100) {
+        // R100: Combined register with pitch in bits 29:22, offset in bits 21:0
+        // Pitch is in 64-byte units: (640 * 4) / 64 = 40
+        // Offset is in 1KB units: 0
+        uint32_t pitch_64 = (X_RES * BYPP) / 64;
+        wr_r100_default_pitch_offset(dev, pitch_64 << 22);
+    } else {
+        // R128 or unknown: Separate registers
+        wr_r128_default_offset(dev, 0x0);
+        wr_r128_default_pitch(dev, X_RES / 8);
+    }
 
     // Disable auxiliary scissor
     wr_aux_sc_cntl(dev, 0x0);
@@ -775,4 +706,42 @@ ati_wait_for_idle(ati_device_t *dev)
 
     // Flush pixel cache
     ati_engine_flush(dev);
+}
+
+// ============================================================================
+// Chip-Agnostic Pitch/Offset Helpers
+// ============================================================================
+
+void
+ati_set_default_pitch_offset(ati_device_t *dev, uint32_t pitch, uint32_t offset)
+{
+    if (dev->family == CHIP_R100) {
+        // R100: Combined register with pitch in bits 29:22 (64-byte units),
+        // offset in bits 21:0 (1KB units, bits 9:0 hardwired to 0)
+        // Convert pitch from 8-pixel units to 64-byte units
+        uint32_t pitch_64 = pitch * BYPP / 8;
+        uint32_t offset_1k = offset >> 10;
+        wr_r100_default_pitch_offset(dev, (pitch_64 << 22) | offset_1k);
+    } else {
+        // R128: Separate registers
+        wr_r128_default_offset(dev, offset);
+        wr_r128_default_pitch(dev, pitch);
+    }
+}
+
+void
+ati_get_default_pitch_offset(ati_device_t *dev, uint32_t *pitch, uint32_t *offset)
+{
+    if (dev->family == CHIP_R100) {
+        // R100: Combined register
+        uint32_t combined = rd_r100_default_pitch_offset(dev);
+        uint32_t pitch_64 = (combined >> 22) & 0xFF;
+        // Convert from 64-byte units to 8-pixel units
+        *pitch = pitch_64 * 8 / BYPP;
+        *offset = (combined & 0x3FFFFF) << 10; // Convert from 1KB units to bytes
+    } else {
+        // R128: Separate registers
+        *pitch = rd_r128_default_pitch(dev);
+        *offset = rd_r128_default_offset(dev);
+    }
 }
