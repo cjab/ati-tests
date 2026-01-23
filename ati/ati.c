@@ -276,7 +276,7 @@ ati_screen_async_compare_fixture(ati_device_t *dev, const char *fixture_name)
             int x = pixel_offset % 640;
             printf("  Pixel at (%d, %d)\n", x, y);
         }
-        ati_screen_dump(dev, "FAILED.bin");
+        ati_screen_dump(dev, "FAILED.rle");
     }
     platform_free_fixture(fixture);
     return match;
