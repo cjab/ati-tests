@@ -6,6 +6,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TESTS_DIR="$(dirname "$SCRIPT_DIR")"
 WORKSPACE_DIR="$(dirname "$TESTS_DIR")"
+CHIP=${1:-r128}
 
 # QEMU detection (precedence: env var > workspace build > system)
 QEMU_BUILD_DIR=""
@@ -44,11 +45,17 @@ fi
 
 echo -e "\033[1;36mUsing QEMU:\033[0m $QEMU"
 
+MODEL="rage128p"
+if [ $CHIP = "r100" ]; then
+  MODEL="rv100"
+fi
+
+
 # Start QEMU in background with serial over TCP
 $QEMU \
     -accel kvm \
     -vga none \
-    -device ati-vga,model=rage128p \
+    -device ati-vga,model="$MODEL" \
     -display sdl \
     -machine pc \
     -cpu athlon,3dnow=off,3dnowext=off \
