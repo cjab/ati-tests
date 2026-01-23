@@ -27,6 +27,8 @@
             pkgs.libisoburn
             pkgs.mtools
             pkgs.grub2
+            # image conversion
+            pkgs.imagemagick
           ];
 
           hardeningDisable = [ "all" ];

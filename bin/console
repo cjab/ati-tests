@@ -12,6 +12,7 @@ require 'fileutils'
 require 'yaml'
 require 'optparse'
 require 'reline'
+require_relative '../lib/rle'
 
 # Default connection settings
 DEFAULT_HOST = 'localhost'
@@ -22,7 +23,6 @@ TIMEOUT = 30
 # File transfer protocol markers
 FILE_START_MARKER = "===FILE_START===\r\n".b
 FILE_END_MARKER = "===FILE_END===\r\n".b
-RLE_ESCAPE = 0xFF
 
 # End-of-transmission marker - signals command completion
 EOT = "\x04".b
@@ -61,32 +61,6 @@ def save_history
   end
 rescue StandardError => e
   warn "Warning: Could not save history: #{e.message}"
-end
-
-# RLE decode data
-# Format: <0xFF> <count> <byte> for runs, or raw bytes otherwise
-def rle_decode(data)
-  result = []
-  i = 0
-  while i < data.bytesize
-    byte = data.getbyte(i)
-    if byte == RLE_ESCAPE
-      if i + 2 >= data.bytesize
-        # Incomplete escape sequence at end - treat as raw
-        result << byte
-        i += 1
-      else
-        count = data.getbyte(i + 1)
-        value = data.getbyte(i + 2)
-        result.concat([value] * count)
-        i += 3
-      end
-    else
-      result << byte
-      i += 1
-    end
-  end
-  result.pack('C*')
 end
 
 # Parse file header line: filename:rle:original_size:crc32_hex
@@ -168,7 +142,7 @@ def process_response(data, output_dir)
       # Base64 decode (handles line wrapping automatically)
       rle_data = Base64.decode64(encoded_data)
       # RLE decode
-      decoded_data = rle_decode(rle_data)
+      decoded_data = RLE.decode(rle_data)
     rescue StandardError => e
       warn "Warning: Decode failed for #{filename}: #{e}"
       data = data[(end_marker_idx + FILE_END_MARKER.bytesize)..]
