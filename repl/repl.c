@@ -5,6 +5,30 @@
 #include "dump_cmd.h"
 #include "../platform/platform.h"
 
+// ANSI color codes
+#define C_RESET   "\x1b[0m"
+#define C_BOLD    "\x1b[1m"
+#define C_DIM     "\x1b[90m"
+#define C_RED     "\x1b[31m"
+#define C_GREEN   "\x1b[32m"
+#define C_YELLOW  "\x1b[33m"
+#define C_CYAN    "\x1b[36m"
+#define C_MAGENTA "\x1b[35m"
+
+// Semantic color aliases
+#define C_REG_NAME    C_BOLD
+#define C_REG_ADDR    C_DIM
+#define C_VALUE       C_YELLOW
+#define C_FIELD_SET   C_CYAN
+#define C_FIELD_UNSET C_DIM
+#define C_ENUM_VAL    C_GREEN
+#define C_RE_MARKER   C_MAGENTA
+
+// Symbols
+#define SYM_DAGGER "\xe2\x80\xa0"
+#define SYM_NEQ    "\xe2\x89\xa0"
+#define SYM_RSAQUO "\xe2\x80\xba"
+
 // Generate register name lookup table from X-macro
 typedef struct {
     const char *name;
@@ -183,19 +207,19 @@ print_flags(uint8_t flags)
     printf(" [");
 
     if (flags & FLAG_READ_SIDE_EFFECTS) {
-        printf("\x1b[31m%sside-effects\x1b[0m", first ? "" : ", ");
+        printf(C_RED "%sside-effects" C_RESET, first ? "" : ", ");
         first = false;
     }
     if (flags & FLAG_INDIRECT) {
-        printf("\x1b[35m%sindirect\x1b[0m", first ? "" : ", ");
+        printf(C_MAGENTA "%sindirect" C_RESET, first ? "" : ", ");
         first = false;
     }
     if (flags & FLAG_NO_READ) {
-        printf("\x1b[33m%sno-read\x1b[0m", first ? "" : ", ");
+        printf(C_YELLOW "%sno-read" C_RESET, first ? "" : ", ");
         first = false;
     }
     if (flags & FLAG_NO_WRITE) {
-        printf("\x1b[36m%sno-write\x1b[0m", first ? "" : ", ");
+        printf(C_CYAN "%sno-write" C_RESET, first ? "" : ", ");
         first = false;
     }
 
@@ -209,14 +233,14 @@ print_reg(ati_device_t *dev, uint32_t addr,
 {
     const reg_entry_t *reg = lookup_reg_by_addr(dev, addr);
     if (!reg || !reg->name) {
-        printf("\x1b[90m0x%04x\x1b[0m", addr);
+        printf(C_REG_ADDR "0x%04x" C_RESET, addr);
         print_flags(flags);
-        printf(" %c \x1b[33m0x%08x\x1b[0m\n", separator, val);
+        printf(" %c " C_VALUE "0x%08x" C_RESET "\n", separator, val);
         return;
     }
-    printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m", reg->name, addr);
+    printf(C_REG_NAME "%s" C_RESET " " C_REG_ADDR "(0x%04x)" C_RESET, reg->name, addr);
     print_flags(flags);
-    printf(" %c \x1b[33m0x%08x\x1b[0m\n", separator, val);
+    printf(" %c " C_VALUE "0x%08x" C_RESET "\n", separator, val);
 }
 
 static void
@@ -224,21 +248,22 @@ print_reg_mismatch(ati_device_t *dev, uint32_t addr, uint32_t wrote, uint32_t go
 {
     const reg_entry_t *reg = lookup_reg_by_addr(dev, addr);
     if (!reg || !reg->name) {
-        printf("\x1b[90m0x%04x\x1b[0m = "
-               "\x1b[33m0x%08x\x1b[0m \xe2\x89\xa0 \x1b[31m0x%08x\x1b[0m\n",
+        printf(C_REG_ADDR "0x%04x" C_RESET " = "
+               C_VALUE "0x%08x" C_RESET " " SYM_NEQ " " C_RED "0x%08x" C_RESET "\n",
                addr, wrote, got);
+        return;
     }
     const char *name = reg->name;
-    printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m = "
-           "\x1b[33m0x%08x\x1b[0m \xe2\x89\xa0 \x1b[31m0x%08x\x1b[0m\n",
+    printf(C_REG_NAME "%s" C_RESET " " C_REG_ADDR "(0x%04x)" C_RESET " = "
+           C_VALUE "0x%08x" C_RESET " " SYM_NEQ " " C_RED "0x%08x" C_RESET "\n",
            name, addr, wrote, got);
 }
 
 static void
 print_mem(uint32_t addr, uint32_t val, char separator)
 {
-    printf("\x1b[90m0x%08x\x1b[0m %c \x1b[33m0x%08x\x1b[0m\n", addr, separator,
-           val);
+    printf(C_DIM "0x%08x" C_RESET " %c " C_VALUE "0x%08x" C_RESET "\n",
+           addr, separator, val);
 }
 
 // Find field that starts at exactly 'bit', or NULL
@@ -298,8 +323,7 @@ build_padded_name(char *buf, size_t buflen, const char *name,
 
     // Add RE dagger if needed (uses 1 visual column)
     if (flags & FLAG_REVERSE_ENGINEERED) {
-        // Magenta
-        const char *dagger = "\x1b[35m\xe2\x80\xa0\x1b[0m";
+        const char *dagger = C_RE_MARKER SYM_DAGGER C_RESET;
         while (*dagger && p < end)
             *p++ = *dagger++;
         len++;  // dagger takes 1 visual column
@@ -335,27 +359,27 @@ print_field(const char *name, uint8_t shift, uint8_t width,
     if (width == 1) {
         // Single bit: [16]
         if (field_val)
-            printf("  \x1b[36m%s\x1b[0m [%5d]   = \x1b[33m1\x1b[0m\n",
+            printf("  " C_FIELD_SET "%s" C_RESET " [%5d]   = " C_VALUE "1" C_RESET "\n",
                    padded_name, shift);
         else
-            printf("  \x1b[90m%s [%5d]   = 0\x1b[0m\n", padded_name, shift);
+            printf("  " C_FIELD_UNSET "%s [%5d]   = 0" C_RESET "\n", padded_name, shift);
     } else {
         // Multi-bit: [11:0]
         const char *value_name = lookup_value_name(values, field_val);
         if (field_val) {
             if (value_name) {
-                printf("  \x1b[36m%s\x1b[0m [%2d:%-2d]   = \x1b[33m%-5u\x1b[0m "
-                       "(0x%x) \x1b[32m%s\x1b[0m\n",
+                printf("  " C_FIELD_SET "%s" C_RESET " [%2d:%-2d]   = " C_VALUE "%-5u" C_RESET
+                       " (0x%x) " C_ENUM_VAL "%s" C_RESET "\n",
                        padded_name, shift + width - 1, shift,
                        field_val, field_val, value_name);
             } else {
-                printf("  \x1b[36m%s\x1b[0m [%2d:%-2d]   = \x1b[33m%-5u\x1b[0m "
-                       "(0x%x)\n",
+                printf("  " C_FIELD_SET "%s" C_RESET " [%2d:%-2d]   = " C_VALUE "%-5u" C_RESET
+                       " (0x%x)\n",
                        padded_name, shift + width - 1, shift,
                        field_val, field_val);
             }
         } else {
-            printf("  \x1b[90m%s [%2d:%-2d]   = 0\x1b[0m\n",
+            printf("  " C_FIELD_UNSET "%s [%2d:%-2d]   = 0" C_RESET "\n",
                    padded_name, shift + width - 1, shift);
         }
     }
@@ -382,21 +406,21 @@ print_field_diff(const char *name, uint8_t shift, uint8_t width,
 
     if (width == 1) {
         // Single bit: [16]
-        printf("  \x1b[36m%s\x1b[0m [%5d]   : %u -> %u\n",
+        printf("  " C_FIELD_SET "%s" C_RESET " [%5d]   : %u -> %u\n",
                padded_name, shift, old_val, new_val);
     } else {
         // Multi-bit: [11:0]
         const char *old_name = lookup_value_name(values, old_val);
         const char *new_name = lookup_value_name(values, new_val);
 
-        printf("  \x1b[36m%s\x1b[0m [%2d:%-2d]   : ",
+        printf("  " C_FIELD_SET "%s" C_RESET " [%2d:%-2d]   : ",
                padded_name, shift + width - 1, shift);
 
         // Print old value
         if (old_val == 0) {
             printf("0");
         } else if (old_name) {
-            printf("%u (0x%x) \x1b[32m%s\x1b[0m", old_val, old_val, old_name);
+            printf("%u (0x%x) " C_ENUM_VAL "%s" C_RESET, old_val, old_val, old_name);
         } else {
             printf("%u (0x%x)", old_val, old_val);
         }
@@ -407,7 +431,7 @@ print_field_diff(const char *name, uint8_t shift, uint8_t width,
         if (new_val == 0) {
             printf("0");
         } else if (new_name) {
-            printf("%u (0x%x) \x1b[32m%s\x1b[0m", new_val, new_val, new_name);
+            printf("%u (0x%x) " C_ENUM_VAL "%s" C_RESET, new_val, new_val, new_name);
         } else {
             printf("%u (0x%x)", new_val, new_val);
         }
@@ -448,9 +472,9 @@ static void
 print_reg_expanded(const reg_entry_t *reg, uint32_t val)
 {
     // Header line
-    printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m", reg->name, reg->offset);
+    printf(C_REG_NAME "%s" C_RESET " " C_REG_ADDR "(0x%04x)" C_RESET, reg->name, reg->offset);
     print_flags(reg->flags);
-    printf(" : \x1b[33m0x%08x\x1b[0m\n", val);
+    printf(" : " C_VALUE "0x%08x" C_RESET "\n", val);
 
     bool has_re_fields = false;
     uint8_t bit = 0;
@@ -475,7 +499,7 @@ print_reg_expanded(const reg_entry_t *reg, uint32_t val)
 
     // Print aliases section if present
     if (reg->aliases && reg->aliases[0].name != NULL) {
-        printf("  \x1b[90m--- aliases ---\x1b[0m\n");
+        printf("  " C_DIM "--- aliases ---" C_RESET "\n");
         for (const field_entry_t *a = reg->aliases; a->name != NULL; a++) {
             print_field(a->name, a->shift, a->width, 0, NULL, val,
                         &has_re_fields);
@@ -484,7 +508,7 @@ print_reg_expanded(const reg_entry_t *reg, uint32_t val)
 
     // Print legend if any RE fields were displayed
     if (has_re_fields) {
-        printf("\n\x1b[35m†\x1b[0m = reverse-engineered "
+        printf("\n" C_RE_MARKER SYM_DAGGER C_RESET " = reverse-engineered "
                "(not found in documentation or drivers)\n");
     }
 }
@@ -560,11 +584,11 @@ parse_reg(ati_device_t *dev, const char *s)
     return -1;
 }
 
-// Print a single color swatch using ANSI 24-bit color
+// Print a single color swatch using ANSI 24-bit background color
 static void
 print_swatch(uint8_t r, uint8_t g, uint8_t b)
 {
-    printf("\x1b[48;2;%d;%d;%dm  \x1b[0m", r, g, b);
+    printf("\x1b[48;2;%d;%d;%dm  " C_RESET, r, g, b);
 }
 
 // Get bytes per pixel for current CRTC mode
@@ -600,7 +624,7 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
     uint32_t val = ati_vram_read(dev, byte_offset & ~3); // Align to dword
     uint32_t shift = (byte_offset & 3) * 8;
 
-    printf("\x1b[90mpixel %d\x1b[0m %c ", pixel_idx, separator);
+    printf(C_DIM "pixel %d" C_RESET " %c ", pixel_idx, separator);
 
     switch (pix_width) {
     case CRTC_PIX_WIDTH_32BPP: {
@@ -608,7 +632,7 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
         uint8_t r = (val >> 16) & 0xff;
         uint8_t g = (val >> 8) & 0xff;
         uint8_t b = val & 0xff;
-        printf("\x1b[33m0x%08x\x1b[0m ", val);
+        printf(C_VALUE "0x%08x" C_RESET " ", val);
         print_swatch(r, g, b);
         break;
     }
@@ -618,7 +642,7 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
         uint8_t r = ((pixel >> 11) & 0x1f) << 3;
         uint8_t g = ((pixel >> 5) & 0x3f) << 2;
         uint8_t b = (pixel & 0x1f) << 3;
-        printf("\x1b[33m0x%04x\x1b[0m ", pixel);
+        printf(C_VALUE "0x%04x" C_RESET " ", pixel);
         print_swatch(r, g, b);
         break;
     }
@@ -628,13 +652,13 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
         uint8_t r = ((pixel >> 10) & 0x1f) << 3;
         uint8_t g = ((pixel >> 5) & 0x1f) << 3;
         uint8_t b = (pixel & 0x1f) << 3;
-        printf("\x1b[33m0x%04x\x1b[0m ", pixel);
+        printf(C_VALUE "0x%04x" C_RESET " ", pixel);
         print_swatch(r, g, b);
         break;
     }
     default:
         // Unsupported format - just print raw value
-        printf("\x1b[33m0x%08x\x1b[0m", val);
+        printf(C_VALUE "0x%08x" C_RESET, val);
         break;
     }
     printf("\n");
@@ -652,19 +676,19 @@ print_usage_colored(const char *usage)
     const char *p = usage;
     while (*p) {
         if (*p == '<') {
-            printf("\x1b[36m");
+            printf(C_CYAN);
             while (*p && *p != '>')
                 printf("%c", *p++);
             if (*p == '>')
                 printf("%c", *p++);
-            printf("\x1b[0m");
+            printf(C_RESET);
         } else if (*p == '[') {
-            printf("\x1b[90m");
+            printf(C_DIM);
             while (*p && *p != ']')
                 printf("%c", *p++);
             if (*p == ']')
                 printf("%c", *p++);
-            printf("\x1b[0m");
+            printf(C_RESET);
         } else {
             printf("%c", *p++);
         }
@@ -693,7 +717,7 @@ cmd_help(int argc, char **args)
             continue;
 
         // Print command name (bold)
-        printf("  \x1b[1m%-8s\x1b[0m", cmd_table[i].name);
+        printf("  " C_BOLD "%-8s" C_RESET, cmd_table[i].name);
 
         // Print usage args (colored) or padding
         if (cmd_table[i].usage) {
@@ -707,7 +731,7 @@ cmd_help(int argc, char **args)
         }
 
         // Print description (gray angle quote separator)
-        printf("\x1b[90m\xe2\x80\xba\x1b[0m %s\n", cmd_table[i].desc);
+        printf(C_DIM SYM_RSAQUO C_RESET " %s\n", cmd_table[i].desc);
     }
 }
 
@@ -745,7 +769,7 @@ cmd_reg_read_expanded(ati_device_t *dev, int argc, char **args)
         // Unknown register, fall back to simple display
         uint32_t val = ati_reg_read(dev, addr);
         print_reg(dev, addr, val, ':', 0);
-        printf("  \x1b[90m(unknown register)\x1b[0m\n");
+        printf("  " C_DIM "(unknown register)" C_RESET "\n");
         return;
     }
 
@@ -971,7 +995,7 @@ regs_diff(ati_device_t *dev)
     }
     // Print legend if any RE fields were displayed
     if (has_re_fields) {
-        printf("\n\x1b[35m†\x1b[0m = reverse-engineered "
+        printf("\n" C_RE_MARKER SYM_DAGGER C_RESET " = reverse-engineered "
                "(not found in documentation or drivers)\n");
     }
 }
