@@ -722,12 +722,12 @@ cmd_help(int argc, char **args)
         // Print usage args (colored) or padding
         if (cmd_table[i].usage) {
             print_usage_colored(cmd_table[i].usage);
-            // Calculate padding needed (target 22 chars for usage field)
+            // Calculate padding needed (target 25 chars for usage field)
             int len = strlen(cmd_table[i].usage);
-            for (int j = len; j < 22; j++)
+            for (int j = len; j < 25; j++)
                 printf(" ");
         } else {
-            printf("%-22s", "");
+            printf("%-25s", "");
         }
 
         // Print description (gray angle quote separator)
