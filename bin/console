@@ -180,21 +180,19 @@ end
 
 # Load register names from YAML files for completion
 def load_register_names
-  registers = []
-  yaml_dir = File.expand_path('../tests/ati/registers', __dir__)
+  yaml_dir = File.expand_path('../ati/registers', __dir__)
+  common = load_register_file(File.join(yaml_dir, 'common.yaml'))
+  r128 = load_register_file(File.join(yaml_dir, 'r128.yaml'), "R128_")
+  r100 = load_register_file(File.join(yaml_dir, 'r100.yaml'), "R100_")
+  [*common, *r128, *r100].uniq.sort
+end
 
-  Dir.glob(File.join(yaml_dir, '*.yaml')).each do |file|
-    begin
-      data = YAML.safe_load_file(file, permitted_classes: [Symbol])
-      next unless data.is_a?(Hash) && data['registers'].is_a?(Hash)
-
-      registers.concat(data['registers'].keys)
-    rescue StandardError => e
-      warn "Warning: Could not load #{file}: #{e.message}"
-    end
+def load_register_file(file, prefix = "")
+  data = YAML.safe_load_file(file, permitted_classes: [Symbol])
+  if !data.is_a?(Hash) || !data['registers'].is_a?(Hash)
+    raise "Invalid register file at: #{file}"
   end
-
-  registers.uniq.sort
+  return data['registers'].keys.map { |k| "#{prefix}#{k}" }
 end
 
 # Command definitions for completion

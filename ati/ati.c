@@ -99,7 +99,7 @@ struct ati_device {
 };
 
 ati_chip_family_t
-ati_get_chip_family(ati_device_t *dev)
+ati_get_chip_family(const ati_device_t *dev)
 {
     return dev->family;
 }
@@ -706,42 +706,4 @@ ati_wait_for_idle(ati_device_t *dev)
 
     // Flush pixel cache
     ati_engine_flush(dev);
-}
-
-// ============================================================================
-// Chip-Agnostic Pitch/Offset Helpers
-// ============================================================================
-
-void
-ati_set_default_pitch_offset(ati_device_t *dev, uint32_t pitch, uint32_t offset)
-{
-    if (dev->family == CHIP_R100) {
-        // R100: Combined register with pitch in bits 29:22 (64-byte units),
-        // offset in bits 21:0 (1KB units, bits 9:0 hardwired to 0)
-        // Convert pitch from 8-pixel units to 64-byte units
-        uint32_t pitch_64 = pitch * BYPP / 8;
-        uint32_t offset_1k = offset >> 10;
-        wr_r100_default_pitch_offset(dev, (pitch_64 << 22) | offset_1k);
-    } else {
-        // R128: Separate registers
-        wr_r128_default_offset(dev, offset);
-        wr_r128_default_pitch(dev, pitch);
-    }
-}
-
-void
-ati_get_default_pitch_offset(ati_device_t *dev, uint32_t *pitch, uint32_t *offset)
-{
-    if (dev->family == CHIP_R100) {
-        // R100: Combined register
-        uint32_t combined = rd_r100_default_pitch_offset(dev);
-        uint32_t pitch_64 = (combined >> 22) & 0xFF;
-        // Convert from 64-byte units to 8-pixel units
-        *pitch = pitch_64 * 8 / BYPP;
-        *offset = (combined & 0x3FFFFF) << 10; // Convert from 1KB units to bytes
-    } else {
-        // R128: Separate registers
-        *pitch = rd_r128_default_pitch(dev);
-        *offset = rd_r128_default_offset(dev);
-    }
 }

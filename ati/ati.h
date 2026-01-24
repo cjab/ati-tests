@@ -42,7 +42,7 @@ const char *ati_chip_family_name(ati_chip_family_t family);
 typedef struct ati_device ati_device_t;
 
 // Get chip family for a device
-ati_chip_family_t ati_get_chip_family(ati_device_t *dev);
+ati_chip_family_t ati_get_chip_family(const ati_device_t *dev);
 
 // ============================================================================
 // Device Lifecycle
@@ -88,10 +88,6 @@ void ati_wait_for_fifo(ati_device_t *dev, uint32_t entries);
 void ati_wait_for_idle(ati_device_t *dev);
 void ati_init_cce_engine(ati_device_t *dev);
 void ati_top_cce_engine(ati_device_t *dev);
-
-// Chip-agnostic helpers for pitch/offset (abstracts R128 vs R100 register layout)
-void ati_set_default_pitch_offset(ati_device_t *dev, uint32_t pitch, uint32_t offset);
-void ati_get_default_pitch_offset(ati_device_t *dev, uint32_t *pitch, uint32_t *offset);
 
 // clang-format off
 #define DUMP_REGISTERS(dev, ...) \
