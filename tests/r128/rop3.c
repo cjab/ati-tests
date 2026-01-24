@@ -38,7 +38,7 @@ static const uint32_t data[] = {
 // clang-format on
 
 bool
-test_rop3_16x16(ati_device_t *dev)
+test_r128_rop3_16x16(ati_device_t *dev)
 {
     ati_screen_clear(dev, 0);
 
@@ -52,17 +52,9 @@ test_rop3_16x16(ati_device_t *dev)
 
     wr_src_x_y(dev, 0x0);
 
-    switch (ati_get_chip_family(dev)) {
-    case CHIP_R128:
-        wr_r128_default_offset(dev, 0x0);
-        wr_r128_default_pitch(dev, pitch);
-        break;
-    case CHIP_R100:
-        wr_r100_default_pitch_offset(dev, pitch << 22);
-        break;
-    default:
+    wr_r128_default_offset(dev, 0x0);
+    wr_r128_default_pitch(dev, pitch);
 
-    }
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
 
@@ -95,7 +87,7 @@ test_rop3_16x16(ati_device_t *dev)
 }
 
 void
-register_rop3_tests(void)
+register_r128_rop3_tests(void)
 {
-    REGISTER_TEST(test_rop3_16x16, "rop3 16x16");
+    REGISTER_TEST(test_r128_rop3_16x16, "r128 rop3 16x16");
 }

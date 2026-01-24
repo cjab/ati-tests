@@ -69,7 +69,7 @@ $QEMU \
 QEMU_PID=$!
 
 # Cleanup on exit
-trap "kill $QEMU_PID 2>/dev/null" EXIT
+trap 'kill $QEMU_PID 2>/dev/null' EXIT
 
 # Wait for QEMU to start listening
 sleep 0.5

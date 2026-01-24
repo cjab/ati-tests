@@ -113,14 +113,14 @@ ati_device_init(platform_pci_device_t *pci_dev)
 {
     static ati_device_t ati_dev;
     ati_device_t *ati = &ati_dev;
-    
+
     ati->pci_dev = pci_dev;
     ati->device_id = platform_pci_get_device_id(pci_dev);
     ati->family = detect_chip_family(ati->device_id);
     ati->bar[0] = platform_pci_map_bar(ati->pci_dev, 0);
     ati->bar[2] = platform_pci_map_bar(ati->pci_dev, 2);
     platform_pci_get_name(ati->pci_dev, ati->name, sizeof(ati->name));
-    
+
     // Print device info
     const char *color;
     switch (ati->family) {
@@ -138,11 +138,11 @@ ati_device_init(platform_pci_device_t *pci_dev)
            color, get_chip_name(ati->device_id),
            ati->device_id,
            color, ati_chip_family_name(ati->family));
-    
+
     if (ati->family == CHIP_UNKNOWN) {
         printf("WARNING: Unknown chip family, behavior may be unpredictable\n");
     }
-    
+
     return ati;
 }
 

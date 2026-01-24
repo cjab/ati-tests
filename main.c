@@ -54,9 +54,9 @@ run_all_tests(ati_device_t *dev)
     ati_chip_family_t family = ati_get_chip_family(dev);
     int skipped = 0;
     int ran = 0;
-    
+
     printf("\nRunning tests for %s...\n", ati_chip_family_name(family));
-    
+
     for (int i = 0; i < test_count; i++) {
         // Check if test is compatible with current chip
         if (!(tests[i].chips & family)) {
@@ -66,7 +66,7 @@ run_all_tests(ati_device_t *dev)
         run_test(dev, &tests[i]);
         ran++;
     }
-    
+
     printf("\nRan %d tests", ran);
     if (skipped > 0) {
         printf(" (%d skipped - incompatible chip)", skipped);
@@ -78,7 +78,7 @@ void
 run_test_by_name(ati_device_t *dev, char *name)
 {
     ati_chip_family_t family = ati_get_chip_family(dev);
-    
+
     for (int i = 0; i < test_count; i++) {
         if (!strcmp(name, tests[i].id)) {
             // Check chip compatibility
@@ -120,7 +120,7 @@ list_tests(void)
 extern void register_clipping_tests(void);
 extern void register_pitch_offset_cntl_tests(void);
 extern void register_host_data_tests(void);
-extern void register_rop3_tests(void);
+extern void register_r128_rop3_tests(void);
 extern void register_cce_tests(void);
 
 void
@@ -129,7 +129,7 @@ register_all_tests(void)
     register_clipping_tests();
     register_pitch_offset_cntl_tests();
     register_host_data_tests();
-    register_rop3_tests();
+    register_r128_rop3_tests();
     register_cce_tests();
 }
 
