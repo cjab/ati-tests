@@ -52,7 +52,17 @@ test_rop3_16x16(ati_device_t *dev)
 
     wr_src_x_y(dev, 0x0);
 
-    ati_set_default_pitch_offset(dev, pitch, 0x0);
+    switch (ati_get_chip_family(dev)) {
+    case CHIP_R128:
+        wr_r128_default_offset(dev, 0x0);
+        wr_r128_default_pitch(dev, pitch);
+        break;
+    case CHIP_R100:
+        wr_r100_default_pitch_offset(dev, pitch << 22);
+        break;
+    default:
+
+    }
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
 

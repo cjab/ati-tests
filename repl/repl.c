@@ -19,7 +19,8 @@ typedef struct {
 // to include them conditionally based on detected chip
 #define X(func_name, const_name, offset, flags, fields, aliases)               \
     {#const_name, offset, flags, fields, aliases},
-static const reg_entry_t reg_table[] = {COMMON_REGISTERS{NULL, 0, 0, NULL, NULL}};
+static const reg_entry_t r128_reg_table[] = {R128_REGISTERS COMMON_REGISTERS{NULL, 0, 0, NULL, NULL}};
+static const reg_entry_t r100_reg_table[] = {R100_REGISTERS COMMON_REGISTERS{NULL, 0, 0, NULL, NULL}};
 #undef X
 
 // Register snapshot storage - indexed by offset/4
@@ -129,36 +130,41 @@ next_token(char **p)
     return start;
 }
 
-static int
-lookup_reg(const char *name, uint32_t *out, uint8_t *flags_out)
+static const reg_entry_t *
+get_chip_reg_table(const ati_device_t *dev)
 {
-    for (int i = 0; reg_table[i].name != NULL; i++) {
-        if (strcasecmp(name, reg_table[i].name) == 0) {
-            *out = reg_table[i].offset;
-            if (flags_out)
-                *flags_out = reg_table[i].flags;
-            return 0;
-        }
+    switch (ati_get_chip_family(dev)) {
+        case CHIP_R128:
+            return r128_reg_table;
+        break;
+        case CHIP_R100:
+            return r100_reg_table;
+        break;
+        default:
+            return NULL;
     }
-    return -1;
 }
 
-static const char *
-lookup_reg_name(uint32_t offset)
+static const reg_entry_t *
+lookup_reg_by_name(const ati_device_t *dev, const char *name)
 {
+    const reg_entry_t *reg_table = get_chip_reg_table(dev);
+
     for (int i = 0; reg_table[i].name != NULL; i++) {
-        if (reg_table[i].offset == offset) {
-            return reg_table[i].name;
+        if (strcasecmp(name, reg_table[i].name) == 0) {
+            return &reg_table[i];
         }
     }
     return NULL;
 }
 
 static const reg_entry_t *
-lookup_reg_entry(uint32_t offset)
+lookup_reg_by_addr(ati_device_t *dev, uint32_t offset)
 {
+    const reg_entry_t *reg_table = get_chip_reg_table(dev);
+
     for (int i = 0; reg_table[i].name != NULL; i++) {
-        if (reg_table[i].offset == offset) {
+        if (offset == reg_table[i].offset) {
             return &reg_table[i];
         }
     }
@@ -198,33 +204,34 @@ print_flags(uint8_t flags)
 }
 
 static void
-print_reg(uint32_t addr, uint32_t val, char separator, uint8_t flags)
+print_reg(ati_device_t *dev, uint32_t addr,
+          uint32_t val, char separator, uint8_t flags)
 {
-    const char *name = lookup_reg_name(addr);
-    if (name) {
-        printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m", name, addr);
-        print_flags(flags);
-        printf(" %c \x1b[33m0x%08x\x1b[0m\n", separator, val);
-    } else {
+    const reg_entry_t *reg = lookup_reg_by_addr(dev, addr);
+    if (!reg || !reg->name) {
         printf("\x1b[90m0x%04x\x1b[0m", addr);
         print_flags(flags);
         printf(" %c \x1b[33m0x%08x\x1b[0m\n", separator, val);
+        return;
     }
+    printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m", reg->name, addr);
+    print_flags(flags);
+    printf(" %c \x1b[33m0x%08x\x1b[0m\n", separator, val);
 }
 
 static void
-print_reg_mismatch(uint32_t addr, uint32_t wrote, uint32_t got)
+print_reg_mismatch(ati_device_t *dev, uint32_t addr, uint32_t wrote, uint32_t got)
 {
-    const char *name = lookup_reg_name(addr);
-    if (name) {
-        printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m = "
-               "\x1b[33m0x%08x\x1b[0m \xe2\x89\xa0 \x1b[31m0x%08x\x1b[0m\n",
-               name, addr, wrote, got);
-    } else {
+    const reg_entry_t *reg = lookup_reg_by_addr(dev, addr);
+    if (!reg || !reg->name) {
         printf("\x1b[90m0x%04x\x1b[0m = "
                "\x1b[33m0x%08x\x1b[0m \xe2\x89\xa0 \x1b[31m0x%08x\x1b[0m\n",
                addr, wrote, got);
     }
+    const char *name = reg->name;
+    printf("\x1b[1m%s\x1b[0m \x1b[90m(0x%04x)\x1b[0m = "
+           "\x1b[33m0x%08x\x1b[0m \xe2\x89\xa0 \x1b[31m0x%08x\x1b[0m\n",
+           name, addr, wrote, got);
 }
 
 static void
@@ -540,16 +547,17 @@ parse_int(const char *s, uint32_t *out)
 }
 
 static int
-parse_addr(const char *s, uint32_t *out, uint8_t *flags_out)
+parse_reg(ati_device_t *dev, const char *s)
 {
-    // Try hex first
-    if (parse_int(s, out) == 0) {
-        if (flags_out)
-            *flags_out = 0; // Unknown register, assume no restrictions
-        return 0;
+    uint32_t addr;
+    const reg_entry_t *reg;
+    if (parse_int(s, &addr) == 0) {
+        return addr;
     }
-    // Fall back to register name lookup
-    return lookup_reg(s, out, flags_out);
+    if ((reg = lookup_reg_by_name(dev, s))) {
+        return reg->offset;
+    }
+    return -1;
 }
 
 // Print a single color swatch using ANSI 24-bit color
@@ -713,34 +721,30 @@ cmd_reboot(void)
 static void
 cmd_reg_read(ati_device_t *dev, int argc, char **args)
 {
-    uint32_t addr;
-    uint8_t flags;
-
-    if (argc < 2 || parse_addr(args[1], &addr, &flags) != 0) {
+    int addr;
+    if (argc < 2 || (addr = parse_reg(dev, args[1])) == -1) {
         print_usage(CMD_R);
         return;
     }
-
     uint32_t val = ati_reg_read(dev, addr);
-    print_reg(addr, val, ':', flags);
+    const reg_entry_t *reg = lookup_reg_by_addr(dev, addr);
+    print_reg(dev, addr, val, ':', reg ? reg->flags : 0);
 }
 
 static void
 cmd_reg_read_expanded(ati_device_t *dev, int argc, char **args)
 {
-    uint32_t addr;
-    uint8_t flags;
-
-    if (argc < 2 || parse_addr(args[1], &addr, &flags) != 0) {
+    int addr;
+    if (argc < 2 || (addr = parse_reg(dev, args[1])) == -1) {
         print_usage(CMD_RX);
         return;
     }
 
-    const reg_entry_t *reg = lookup_reg_entry(addr);
+    const reg_entry_t *reg = lookup_reg_by_addr(dev, addr);
     if (reg == NULL) {
         // Unknown register, fall back to simple display
         uint32_t val = ati_reg_read(dev, addr);
-        print_reg(addr, val, ':', flags);
+        print_reg(dev, addr, val, ':', 0);
         printf("  \x1b[90m(unknown register)\x1b[0m\n");
         return;
     }
@@ -755,10 +759,10 @@ cmd_reg_read_expanded(ati_device_t *dev, int argc, char **args)
 static void
 cmd_reg_write(ati_device_t *dev, int argc, char **args)
 {
-    uint32_t addr, val;
-    uint8_t flags;
+    uint32_t val;
 
-    if (argc < 3 || parse_addr(args[1], &addr, &flags) != 0 ||
+    int addr;
+    if (argc < 2 || (addr = parse_reg(dev, args[1]) == -1) ||
         parse_int(args[2], &val) != 0) {
         print_usage(CMD_W);
         return;
@@ -766,15 +770,18 @@ cmd_reg_write(ati_device_t *dev, int argc, char **args)
 
     ati_reg_write(dev, addr, val);
 
+    const reg_entry_t *reg = lookup_reg_by_addr(dev, addr);
+    uint8_t flags = reg ? reg->flags : 0;
     // Skip readback if register can't be read safely
     if (flags & REG_SKIP_READBACK) {
-        print_reg(addr, val, '=', flags);
+        print_reg(dev, addr, val, '=', flags);
     } else {
         uint32_t readback = ati_reg_read(dev, addr);
-        if (readback != val)
-            print_reg_mismatch(addr, val, readback);
-        else
-            print_reg(addr, readback, '=', flags);
+        if (readback != val) {
+            print_reg_mismatch(dev, addr, val, readback);
+        } else {
+            print_reg(dev, addr, readback, '=', flags);
+        }
     }
 }
 
@@ -927,6 +934,7 @@ cmd_test_list(void)
 static void
 regs_save(ati_device_t *dev)
 {
+    const reg_entry_t *reg_table = get_chip_reg_table(dev);
     int count = 0;
     for (int i = 0; reg_table[i].name != NULL; i++) {
         if (reg_table[i].flags & REG_UNSAFE_READ)
@@ -946,6 +954,7 @@ regs_diff(ati_device_t *dev)
         printf("No snapshot taken. Use 'regs save' first.\n");
         return;
     }
+    const reg_entry_t *reg_table = get_chip_reg_table(dev);
     bool has_re_fields = false;
     for (int i = 0; reg_table[i].name != NULL; i++) {
         if (reg_table[i].flags & REG_UNSAFE_READ)

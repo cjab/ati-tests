@@ -26,7 +26,8 @@ test_host_data_32x32(ati_device_t *dev)
     wr_dp_src_frgd_clr(dev, red);
     wr_dp_src_bkgd_clr(dev, green);
 
-    ati_set_default_pitch_offset(dev, 0x50, 0x0);
+    wr_r128_default_offset(dev, 0x0);
+    wr_r128_default_pitch(dev, 0x50);
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
 
@@ -128,7 +129,8 @@ test_host_data_mono_is_bit_packed(ati_device_t *dev)
     wr_dp_src_frgd_clr(dev, red);
     wr_dp_src_bkgd_clr(dev, green);
 
-    ati_set_default_pitch_offset(dev, 0x50, 0x0);
+    wr_r128_default_offset(dev, 0x0);
+    wr_r128_default_pitch(dev, 0x50);
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
 
@@ -250,7 +252,8 @@ test_host_data_clipping(ati_device_t *dev)
     wr_dp_src_frgd_clr(dev, red);
     wr_dp_src_bkgd_clr(dev, green);
 
-    ati_set_default_pitch_offset(dev, 0x50, 0x0);
+    wr_r128_default_offset(dev, 0x0);
+    wr_r128_default_pitch(dev, 0x50);
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
     wr_dst_y_x(dev, (10 << 16) | 10);
