@@ -682,6 +682,68 @@ registers:
       - bits: [12, 15]
       - bit: 30
 
+  GUI_PROBE:
+    offset: 0x16bc
+    group: gui_status
+    flags: [no_write]
+    ref: "RRG:247"
+    fields:
+      GUI_STATE:
+        bits: [0, 2]
+        description: eng_2d state machine
+        values:
+          IDLE: 0
+          DO_COLOR_WRITE: 1
+          DO_SPAN_EVEN: 2
+          DO_SPAN: 3
+          WAIT_FOR_SPAN: 6
+          WAIT_FOR_PIPE_EMPTY: 7
+      GUI_SPAN_REQ:
+        bit: 8
+        description: Span FIFO request
+      GUI_SPAN_RDY:
+        bit: 9
+        description: Span FIFO ready
+      GUI_REQ_SRCS:
+        bit: 10
+        description: All required sources present (stage 1 write)
+      GUI_HOST_REQ:
+        bit: 11
+        description: HOST_DATA request
+      GUI_HOST_RDY:
+        bit: 12
+        description: HOST_DATA ready
+      GUI_SRC_REQ:
+        bit: 13
+        description: SRC/Z request
+      GUI_SRC_RDY:
+        bit: 14
+        description: SRC/Z ready
+      GUI_E3D_REQ:
+        bit: 15
+        description: 3D data request
+      GUI_E3D_RDY:
+        bit: 16
+        description: 3D data ready
+      GUI_DST_REQ:
+        bit: 17
+        description: DST request
+      GUI_DST_RDY:
+        bit: 18
+        description: DST ready
+      GUI_WRT_REQ:
+        bit: 19
+        description: DST write request
+      GUI_WRT_ZS_REQ:
+        bit: 20
+        description: Z write request
+      GUI_WRT_RDY:
+        bit: 21
+        description: Write ready
+    reserved:
+      - bits: [3, 7]
+      - bits: [22, 31]
+
   # ===========================================================================
   # Datapath / Drawing Engine Registers
   # ===========================================================================
