@@ -48,10 +48,10 @@ static const reg_entry_t r100_reg_table[] = {R100_REGISTERS COMMON_REGISTERS{NUL
 #undef X
 
 // Register snapshot storage - indexed by offset/4
-// Highest register offset is ~0x1a00, so 0x2000/4 = 2048 entries is plenty
+// Register aperture is 0x2000 bytes (8KB), so 0x2000/4 = 2048 entries
 #define REG_SNAPSHOT_SIZE (0x2000 / 4)
 static uint32_t reg_snapshot[REG_SNAPSHOT_SIZE];
-static bool snapshot_valid = false;
+static bool reg_snapshot_valid[REG_SNAPSHOT_SIZE];  // Per-slot validity
 
 // Command enum for dispatch
 typedef enum {
@@ -96,7 +96,7 @@ static const struct {
     {"t",        CMD_T,        "[test_name]",            "run test(s)"},
     {"tl",       CMD_TL,       NULL,                     "list tests"},
     {"cce",      CMD_CCE,      "<cmd>",                  "CCE control (init/start/stop/r/w)"},
-    {"regs",     CMD_REGS,     "<save|diff>",            "register snapshot/diff"},
+    {"regs",     CMD_REGS,     "<save|diff> [all]",      "register snapshot/diff (all=full aperture)"},
     {"dump",     CMD_DUMP,     "<cmd>",                  "dump data (screen/vram)"},
     {"help",     CMD_HELP,     NULL,                     NULL},
     {"?",        CMD_HELP,     NULL,                     NULL},
@@ -786,7 +786,7 @@ cmd_reg_write(ati_device_t *dev, int argc, char **args)
     uint32_t val;
 
     int addr;
-    if (argc < 2 || (addr = parse_reg(dev, args[1]) == -1) ||
+    if (argc < 3 || (addr = parse_reg(dev, args[1])) == -1 ||
         parse_int(args[2], &val) != 0) {
         print_usage(CMD_W);
         return;
@@ -955,48 +955,155 @@ cmd_test_list(void)
 // Flags that indicate register is unsafe to read during snapshot
 #define REG_UNSAFE_READ (FLAG_NO_READ | FLAG_READ_SIDE_EFFECTS | FLAG_INDIRECT)
 
+// Clear validity for all snapshot slots
+static void
+regs_clear_validity(void)
+{
+    for (int i = 0; i < REG_SNAPSHOT_SIZE; i++)
+        reg_snapshot_valid[i] = false;
+}
+
+// Check if any snapshot slots are valid
+static bool
+regs_has_snapshot(void)
+{
+    for (int i = 0; i < REG_SNAPSHOT_SIZE; i++) {
+        if (reg_snapshot_valid[i])
+            return true;
+    }
+    return false;
+}
+
 static void
 regs_save(ati_device_t *dev)
 {
+    regs_clear_validity();
     const reg_entry_t *reg_table = get_chip_reg_table(dev);
     int count = 0;
     for (int i = 0; reg_table[i].name != NULL; i++) {
         if (reg_table[i].flags & REG_UNSAFE_READ)
             continue;
         uint32_t offset = reg_table[i].offset;
-        reg_snapshot[offset / 4] = ati_reg_read(dev, offset);
+        uint32_t idx = offset / 4;
+        reg_snapshot[idx] = ati_reg_read(dev, offset);
+        reg_snapshot_valid[idx] = true;
         count++;
     }
-    snapshot_valid = true;
     printf("Saved %d registers\n", count);
+}
+
+static void
+regs_save_all(ati_device_t *dev)
+{
+    regs_clear_validity();
+    int count = 0;
+    int skipped = 0;
+
+    for (uint32_t offset = 0; offset < REG_SNAPSHOT_SIZE * 4; offset += 4) {
+        uint32_t idx = offset / 4;
+
+        // Check if this offset has a known register with unsafe flags
+        const reg_entry_t *reg = lookup_reg_by_addr(dev, offset);
+        if (reg && (reg->flags & REG_UNSAFE_READ)) {
+            skipped++;
+            continue;
+        }
+
+        reg_snapshot[idx] = ati_reg_read(dev, offset);
+        reg_snapshot_valid[idx] = true;
+        count++;
+    }
+    printf("Saved %d registers (%d skipped)\n", count, skipped);
 }
 
 static void
 regs_diff(ati_device_t *dev)
 {
-    if (!snapshot_valid) {
+    if (!regs_has_snapshot()) {
         printf("No snapshot taken. Use 'regs save' first.\n");
         return;
     }
     const reg_entry_t *reg_table = get_chip_reg_table(dev);
     bool has_re_fields = false;
+    int changed = 0;
     for (int i = 0; reg_table[i].name != NULL; i++) {
         if (reg_table[i].flags & REG_UNSAFE_READ)
             continue;
         uint32_t offset = reg_table[i].offset;
-        uint32_t old_val = reg_snapshot[offset / 4];
+        uint32_t idx = offset / 4;
+        if (!reg_snapshot_valid[idx])
+            continue;
+        uint32_t old_val = reg_snapshot[idx];
         uint32_t new_val = ati_reg_read(dev, offset);
         if (old_val != new_val) {
             printf("%s (0x%04x) : 0x%08x -> 0x%08x\n",
                    reg_table[i].name, offset, old_val, new_val);
             if (print_reg_diff(&reg_table[i], old_val, new_val))
                 has_re_fields = true;
+            changed++;
         }
     }
     // Print legend if any RE fields were displayed
     if (has_re_fields) {
         printf("\n" C_RE_MARKER SYM_DAGGER C_RESET " = reverse-engineered "
                "(not found in documentation or drivers)\n");
+    }
+    if (changed == 0)
+        printf("No changes detected\n");
+    else
+        printf("\n%d register(s) changed\n", changed);
+}
+
+static void
+regs_diff_all(ati_device_t *dev)
+{
+    if (!regs_has_snapshot()) {
+        printf("No snapshot taken. Use 'regs save' first.\n");
+        return;
+    }
+
+    bool has_re_fields = false;
+    int known_changed = 0;
+    int unknown_changed = 0;
+
+    for (uint32_t offset = 0; offset < REG_SNAPSHOT_SIZE * 4; offset += 4) {
+        uint32_t idx = offset / 4;
+
+        if (!reg_snapshot_valid[idx])
+            continue;
+
+        uint32_t old_val = reg_snapshot[idx];
+        uint32_t new_val = ati_reg_read(dev, offset);
+
+        if (old_val == new_val)
+            continue;
+
+        const reg_entry_t *reg = lookup_reg_by_addr(dev, offset);
+        if (reg) {
+            // Known register - full field-level diff
+            printf("%s (0x%04x) : 0x%08x -> 0x%08x\n",
+                   reg->name, offset, old_val, new_val);
+            if (print_reg_diff(reg, old_val, new_val))
+                has_re_fields = true;
+            known_changed++;
+        } else {
+            // Unknown register - simple output
+            printf("0x%04x : 0x%08x -> 0x%08x\n", offset, old_val, new_val);
+            unknown_changed++;
+        }
+    }
+
+    // Print legend if any RE fields were displayed
+    if (has_re_fields) {
+        printf("\n" C_RE_MARKER SYM_DAGGER C_RESET " = reverse-engineered "
+               "(not found in documentation or drivers)\n");
+    }
+
+    if (known_changed == 0 && unknown_changed == 0) {
+        printf("No changes detected\n");
+    } else {
+        printf("\n%d known register(s) changed, %d unknown register(s) changed\n",
+               known_changed, unknown_changed);
     }
 }
 
@@ -1008,10 +1115,18 @@ cmd_regs(ati_device_t *dev, int argc, char **args)
         return;
     }
 
+    bool do_all = (argc >= 3 && strcmp(args[2], "all") == 0);
+
     if (strcmp(args[1], "save") == 0) {
-        regs_save(dev);
+        if (do_all)
+            regs_save_all(dev);
+        else
+            regs_save(dev);
     } else if (strcmp(args[1], "diff") == 0) {
-        regs_diff(dev);
+        if (do_all)
+            regs_diff_all(dev);
+        else
+            regs_diff(dev);
     } else {
         print_usage(CMD_REGS);
     }
