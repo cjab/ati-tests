@@ -55,7 +55,6 @@ $QEMU \
   -accel kvm \
   -vga none \
   -device ati-vga,model="$MODEL" \
-  -display sdl \
   -machine pc \
   -cpu athlon,3dnow=off,3dnowext=off \
   -m 1024 \
