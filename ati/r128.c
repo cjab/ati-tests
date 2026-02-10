@@ -65,8 +65,8 @@ r128_set_display_mode(ati_device_t *dev)
     wr_crtc_v_total_disp(dev, (v_disp << CRTC_V_DISP_SHIFT) |
                                   (v_total << CRTC_V_TOTAL_SHIFT));
 
-    // Vertical sync: starts at 480 + 10 = 490, width = 2 lines
-    uint32_t v_sync_strt = 480 + 10; // 490
+    // Vertical sync: starts at 480 + 8 = 490, width = 2 lines
+    uint32_t v_sync_strt = 480 + 8; // 488
     uint32_t v_sync_wid = 2;         // 2 lines
     // Negative sync polarity for 640x480@60Hz
     wr_crtc_v_sync_strt_wid(dev, (v_sync_strt << CRTC_V_SYNC_STRT_SHIFT) |
