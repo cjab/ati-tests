@@ -237,7 +237,7 @@ ati_screen_async_compare_fixture(ati_device_t *dev, const char *fixture_name)
     if (!fixture) {
         fprintf(stderr, "Fixture '%s' not found\n", fixture_name);
         char path[256];
-        snprintf(path, sizeof(path), "fixtures/%s.bin", fixture_name);
+        snprintf(path, sizeof(path), "fixtures/%s.rle", fixture_name);
         ati_screen_dump(dev, path);
         return false;
     }
