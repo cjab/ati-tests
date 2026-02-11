@@ -875,10 +875,57 @@ registers:
     fields:
       DST_X_LEFT_TO_RIGHT:
         bit: 0
+        description: "Destination X direction (0=right-to-left, 1=left-to-right)"
       DST_Y_TOP_TO_BOTTOM:
         bit: 1
+        description: "Destination Y direction (0=bottom-to-top, 1=top-to-bottom)"
       DST_Y_MAJOR:
         bit: 2
+        description: "Y major axis flag for bresenham lines (0=X major, 1=Y major)"
+      DST_X_TILE:
+        bit: 3
+        description: "Enables rectangular tiling in the X direction"
+      DST_Y_TILE:
+        bit: 4
+        description: "Enables rectangular tiling in the Y direction"
+      DST_LAST_PEL:
+        bit: 5
+        description: "Destination last pel enable for lines"
+      TRAIL_X_DIR:
+        bit: 6
+        description: "Trapezoid trailing edge direction (0=right-to-left, 1=left-to-right)"
+      TRAIL_FILL_DIR:
+        bit: 7
+        description: "Trapezoid fill direction (0=right-to-left, 1=left-to-right)"
+      BRES_SIGN:
+        bit: 8
+        description: "Bresenham sign (0=zero error term positive, 1=negative)"
+      DP_CULL_TRI:
+        bit: 9
+        description: "Cull triangle - issue single 0-length span and exit"
+      POLY_LINE:
+        bit: 15
+        description: "Current line is not the last line of a polyline"
+      DP_RASTER_STALL:
+        bit: 16
+        description: "Stall DST operations until raster passes current location"
+      DP_TRI_DIS:
+        bit: 17
+        description: "Triangle disable - accept but draw no pixels"
+      DP_POLY_EDGE:
+        bit: 18
+        description: "Line is an anti-aliased edge of a polygon"
+      ANTI_ALIAS_INV_DMAJOR:
+        bits: [19, 22]
+        description: "Mantissa of inverse DMAJOR in normalized (1.xxxx) format"
+      ANTI_ALIAS_SHIFT:
+        bits: [23, 27]
+        description: "Right shifts to Bresenham error term for anti-aliased lines"
+      ANTI_ALIAS_SLOPE:
+        bits: [28, 31]
+        description: "MSBs of absolute slope (DMINOR/DMAJOR), 0xF = 45 degrees"
+    reserved:
+      - bits: [10, 14]
 
   DP_BRUSH_BKGD_CLR:
     offset: 0x15dc
