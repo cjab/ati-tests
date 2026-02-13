@@ -66,6 +66,13 @@ register_test(const char *id, const char *display_name,
     register_test_internal(id, display_name, func, (ati_chip_family_t)CHIP_ALL);
 }
 
+// ============================================================================
+// Draw direction enums for clipping tests
+// ============================================================================
+
+typedef enum { LEFT_TO_RIGHT = 1, RIGHT_TO_LEFT = 0 } horiz_dir_t;
+typedef enum { TOP_TO_BOTTOM = 1, BOTTOM_TO_TOP = 0 } vert_dir_t;
+
 void register_all_tests(void);
 void run_all_tests(ati_device_t *dev);
 void run_test_by_name(ati_device_t *dev, char *name);

@@ -217,9 +217,6 @@ test_host_data_morphos(ati_device_t *dev)
     return true;
 }
 
-typedef enum { LEFT_TO_RIGHT = 1, RIGHT_TO_LEFT = 0 } horiz_dir_t;
-typedef enum { TOP_TO_BOTTOM = 1, BOTTOM_TO_TOP = 0 } vert_dir_t;
-
 bool
 do_clipping(ati_device_t *dev, int margin, int size, int border,
             horiz_dir_t hdir, vert_dir_t vdir)
