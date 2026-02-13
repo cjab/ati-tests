@@ -13,6 +13,7 @@ dependencies. If not, the following are required:
 * make
 * pciutils
 * ruby
+* imagemagick
 
 Then: `make`
 
