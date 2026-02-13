@@ -1,0 +1,42 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Convert RLE-encoded screen dump to PNG using ImageMagick
+
+require_relative '../lib/rle'
+
+WIDTH = 640
+HEIGHT = 480
+EXPECTED_SIZE = WIDTH * HEIGHT * 4 # 32bpp BGRA
+
+# Check for ImageMagick
+unless system('which magick > /dev/null 2>&1')
+  warn "Error: ImageMagick 'magick' command not found."
+  warn 'Install with: nix develop (already in flake), or by some other method'
+  exit 1
+end
+
+if ARGV.empty?
+  warn "Usage: #{$PROGRAM_NAME} <input.rle> [output.png]"
+  exit 1
+end
+
+input_path = ARGV[0]
+output_path = ARGV[1] || input_path.sub(/\.rle$/, '.png')
+
+# Read and decode RLE
+encoded = File.binread(input_path)
+raw = RLE.decode(encoded)
+
+# Validate size
+if raw.bytesize != EXPECTED_SIZE
+  warn "Warning: Decoded size #{raw.bytesize} != expected #{EXPECTED_SIZE} (#{WIDTH}x#{HEIGHT}x4)"
+end
+
+# Pipe to ImageMagick
+# Framebuffer is ARGB 8888 (0xAARRGGBB), which is BGRA in little-endian memory order
+IO.popen(['magick', '-size', "#{WIDTH}x#{HEIGHT}", '-depth', '8', 'BGRA:-', '-alpha', 'off', output_path], 'wb') do |io|
+  io.write(raw)
+end
+
+puts "Created #{output_path}"

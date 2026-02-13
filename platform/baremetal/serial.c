@@ -2,16 +2,43 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "base64.h"
 #include "serial.h"
 
 #define SERIAL_PORT 0x3F8
 #define RLE_ESCAPE 0xFF
 
-#define HISTORY_SIZE 8
-#define HISTORY_LINE_MAX 64
-static char history[HISTORY_SIZE][HISTORY_LINE_MAX];
-static int history_count = 0; // Number of entries (max HISTORY_SIZE)
-static int history_write = 0; // Next write position (circular)
+// Forward declaration
+void serial_raw_putc(void *p, char c);
+
+// Base64 streaming: 57 RLE bytes -> 76 Base64 chars per line
+#define B64_CHUNK_SIZE 57
+static uint8_t b64_chunk[B64_CHUNK_SIZE];
+static size_t b64_chunk_len = 0;
+
+static void
+b64_flush(void)
+{
+    if (b64_chunk_len > 0) {
+        char b64_out[80];
+        size_t b64_len = base64_encode(b64_chunk, b64_chunk_len, b64_out);
+        for (size_t i = 0; i < b64_len; i++) {
+            serial_raw_putc(NULL, b64_out[i]);
+        }
+        serial_raw_putc(NULL, '\r');
+        serial_raw_putc(NULL, '\n');
+        b64_chunk_len = 0;
+    }
+}
+
+static void
+b64_putc(uint8_t byte)
+{
+    b64_chunk[b64_chunk_len++] = byte;
+    if (b64_chunk_len == B64_CHUNK_SIZE) {
+        b64_flush();
+    }
+}
 
 // CRC-32 (IEEE 802.3 polynomial, same as zlib)
 static uint32_t
@@ -109,147 +136,33 @@ serial_getc(void)
     return inb(SERIAL_PORT);
 }
 
-// Escape sequence types
-typedef enum {
-    ESC_OTHER,
-    ESC_UP,
-    ESC_DOWN,
-} escape_key_t;
-
-// Parse an escape sequence after seeing '\x1b'.
-// Consumes remaining bytes and returns the key type.
-static escape_key_t
-parse_escape_sequence(void)
-{
-    char next = serial_getc();
-    if (next != '[')
-        return ESC_OTHER;
-
-    // Read until terminator (a letter)
-    char term;
-    do {
-        term = serial_getc();
-    } while (term &&
-             !((term >= 'A' && term <= 'Z') || (term >= 'a' && term <= 'z')));
-
-    switch (term) {
-    case 'A':
-        return ESC_UP;
-    case 'B':
-        return ESC_DOWN;
-    default:
-        return ESC_OTHER;
-    }
-}
-
-// Clear current line and redraw prompt with buffer contents
-static void
-redraw_line(const char *buf, int len)
-{
-    serial_puts("\x1b[B\r> "); // Cursor down, carriage return, prompt
-    for (int j = 0; j < len; j++) {
-        serial_raw_putc(NULL, buf[j]);
-    }
-    serial_puts("\x1b[K"); // Clear to end of line
-}
-
-// Save command to history (if non-empty)
-static void
-history_save(const char *buf)
-{
-    if (buf[0] == '\0')
-        return;
-
-    // Copy into history at write position
-    int j;
-    for (j = 0; buf[j] && j < HISTORY_LINE_MAX - 1; j++) {
-        history[history_write][j] = buf[j];
-    }
-    history[history_write][j] = '\0';
-
-    // Advance write position
-    history_write = (history_write + 1) % HISTORY_SIZE;
-    if (history_count < HISTORY_SIZE)
-        history_count++;
-}
-
-// Load history entry into buffer, return new length
-static int
-history_load(char *buf, int maxlen, int index)
-{
-    int j;
-    for (j = 0; history[index][j] && j < maxlen - 1; j++) {
-        buf[j] = history[index][j];
-    }
-    buf[j] = '\0';
-    return j;
-}
-
-// Navigate back in history. Returns new buffer length, updates *browse_ptr.
-static int
-history_back(char *buf, int maxlen, int *browse_ptr)
-{
-    int history_browse = *browse_ptr;
-
-    if (history_count == 0)
-        return -1; // No history
-
-    int prev = (history_browse - 1 + HISTORY_SIZE) % HISTORY_SIZE;
-    int oldest = (history_count < HISTORY_SIZE) ? 0 : history_write;
-
-    int can_go = 0;
-    if (history_browse == history_write) {
-        // At end, can always go back if there's history
-        can_go = 1;
-    } else if (history_count < HISTORY_SIZE) {
-        // Not full yet, check bounds
-        can_go = (history_browse > 0);
-    } else {
-        // Full circular buffer
-        can_go = (history_browse != oldest);
-    }
-
-    if (can_go) {
-        *browse_ptr = prev;
-        return history_load(buf, maxlen, prev);
-    }
-    return -1; // Can't go back further
-}
-
-// Navigate forward in history. Returns new buffer length, updates *browse_ptr.
-// Returns 0 and clears buf if we're back at the current (empty) line.
-static int
-history_forward(char *buf, int maxlen, int *browse_ptr)
-{
-    int history_browse = *browse_ptr;
-
-    if (history_browse == history_write)
-        return -1; // Already at end
-
-    int next_idx = (history_browse + 1) % HISTORY_SIZE;
-    if (next_idx == history_write) {
-        // Back to current (empty) line
-        *browse_ptr = history_write;
-        buf[0] = '\0';
-        return 0;
-    } else {
-        *browse_ptr = next_idx;
-        return history_load(buf, maxlen, next_idx);
-    }
-}
-
 int
 serial_gets(char *buf, int maxlen)
 {
     int i = 0;
-    int history_browse = history_write; // Start at "end" (no selection)
+    char c;
 
     while (i < maxlen - 1) {
-        char c = serial_getc();
-        if (c == '\r' || c == '\n') {
+        c = serial_getc();
+        if (c == '\r') {
             serial_putc(NULL, '\n');
             buf[i] = '\0';
-            history_save(buf);
+            // Consume trailing \n after \r if present (CRLF sequence)
+            // Small delay to allow the \n to arrive
+            for (volatile int j = 0; j < 1000; j++)
+                ;
+            if (serial_data_ready()) {
+                char next = serial_getc();
+                if (next != '\n') {
+                    // Not a CRLF, but we can't push back - just drop it
+                    // This shouldn't happen in normal use
+                }
+            }
+            break;
+        }
+        if (c == '\n') {
+            serial_putc(NULL, '\n');
+            buf[i] = '\0';
             break;
         }
         if (c == 127 || c == '\b') {
@@ -259,45 +172,6 @@ serial_gets(char *buf, int maxlen)
             }
             continue;
         }
-        // Ctrl-P: history back
-        if (c == 0x10) {
-            int len = history_back(buf, maxlen, &history_browse);
-            if (len >= 0) {
-                i = len;
-                redraw_line(buf, i);
-            }
-            continue;
-        }
-        // Ctrl-N: history forward
-        if (c == 0x0e) {
-            int len = history_forward(buf, maxlen, &history_browse);
-            if (len >= 0) {
-                i = len;
-                redraw_line(buf, i);
-            }
-            continue;
-        }
-        if (c == '\x1b') {
-            escape_key_t key = parse_escape_sequence();
-            switch (key) {
-            case ESC_UP: {
-                int len = history_back(buf, maxlen, &history_browse);
-                if (len >= 0)
-                    i = len;
-                break;
-            }
-            case ESC_DOWN: {
-                int len = history_forward(buf, maxlen, &history_browse);
-                if (len >= 0)
-                    i = len;
-                break;
-            }
-            default:
-                break;
-            }
-            redraw_line(buf, i);
-            continue;
-        }
         serial_putc(NULL, c);
         buf[i++] = c;
     }
@@ -305,13 +179,14 @@ serial_gets(char *buf, int maxlen)
     return i;
 }
 
-// RLE encode data and stream directly to serial.
+// RLE encode data and stream to Base64 encoder.
 // Format: runs of 3+ identical bytes become <0xFF> <count> <byte>
 //         0xFF itself becomes <0xFF> <0x01> <0xFF>
 //         other bytes are output directly
-// Returns number of bytes written to serial.
-size_t
-rle_encode_to_serial(const uint8_t *data, size_t len)
+// Output is Base64-encoded with 76-char line wrapping.
+// Returns number of RLE bytes produced (before Base64 encoding).
+static size_t
+rle_encode_to_b64(const uint8_t *data, size_t len)
 {
     size_t encoded_size = 0;
     size_t i = 0;
@@ -327,14 +202,14 @@ rle_encode_to_serial(const uint8_t *data, size_t len)
 
         if (count >= 3 || byte == RLE_ESCAPE) {
             // Encode as: <escape> <count> <byte>
-            serial_raw_putc(NULL, RLE_ESCAPE);
-            serial_raw_putc(NULL, count);
-            serial_raw_putc(NULL, byte);
+            b64_putc(RLE_ESCAPE);
+            b64_putc(count);
+            b64_putc(byte);
             encoded_size += 3;
         } else {
             // Output bytes directly
             for (uint8_t j = 0; j < count; j++) {
-                serial_raw_putc(NULL, byte);
+                b64_putc(byte);
             }
             encoded_size += count;
         }
@@ -349,14 +224,20 @@ send_file_to_serial(const char *path, const void *data, size_t size)
 {
     uint32_t checksum = crc32((const uint8_t *) data, size);
 
+    // Reset Base64 streaming buffer
+    b64_chunk_len = 0;
+
     // Send start marker and header
-    // Format: path:rle:original_size:crc32_hex
+    // Format: path:rle+base64:original_size:crc32_hex
     serial_puts(FILE_START_MARKER);
     serial_putc(NULL, '\n');
-    printf("%s:rle:%zu:%08x\n", path, size, checksum);
+    printf("%s:rle+base64:%zu:%08x\n", path, size, checksum);
 
-    // Stream RLE-encoded data directly to serial
-    size_t encoded_size = rle_encode_to_serial((const uint8_t *) data, size);
+    // Stream RLE-encoded data through Base64 encoder
+    size_t encoded_size = rle_encode_to_b64((const uint8_t *) data, size);
+
+    // Flush any remaining Base64 data
+    b64_flush();
 
     // Send end marker
     serial_puts(FILE_END_MARKER);
@@ -365,7 +246,7 @@ send_file_to_serial(const char *path, const void *data, size_t size)
     // Use integer math to avoid FPU - compute ratio as percentage * 10 for one
     // decimal
     unsigned ratio_x10 = (unsigned) (encoded_size * 1000 / size);
-    printf("Sent %s (%zu bytes encoded, %zu bytes original, %u.%u%% ratio)\n",
+    printf("Sent %s (%zu bytes RLE, %zu bytes original, %u.%u%% ratio)\n",
            path, encoded_size, size, ratio_x10 / 10, ratio_x10 % 10);
 
     return size;

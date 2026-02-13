@@ -110,7 +110,13 @@ size_t
 platform_pci_get_bar_size(platform_pci_device_t *dev, int bar_idx)
 {
     return dev->pci_dev->size[bar_idx];
-};
+}
+
+uint16_t
+platform_pci_get_device_id(platform_pci_device_t *dev)
+{
+    return dev->pci_dev->device_id;
+}
 
 const uint8_t *
 platform_get_fixture(const char *name, size_t *size_out)

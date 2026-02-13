@@ -1,0 +1,599 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Unified console client for ATI Rage 128 test firmware
+# Supports interactive mode with readline, completion, and history
+# Also supports non-interactive mode for scripting
+
+require 'base64'
+require 'socket'
+require 'zlib'
+require 'fileutils'
+require 'yaml'
+require 'optparse'
+require 'reline'
+require_relative '../lib/rle'
+
+# Default connection settings
+DEFAULT_HOST = 'localhost'
+DEFAULT_PORT = 9001
+DEFAULT_BAUD = 115_200
+TIMEOUT = 30
+
+# File transfer protocol markers
+FILE_START_MARKER = "===FILE_START===\r\n".b
+FILE_END_MARKER = "===FILE_END===\r\n".b
+
+# End-of-transmission marker - signals command completion
+EOT = "\x04".b
+
+# XDG directories
+def xdg_state_home
+  ENV['XDG_STATE_HOME'] || File.expand_path('~/.local/state')
+end
+
+def history_file
+  dir = File.join(xdg_state_home, 'rage128')
+  FileUtils.mkdir_p(dir) unless Dir.exist?(dir)
+  File.join(dir, 'history')
+rescue StandardError
+  # Fallback if we can't create the directory
+  File.expand_path('~/.rage128_history')
+end
+
+# Load history from file
+def load_history
+  path = history_file
+  return unless File.exist?(path)
+
+  File.readlines(path, chomp: true).each do |line|
+    Reline::HISTORY << line
+  end
+rescue StandardError => e
+  warn "Warning: Could not load history: #{e.message}"
+end
+
+# Save history to file
+def save_history
+  path = history_file
+  File.open(path, 'w') do |f|
+    Reline::HISTORY.each { |line| f.puts(line) }
+  end
+rescue StandardError => e
+  warn "Warning: Could not save history: #{e.message}"
+end
+
+# Parse file header line: filename:rle:original_size:crc32_hex
+def parse_file_header(header_line)
+  parts = header_line.strip.split(':')
+  return [nil, nil, nil, nil] if parts.length != 4
+
+  filename = parts[0]
+  encoding = parts[1]
+  begin
+    original_size = Integer(parts[2])
+    expected_crc = Integer(parts[3], 16)
+  rescue ArgumentError
+    return [nil, nil, nil, nil]
+  end
+  [filename, encoding, original_size, expected_crc]
+end
+
+# Process response data, extracting any embedded files
+# Returns the response with file blocks removed
+def process_response(data, output_dir)
+  data = data.b # Ensure binary encoding
+  result = []
+  files_captured = 0
+
+  loop do
+    start_idx = data.index(FILE_START_MARKER)
+
+    if start_idx.nil?
+      # No more file markers - keep remaining data
+      result << data
+      break
+    end
+
+    # Keep everything before the marker
+    result << data[0...start_idx] if start_idx.positive?
+
+    # Find header line (ends with \n after marker)
+    header_start = start_idx + FILE_START_MARKER.bytesize
+    header_end = data.index("\n".b, header_start)
+
+    if header_end.nil?
+      # Incomplete - keep as-is
+      result << data[start_idx..]
+      break
+    end
+
+    header_line = data[header_start...header_end]
+    filename, encoding, original_size, expected_crc = parse_file_header(header_line)
+
+    if filename.nil? || encoding.nil?
+      # Invalid header - output marker and continue
+      result << FILE_START_MARKER
+      data = data[(start_idx + FILE_START_MARKER.bytesize)..]
+      next
+    end
+
+    if encoding != 'rle+base64'
+      warn "Warning: Unknown encoding '#{encoding}' for #{filename}"
+      result << FILE_START_MARKER
+      data = data[(start_idx + FILE_START_MARKER.bytesize)..]
+      next
+    end
+
+    # Find end marker
+    data_start = header_end + 1
+    end_marker_idx = data.index(FILE_END_MARKER, data_start)
+
+    if end_marker_idx.nil?
+      # Incomplete - keep as-is
+      result << data[start_idx..]
+      break
+    end
+
+    # Extract and decode: Base64 -> RLE -> raw
+    encoded_data = data[data_start...end_marker_idx]
+
+    begin
+      # Base64 decode (handles line wrapping automatically)
+      rle_data = Base64.decode64(encoded_data)
+      # RLE decode
+      decoded_data = RLE.decode(rle_data)
+    rescue StandardError => e
+      warn "Warning: Decode failed for #{filename}: #{e}"
+      data = data[(end_marker_idx + FILE_END_MARKER.bytesize)..]
+      next
+    end
+
+    # Verify size
+    if decoded_data.bytesize != original_size
+      warn "Warning: Size mismatch for #{filename}: expected #{original_size}, got #{decoded_data.bytesize}"
+    end
+
+    # Verify CRC
+    actual_crc = Zlib.crc32(decoded_data) & 0xFFFFFFFF
+    if actual_crc != expected_crc
+      warn "ERROR: CRC mismatch for #{filename}: expected #{expected_crc.to_s(16).rjust(8, '0')}, got #{actual_crc.to_s(16).rjust(8, '0')}"
+    end
+
+    # Write file (RLE-compressed data, after Base64 decoding)
+    output_path = File.join(output_dir, filename)
+    FileUtils.mkdir_p(File.dirname(output_path))
+    File.binwrite(output_path, rle_data)
+
+    files_captured += 1
+    ratio = rle_data.bytesize.to_f / decoded_data.bytesize * 100 rescue 0
+    warn "Captured: #{output_path} (#{decoded_data.bytesize} -> #{rle_data.bytesize} bytes, #{'%.1f' % ratio}% compression)"
+
+    # Continue after this file block
+    data = data[(end_marker_idx + FILE_END_MARKER.bytesize)..]
+  end
+
+  warn "\nTotal files captured: #{files_captured}" if files_captured.positive?
+
+  result.join
+end
+
+# Load register names from YAML files for completion
+def load_register_names
+  yaml_dir = File.expand_path('../ati/registers', __dir__)
+  common = load_register_file(File.join(yaml_dir, 'common.yaml'))
+  r128 = load_register_file(File.join(yaml_dir, 'r128.yaml'), "R128_")
+  r100 = load_register_file(File.join(yaml_dir, 'r100.yaml'), "R100_")
+  [*common, *r128, *r100].uniq.sort
+end
+
+def load_register_file(file, prefix = "")
+  data = YAML.safe_load_file(file, permitted_classes: [Symbol])
+  if !data.is_a?(Hash) || !data['registers'].is_a?(Hash)
+    raise "Invalid register file at: #{file}"
+  end
+  return data['registers'].keys.map { |k| "#{prefix}#{k}" }
+end
+
+# Command definitions for completion
+COMMANDS = %w[
+  r rx w vr vw pr pw clr mr t tl cce regs dump help ? info reboot
+].freeze
+
+SUBCOMMANDS = {
+  'cce' => %w[init start stop r w status],
+  'regs' => %w[save diff],
+  'dump' => %w[screen vram]
+}.freeze
+
+# Connection wrapper for TCP or serial device
+class Connection
+  attr_reader :io
+
+  def initialize(io)
+    @io = io
+  end
+
+  def write(data)
+    @io.write(data)
+  end
+
+  def read_available(timeout: 0.1)
+    data = ''.b
+    loop do
+      ready = IO.select([@io], nil, nil, timeout)
+      break unless ready
+
+      chunk = @io.read_nonblock(4096)
+      break if chunk.nil? || chunk.empty?
+
+      data << chunk
+    rescue IO::WaitReadable
+      break
+    rescue EOFError
+      break
+    end
+    data
+  end
+
+  # Read until we see the full prompt (EOT + "> ")
+  # Yields chunks as they arrive for streaming (without the EOT and prompt)
+  # If no block given, returns complete response
+  # Uses idle timeout - resets each time data is received
+  def read_until_eot(timeout: TIMEOUT)
+    data = ''.b
+    yielded_bytes = 0
+    eot_prompt = "#{EOT}> ".b
+
+    loop do
+      # Idle timeout - resets each time we check for data
+      ready = IO.select([@io], nil, nil, timeout)
+      raise 'Timeout waiting for response' unless ready
+
+      begin
+        chunk = @io.read_nonblock(4096)
+        next unless chunk
+
+        data << chunk
+
+        if block_given?
+          # Check if we've received the full EOT + prompt
+          if data.include?(eot_prompt)
+            # Yield any remaining data before EOT that hasn't been yielded
+            before_eot = data.split(EOT, 2).first
+            remaining_data = before_eot[yielded_bytes..]
+            yield remaining_data if remaining_data && !remaining_data.empty?
+            break
+          elsif !data.include?(EOT)
+            # No EOT yet, safe to yield this chunk
+            yield chunk
+            yielded_bytes += chunk.bytesize
+          end
+          # If we have EOT but not full prompt yet, hold the data
+        end
+
+        break if data.include?(eot_prompt)
+
+      rescue IO::WaitReadable
+        # continue
+      rescue EOFError
+        break
+      end
+    end
+    data
+  end
+
+  # Drain until we see EOT + prompt (used for initial sync)
+  def drain_until_eot(timeout: TIMEOUT)
+    read_until_eot(timeout: timeout)
+    nil
+  end
+
+  def close
+    @io.close
+  end
+
+  def self.tcp(host, port)
+    sock = TCPSocket.new(host, port)
+    sock.setsockopt(Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, [TIMEOUT, 0].pack('l_2'))
+    new(sock)
+  end
+
+  def self.serial(device, baud)
+    # Configure serial port via stty
+    system("stty -F #{device} #{baud} cs8 -cstopb -parenb raw -echo 2>/dev/null") or
+      raise "Failed to configure serial port #{device}"
+
+    io = File.open(device, 'r+')
+    io.sync = true
+    new(io)
+  end
+end
+
+# Console client
+class Console
+  def initialize(conn, options = {})
+    @conn = conn
+    @output_dir = options[:output_dir] || '.'
+    @raw_mode = options[:raw_mode] || false
+    @registers = []
+    @tests = []
+  end
+
+  # Fetch chip info by running 'info' command
+  # Must be called after connection is synced
+  def fetch_chip_info
+    @conn.write("info\n")
+    response = @conn.read_until_eot
+
+    # Parse: "Family:  R128" or "Family:  R100"
+    if response =~ /Family:\s+\e\[36m(\w+)\e\[0m/
+      @chip_family = $1
+    elsif response =~ /Family:\s+(\w+)/
+      @chip_family = $1
+    else
+      @chip_family = 'ATI'
+    end
+
+    # Parse: "Name:    Rage 128 PRO Ultra AGP 4x"
+    if response =~ /Name:\s+\e\[36m(.+?)\e\[0m/
+      @chip_name = $1
+    elsif response =~ /Name:\s+(.+)$/
+      @chip_name = $1.strip
+    else
+      @chip_name = @chip_family
+    end
+  rescue StandardError => e
+    warn "Warning: Could not fetch chip info: #{e.message}"
+    @chip_family = 'ATI'
+    @chip_name = 'ATI'
+  end
+
+  def print_banner
+    name = @chip_name
+    width = name.length + 4
+    puts "\e[36m╭#{'─' * width}╮\e[0m"
+    puts "\e[36m│\e[0m  #{name}  \e[36m│\e[0m"
+    puts "\e[36m╰#{'─' * width}╯\e[0m"
+  end
+
+  # Fetch test names by running 'tl' command
+  # Must be called after connection is synced
+  def fetch_test_names
+    @conn.write("tl\n")
+    response = @conn.read_until_eot
+
+    # Parse test list output: "  test_name  [chip] description"
+    @tests = response.lines.grep(/^\s+\S+\s+\[/).map do |line|
+      line.strip.split(/\s+/).first
+    end.compact
+  rescue StandardError => e
+    warn "Warning: Could not fetch test names: #{e.message}"
+    @tests = []
+  end
+
+  def setup_completion(registers)
+    @registers = registers
+
+    Reline.completion_proc = lambda do |input|
+      # Get the full line and cursor position
+      line = Reline.line_buffer
+      words = line.split(/\s+/)
+
+      # Determine what we're completing
+      # If line is empty or only has partial first word, complete commands
+      # Otherwise complete arguments based on the command
+      if words.empty? || (words.length == 1 && !line.end_with?(' '))
+        # Completing command name
+        COMMANDS.grep(/^#{Regexp.escape(input)}/i)
+      else
+        # Completing an argument - words[0] is the command
+        cmd = words[0].downcase
+        arg_index = line.end_with?(' ') ? words.length : words.length - 1
+
+        if arg_index == 1 && SUBCOMMANDS.key?(cmd)
+          # Completing subcommand
+          SUBCOMMANDS[cmd].grep(/^#{Regexp.escape(input)}/i)
+        elsif cmd == 't' && arg_index == 1
+          # Completing test name
+          @tests.grep(/^#{Regexp.escape(input)}/i)
+        elsif %w[r rx w].include?(cmd) && arg_index == 1
+          # Completing register name for r/rx/w
+          # Match against input prefix, return both cases
+          @registers.select { |r| r.start_with?(input.upcase) }.flat_map do |r|
+            [r, r.downcase]
+          end
+        else
+          []
+        end
+      end
+    end
+
+    Reline.completion_append_character = ' '
+    Reline.autocompletion = true
+
+    # Customize completion menu colors
+    Reline::Face.config(:completion_dialog) do |face|
+      face.define :default, foreground: :white, background: :black
+      face.define :enhanced, foreground: :black, background: :cyan
+      face.define :scrollbar, foreground: :cyan, background: :black
+    end
+  end
+
+  # Run in interactive mode
+  def interactive
+    load_history
+
+    # Sync connection - send newline and wait for EOT
+    @conn.write("\n")
+    @conn.drain_until_eot
+
+    # Fetch chip info and test names for completion
+    fetch_chip_info
+    fetch_test_names
+    setup_completion(@registers)
+
+    print_banner
+    prompt = "#{@chip_family.downcase} \e[36m▸\e[0m "
+    puts 'Type ? for help, Tab for completion'
+
+    loop do
+      begin
+        line = Reline.readline(prompt, true)
+      rescue Interrupt
+        puts
+        next
+      end
+
+      break if line.nil? # EOF
+
+      # Skip empty lines and don't add duplicates to history
+      if line.strip.empty?
+        Reline::HISTORY.pop
+        next
+      end
+
+      # Remove duplicate history entries
+      if Reline::HISTORY.length > 1 && Reline::HISTORY[-2] == line
+        Reline::HISTORY.pop
+      end
+
+      # Send command
+      @conn.write("#{line}\n")
+
+      # Stream response - print each chunk as it arrives until EOT
+      # Skip the echoed command (first line)
+      first_line = true
+      @conn.read_until_eot do |chunk|
+        if first_line
+          # Strip the echoed command from the first chunk
+          if chunk.include?("\n")
+            # Remove everything up to and including the first newline
+            chunk = chunk.sub(/\A[^\n]*\n/, '')
+            first_line = false
+          else
+            # Haven't seen newline yet, skip entire chunk
+            next
+          end
+        end
+        print filter_chunk(chunk)
+        $stdout.flush
+      end
+    end
+  ensure
+    save_history
+  end
+
+  # Filter a chunk of output for display
+  def filter_chunk(data)
+    # Strip ANSI codes in raw mode
+    data = data.gsub(/\e\[[0-9;]*m/, '') if @raw_mode
+
+    # Convert CRLF to LF
+    data = data.gsub("\r\n", "\n").gsub("\r", '')
+
+    data
+  end
+
+  # Run single command (non-interactive mode)
+  def execute(cmd)
+    # Send newline to trigger initial prompt
+    @conn.write("\n")
+    @conn.drain_until_eot
+
+    # Send command
+    @conn.write("#{cmd}\n")
+
+    # Read until EOT
+    response = @conn.read_until_eot
+
+    # Remove EOT and prompt suffix
+    response = response.split(EOT, 2).first || ''
+
+    # Extract any embedded files
+    response = process_response(response, @output_dir)
+
+    # Convert CRLF to LF and clean up
+    response = response.gsub("\r\n", "\n").gsub("\r", '')
+
+    # Strip command echo (first line)
+    lines = response.split("\n")
+    lines.shift if lines.first&.strip == cmd
+
+    # Strip ANSI in raw mode
+    lines = lines.map { |l| l.gsub(/\e\[[0-9;]*m/, '') } if @raw_mode
+
+    puts lines.join("\n")
+  end
+end
+
+# Parse command line options
+options = {
+  host: ENV['RAGE128_HOST'] || DEFAULT_HOST,
+  port: (ENV['RAGE128_PORT'] || DEFAULT_PORT).to_i,
+  device: ENV['RAGE128_DEVICE'],
+  baud: DEFAULT_BAUD,
+  output_dir: '.',
+  raw_mode: false
+}
+
+OptionParser.new do |opts|
+  opts.banner = 'Usage: console [options] [command]'
+
+  opts.on('-h', '--host HOST', "TCP host (default: #{DEFAULT_HOST})") do |h|
+    options[:host] = h
+  end
+
+  opts.on('-p', '--port PORT', Integer, "TCP port (default: #{DEFAULT_PORT})") do |p|
+    options[:port] = p
+  end
+
+  opts.on('-d', '--device DEVICE', 'Serial device (e.g., /dev/ttyUSB0)') do |d|
+    options[:device] = d
+  end
+
+  opts.on('-b', '--baud RATE', Integer, "Baud rate for serial (default: #{DEFAULT_BAUD})") do |b|
+    options[:baud] = b
+  end
+
+  opts.on('-o', '--output-dir DIR', 'Directory for captured files') do |d|
+    options[:output_dir] = d
+  end
+
+  opts.on('-r', '--raw', 'Strip ANSI escape codes from output') do
+    options[:raw_mode] = true
+  end
+
+  opts.on('--help', 'Show this help') do
+    puts opts
+    exit
+  end
+end.parse!
+
+# Load register names
+registers = load_register_names
+
+# Connect
+conn = if options[:device]
+         Connection.serial(options[:device], options[:baud])
+       else
+         Connection.tcp(options[:host], options[:port])
+       end
+
+console = Console.new(conn, options)
+console.instance_variable_set(:@registers, registers)
+
+begin
+  if ARGV.empty? && $stdin.tty?
+    # Interactive mode
+    console.interactive
+  elsif ARGV.any?
+    # Command from args
+    console.execute(ARGV.join(' '))
+  else
+    # Command from stdin
+    console.execute($stdin.read.strip)
+  end
+ensure
+  conn.close
+end

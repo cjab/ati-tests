@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# RLE encode a binary file
+# Format: 0xFF <count> <byte> for runs of 3+, raw bytes otherwise
+
+require_relative '../lib/rle'
+
+if ARGV.empty?
+  warn "Usage: #{$PROGRAM_NAME} <input.bin> [output.rle]"
+  exit 1
+end
+
+input_path = ARGV[0]
+output_path = ARGV[1] || input_path.sub(/\.bin$/, '.rle')
+
+data = File.binread(input_path)
+encoded = RLE.encode(data)
+File.binwrite(output_path, encoded)
+
+ratio = encoded.bytesize.to_f / data.bytesize * 100
+puts "#{data.bytesize} -> #{encoded.bytesize} bytes (#{'%.1f' % ratio}%)"

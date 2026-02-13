@@ -12,57 +12,23 @@ dependencies. If not, the following are required:
 * gcc
 * make
 * pciutils
+* ruby
 
 Then: `make`
 
-# Setup
-
-## Baremetal
-By default this compiles a baremetal elf file that can be loaded via QEMU's
-`-kernel` argument. This mode requires much less setup and is the preferred
-way to run tests at this point. See "Running".
-
-## Linux
-There are a lot of assumptions made about the state of the system when running
-these tests. I've run them in QEMU and on real hardware running Debian Lenny and
-Debian Squeeze. Before running the tests it's required to start a minimal X
-environment: `Xorg :0`. The xserver-xorg-video-r128 driver must also be compiled
-with DRI disabled to force use of MMIO. The version distributed with Debian
-is compiled with DRI which will always use CCE (not yet supported in QEMU ati-vga).
-
-The Xorg display should be configured at 640x480 @ 32-bit color (BGRA).
-
-The setup is a bit involved, hopefully I can provide a QCOW2 image in the future.
-
 # Running
 
-## Baremetal
+To start the repl:
 
-To start the baremetal repl:
 ```
-qemu-system-x86_64 \
-  -accel kvm \
-  -vga none \
-  -device ati-vga,model=rage128p \
-  -machine pc \
-  -cpu athlon,3dnow=off,3dnowext=off \
-  -m 1024 \
-  -d unimp,guest_errors \
-  -D /tmp/qemu-debug.log \
-  -trace "ati_*" \
-  -kernel "ati_tests.elf" \
-  -append "repl" \
-  -serial mon:stdio
+./bin/run-qemu
 ```
+
+This will search for a sibling qemu directory first (../qemu) and run the built
+binary. If that doesn't exist then it will use the system install of qemu. You
+can also set the binary with the `QEMU` env var.
 
 Type ? at the serial console for help at boot.
-
-## Linux
-To run all tests: `./run-tests`.
-
-Individual tests can be run with: `./run-tests <TEST_NAME1> <TEST_NAME2>`.
-
-The tests will require root privileges to access hardware.
 
 # Development
 

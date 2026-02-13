@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Auto-generate fixture registry for baremetal builds
+# Usage: generate_fixture_registry fixtures/*.rle > fixtures_registry.c
+
+puts '/* Auto-generated - do not edit */'
+puts '#include <stddef.h>'
+puts '#include <stdint.h>'
+puts ''
+
+# Forward declarations
+ARGV.each do |rle_file|
+  name = File.basename(rle_file, '.rle')
+  puts "extern const uint8_t fixture_#{name}_start[];"
+  puts "extern const uint8_t fixture_#{name}_end[];"
+end
+
+puts ''
+puts 'typedef struct {'
+puts '    const char *name;'
+puts '    const uint8_t *start;'
+puts '    const uint8_t *end;'
+puts '} fixture_entry_t;'
+puts ''
+puts 'const fixture_entry_t fixture_registry[] = {'
+
+ARGV.each do |rle_file|
+  name = File.basename(rle_file, '.rle')
+  puts "    {\"#{name}\", fixture_#{name}_start, fixture_#{name}_end},"
+end
+
+puts '    {NULL, NULL, NULL}'
+puts '};'

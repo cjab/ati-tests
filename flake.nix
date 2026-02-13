@@ -18,6 +18,7 @@
             pkgs.gcc
             pkgs.gnumake
             pkgs.ruby
+            pkgs.pkgsi686Linux.glibc.dev
             # real hardware
             pkgs.pciutils
             # dev tools
@@ -27,6 +28,8 @@
             pkgs.libisoburn
             pkgs.mtools
             pkgs.grub2
+            # image conversion
+            pkgs.imagemagick
           ];
 
           hardeningDisable = [ "all" ];

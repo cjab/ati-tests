@@ -4,9 +4,9 @@
 #include "platform/platform.h"
 // IWYU pragma: end_exports
 
-#include "ati.h"
-#include "common.h"
-#include "repl.h"
+#include "ati/ati.h"
+#include "tests/test.h"
+#include "repl/repl.h"
 
 #define MAX_TESTS 100
 
@@ -14,14 +14,15 @@ typedef struct {
     const char *id;
     const char *display_name;
     bool (*func)(ati_device_t *);
+    ati_chip_family_t chips;
 } test_case_t;
 
 static test_case_t tests[MAX_TESTS];
 static int test_count = 0;
 
 void
-register_test(const char *id, const char *display_name,
-              bool (*func)(ati_device_t *))
+register_test_internal(const char *id, const char *display_name,
+                       bool (*func)(ati_device_t *), ati_chip_family_t chips)
 {
     if (test_count >= MAX_TESTS) {
         fprintf(stderr, "Too many tests registered");
@@ -30,10 +31,11 @@ register_test(const char *id, const char *display_name,
     tests[test_count].id = id;
     tests[test_count].display_name = display_name;
     tests[test_count].func = func;
+    tests[test_count].chips = chips;
     test_count += 1;
 }
 
-void
+static void
 run_test(ati_device_t *dev, const test_case_t *test)
 {
     ati_reset_for_test(dev);
@@ -49,17 +51,46 @@ run_test(ati_device_t *dev, const test_case_t *test)
 void
 run_all_tests(ati_device_t *dev)
 {
-    printf("\nRunning tests...\n");
+    ati_chip_family_t family = ati_get_chip_family(dev);
+    int skipped = 0;
+    int ran = 0;
+
+    printf("\nRunning tests for %s...\n", ati_chip_family_name(family));
+
     for (int i = 0; i < test_count; i++) {
+        // Check if test is compatible with current chip
+        if (!(tests[i].chips & family)) {
+            skipped++;
+            continue;
+        }
         run_test(dev, &tests[i]);
+        ran++;
     }
+
+    printf("\nRan %d tests", ran);
+    if (skipped > 0) {
+        printf(" (%d skipped - incompatible chip)", skipped);
+    }
+    printf("\n");
 }
 
 void
 run_test_by_name(ati_device_t *dev, char *name)
 {
+    ati_chip_family_t family = ati_get_chip_family(dev);
+
     for (int i = 0; i < test_count; i++) {
         if (!strcmp(name, tests[i].id)) {
+            // Check chip compatibility
+            if (!(tests[i].chips & family)) {
+                printf("  %s ... " YELLOW "skipped" RESET " (requires %s%s%s, current: %s)\n",
+                       tests[i].display_name,
+                       (tests[i].chips & CHIP_R128) ? "R128" : "",
+                       ((tests[i].chips & CHIP_R128) && (tests[i].chips & CHIP_R100)) ? "/" : "",
+                       (tests[i].chips & CHIP_R100) ? "R100" : "",
+                       ati_chip_family_name(family));
+                return;
+            }
             run_test(dev, &tests[i]);
             return;
         }
@@ -72,14 +103,24 @@ list_tests(void)
 {
     printf("Available tests:\n");
     for (int i = 0; i < test_count; i++) {
-        printf("  %-35s - %s\n", tests[i].id, tests[i].display_name);
+        const char *chip_str;
+        if (tests[i].chips == (ati_chip_family_t)CHIP_ALL) {
+            chip_str = "all";
+        } else if (tests[i].chips == CHIP_R128) {
+            chip_str = "R128";
+        } else if (tests[i].chips == CHIP_R100) {
+            chip_str = "R100";
+        } else {
+            chip_str = "???";
+        }
+        printf("  %-35s [%s] %s\n", tests[i].id, chip_str, tests[i].display_name);
     }
 }
 
 extern void register_clipping_tests(void);
 extern void register_pitch_offset_cntl_tests(void);
 extern void register_host_data_tests(void);
-extern void register_rop3_tests(void);
+extern void register_r128_rop3_tests(void);
 extern void register_cce_tests(void);
 
 void
@@ -88,7 +129,7 @@ register_all_tests(void)
     register_clipping_tests();
     register_pitch_offset_cntl_tests();
     register_host_data_tests();
-    register_rop3_tests();
+    register_r128_rop3_tests();
     register_cce_tests();
 }
 

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Build test kernel and connect to real hardware via chomposaur
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+TESTS_DIR="$(dirname "$SCRIPT_DIR")"
+KERNEL="$TESTS_DIR/ati_tests.elf"
+REMOTE_HOST="chomposaur"
+REMOTE_PORT=9001
+
+# Build the kernel (silent if up-to-date)
+if ! make -C "$TESTS_DIR" --no-print-directory PLATFORM=baremetal -q 2>/dev/null; then
+    make -C "$TESTS_DIR" --no-print-directory PLATFORM=baremetal
+    echo ""
+fi
+
+# Deploy kernel if not on chomposaur
+if [ "$(hostname)" != "$REMOTE_HOST" ]; then
+    echo -e "\033[1;36mDeploying kernel to $REMOTE_HOST...\033[0m"
+    scp -q "$KERNEL" "$REMOTE_HOST:$TESTS_DIR/"
+fi
+
+echo -e "\033[1;36mConnecting to $REMOTE_HOST:$REMOTE_PORT\033[0m"
+
+# Connect console
+"$SCRIPT_DIR/console" --host "$REMOTE_HOST" --port "$REMOTE_PORT" "$@"

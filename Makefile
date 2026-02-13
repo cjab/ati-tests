@@ -1,25 +1,25 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra -O1 -MMD -MP
 PLATFORM ?= baremetal
+BUILD_DIR = build
 
 # Auto-clean when platform changes
--include .platform
+-include $(BUILD_DIR)/.platform
 ifneq ($(LAST_PLATFORM),$(PLATFORM))
-$(shell rm -f *.o tests/*.o platform/*/*.o fixtures/*.o .platform)
+$(shell rm -rf $(BUILD_DIR))
 endif
-$(shell echo "LAST_PLATFORM=$(PLATFORM)" > .platform)
 
 ifeq ($(PLATFORM),baremetal)
 	CFLAGS += -ffreestanding -fno-stack-protector -fno-pic -no-pie -m32 -DPLATFORM_BAREMETAL
-	LDFLAGS = -nostdlib -T linker.ld -m32 -no-pie
-	PLATFORM_SRC = platform/baremetal/baremetal.c platform/baremetal/serial.c boot.S platform/baremetal/tinyprintf.c
+	LDFLAGS = -nostdlib -T platform/baremetal/linker.ld -m32 -no-pie
+	PLATFORM_SRC = platform/baremetal/baremetal.c platform/baremetal/serial.c platform/baremetal/boot.S platform/baremetal/tinyprintf.c
 	TARGET = ati_tests.elf
 	ISO = ati_tests.iso
 	
-	# Fixture handling for baremetal
-	FIXTURE_BINS := $(wildcard fixtures/*.bin)
-	FIXTURE_OBJS := $(FIXTURE_BINS:.bin=.o)
-	FIXTURE_REGISTRY = fixtures/fixtures_registry.o
+	# Fixture handling for baremetal (RLE compressed)
+	FIXTURE_RLES := $(wildcard fixtures/*.rle)
+	FIXTURE_OBJS := $(patsubst fixtures/%.rle,$(BUILD_DIR)/fixtures/%.o,$(FIXTURE_RLES))
+	FIXTURE_REGISTRY = $(BUILD_DIR)/fixtures/fixtures_registry.o
 else
 	LDFLAGS = -lpci
 	PLATFORM_SRC = platform/linux/linux.c
@@ -28,32 +28,55 @@ else
 	FIXTURE_REGISTRY =
 endif
 
-COMMON_SRCS = main.c ati.c cce.c cce_cmd.c dump_cmd.c repl.c $(wildcard tests/*.c)
+# Test source files from all test directories
+TEST_SRCS = $(wildcard tests/common/*.c) $(wildcard tests/r128/*.c) $(wildcard tests/r100/*.c)
+
+COMMON_SRCS = main.c ati/ati.c ati/r128.c ati/r100.c ati/cce.c repl/repl.c repl/cce_cmd.c repl/dump_cmd.c $(TEST_SRCS)
 SRCS = $(COMMON_SRCS) $(PLATFORM_SRC)
-OBJS = $(filter %.o,$(SRCS:.c=.o) $(SRCS:.S=.o)) $(FIXTURE_OBJS) $(FIXTURE_REGISTRY)
+
+# Transform source paths to build paths
+OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(filter %.c,$(SRCS))) \
+       $(patsubst %.S,$(BUILD_DIR)/%.o,$(filter %.S,$(SRCS))) \
+       $(FIXTURE_OBJS) $(FIXTURE_REGISTRY)
 
 # Generated register definitions
-REGS_YAML = registers.yaml
+REGS_DIR = ati/registers
 REGS_GEN = bin/generate_registers
-REGS_HDR = ati_regs_gen.h
+COMMON_REGS_HDR = $(REGS_DIR)/common_regs_gen.h
+R128_REGS_HDR = $(REGS_DIR)/r128_regs_gen.h
+R100_REGS_HDR = $(REGS_DIR)/r100_regs_gen.h
+ALL_REGS_HDRS = $(COMMON_REGS_HDR) $(R128_REGS_HDR) $(R100_REGS_HDR)
 
-all: $(REGS_HDR) $(TARGET)
+all: $(ALL_REGS_HDRS) $(TARGET)
 
-# Regenerate register header from YAML
-$(REGS_HDR): $(REGS_YAML) $(REGS_GEN)
-	$(REGS_GEN) -o $(REGS_HDR)
+# Regenerate register headers from YAML
+$(COMMON_REGS_HDR): $(REGS_DIR)/common.yaml $(REGS_GEN)
+	$(REGS_GEN) --chip common -o $@
+
+$(R128_REGS_HDR): $(REGS_DIR)/r128.yaml $(REGS_GEN)
+	$(REGS_GEN) --chip r128 --prefix R128_ -o $@
+
+$(R100_REGS_HDR): $(REGS_DIR)/r100.yaml $(REGS_GEN)
+	$(REGS_GEN) --chip r100 --prefix R100_ -o $@
 
 $(TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
 
-%.o: %.c
+# Pattern rule for C files
+$(BUILD_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-%.o: %.S
+# Pattern rule for assembly files
+$(BUILD_DIR)/%.o: %.S
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Include auto-generated dependency files (if they exist)
 -include $(OBJS:.o=.d)
+
+# Store platform marker in build dir
+$(shell mkdir -p $(BUILD_DIR) && echo "LAST_PLATFORM=$(PLATFORM)" > $(BUILD_DIR)/.platform)
 
 # Bootable ISO target (baremetal only, requires grub-mkrescue, xorriso)
 ifeq ($(PLATFORM),baremetal)
@@ -69,30 +92,36 @@ iso: $(TARGET)
 	TMPDIR=/tmp/grub-iso grub-mkrescue -o $(ISO) iso
 	rm -rf iso
 	@echo "Created $(ISO) - write to USB with: sudo dd if=$(ISO) of=/dev/sdX bs=4M status=progress"
-endif
 
-# Fixture build rules (baremetal only)
-ifeq ($(PLATFORM),baremetal)
-fixtures/fixtures_registry.c: $(FIXTURE_BINS) bin/generate_fixture_registry.sh
-	bash bin/generate_fixture_registry.sh $(FIXTURE_BINS) > $@
+# Fixture build rules (baremetal only, RLE compressed)
+$(BUILD_DIR)/fixtures/fixtures_registry.c: $(FIXTURE_RLES) bin/generate_fixture_registry
+	@mkdir -p $(dir $@)
+	bin/generate_fixture_registry $(FIXTURE_RLES) > $@
 
-fixtures/%.o: fixtures/%.bin
+$(BUILD_DIR)/fixtures/fixtures_registry.o: $(BUILD_DIR)/fixtures/fixtures_registry.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/fixtures/%.o: fixtures/%.rle
+	@mkdir -p $(dir $@)
 	objcopy -I binary -O elf32-i386 -B i386 \
 	    --rename-section .data=.rodata.fixtures,alloc,load,readonly,data,contents \
-	    --redefine-sym _binary_fixtures_$(subst -,_,$(notdir $*))_bin_start=fixture_$(subst -,_,$(notdir $*))_start \
-	    --redefine-sym _binary_fixtures_$(subst -,_,$(notdir $*))_bin_end=fixture_$(subst -,_,$(notdir $*))_end \
+	    --redefine-sym _binary_fixtures_$(subst -,_,$(notdir $*))_rle_start=fixture_$(subst -,_,$(notdir $*))_start \
+	    --redefine-sym _binary_fixtures_$(subst -,_,$(notdir $*))_rle_end=fixture_$(subst -,_,$(notdir $*))_end \
 	    --add-section .note.GNU-stack=/dev/null \
 	    --set-section-flags .note.GNU-stack=contents,readonly \
 	    $< $@
 endif
 
 clean:
-	rm -f $(OBJS) $(TARGET) ati_tests.elf run-tests boot.o platform/*/*.o fixtures/*.o fixtures/fixtures_registry.c ati_tests.iso .platform
-	rm -f *.d tests/*.d platform/*/*.d
+	rm -rf $(BUILD_DIR)
+	rm -f $(TARGET) ati_tests.elf run-tests ati_tests.iso
+	rm -f $(ALL_REGS_HDRS)
 
-# Regenerate register header
+# Regenerate all register headers
 regen:
-	$(REGS_GEN) -o $(REGS_HDR)
+	$(REGS_GEN) --chip common -o $(COMMON_REGS_HDR)
+	$(REGS_GEN) --chip r128 --prefix R128_ -o $(R128_REGS_HDR)
+	$(REGS_GEN) --chip r100 --prefix R100_ -o $(R100_REGS_HDR)
 
 compile_commands.json:
 	bear -- $(MAKE) clean
