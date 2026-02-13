@@ -21,7 +21,7 @@ Then: `make`
 To start the repl:
 
 ```
-./bin/run-qemu
+./bin/run-qemu <r128|r100>
 ```
 
 This will search for a sibling qemu directory first (../qemu) and run the built
