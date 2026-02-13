@@ -48,6 +48,8 @@ test runs. If a fixture doesn't exist the test will ask you if you would like
 to create it. Obviously this should probably only be done on _real_ hardware
 for comparison against later runs on the emulated card.
 
+Fixtures can be converted to png for viewing using the `bin/rle-to-png` tool.
+
 # Test Coverage
 
 * **clipping**: Scissor register latching and clipping behavior
