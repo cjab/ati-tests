@@ -217,120 +217,75 @@ test_host_data_morphos(ati_device_t *dev)
     return true;
 }
 
+typedef enum { LEFT_TO_RIGHT = 1, RIGHT_TO_LEFT = 0 } horiz_dir_t;
+typedef enum { TOP_TO_BOTTOM = 1, BOTTOM_TO_TOP = 0 } vert_dir_t;
+
 bool
 do_clipping(ati_device_t *dev, int margin, int size, int border,
-            const char *dir)
+            horiz_dir_t hdir, vert_dir_t vdir)
 {
     char fixture[128];
+    const char *hdir_str = (hdir == LEFT_TO_RIGHT) ? "ltr" : "rtl";
+    const char *vdir_str = (vdir == TOP_TO_BOTTOM) ? "ttb" : "btt";
     int clip = 3;
-    int min_edge = margin;
-    int max_edge = margin + size - 1;
-    int min_clipped_edge = min_edge + clip;
-    int max_clipped_edge = max_edge - clip;
+    int top            = margin;
+    int left           = margin;
+    int bottom         = margin + size - 1;
+    int right          = margin + size - 1;
+    int top_clipped    = margin + clip;
+    int left_clipped   = margin + clip;
+    int bottom_clipped = margin + size - 1 - clip;
+    int right_clipped  = margin + size - 1 - clip;
     uint32_t dst_width_height = (size << 16) | size;
+    uint32_t dp_cntl = (hdir == LEFT_TO_RIGHT ? 0x1 : 0x0) |
+                       (vdir == TOP_TO_BOTTOM ? 0x2 : 0x0);
+    uint32_t dst_x = (hdir == LEFT_TO_RIGHT ? margin : margin + size - 1);
+    uint32_t dst_y = (vdir == TOP_TO_BOTTOM ? margin : margin + size - 1);
+    uint32_t dst_y_x = (dst_y << 16) | dst_x;
+
+    struct { const char *name; int top; int left; int bottom; int right; } cases[] = {
+        {"no_clip",         top,         left,         bottom,         right},
+        {"clip_right",      top,         left,         bottom,         right_clipped},
+        {"clip_left",       top,         left_clipped, bottom,         right},
+        {"clip_left_right", top,         left_clipped, bottom,         right_clipped},
+        {"clip_top",        top_clipped, left,         bottom,         right},
+        {"clip_bottom",     top,         left,         bottom_clipped, right},
+        {"clip_top_bottom", top_clipped, left,         bottom_clipped, right},
+        {"clip_all",        top_clipped, left_clipped, bottom_clipped, right_clipped},
+    };
+
+    wr_dp_cntl(dev, dp_cntl);
+    wr_dst_y_x(dev, dst_y_x);
 
     /* Completely clipped */
     ati_screen_clear(dev, 0);
-    wr_sc_top_left(dev, ((max_edge + 100) << 16) | (max_edge + 100));
-    wr_sc_bottom_right(dev, ((max_edge + 200) << 16) | (max_edge + 200));
+    wr_sc_top_left(dev, ((bottom + 100) << 16) | (right + 100));
+    wr_sc_bottom_right(dev, ((bottom + 200) << 16) | (right + 200));
     wr_dst_width_height(dev, dst_width_height);
     draw_mono_box(dev, size, border);
-    snprintf(fixture, sizeof(fixture), "host_data_%s_completely_clipped_%dx%d",
-             dir, size, size);
+    snprintf(fixture, sizeof(fixture),
+             "host_data_%s_%s_completely_clipped_%dx%d",
+             hdir_str, vdir_str, size, size);
     ASSERT_TRUE(ati_screen_compare_fixture(dev, fixture));
 
-    /* No clipping */
-    ati_screen_clear(dev, 0);
-    wr_sc_top_left(dev, (min_edge << 16) | min_edge);
-    wr_sc_bottom_right(dev, (max_edge << 16) | max_edge);
-    wr_dst_width_height(dev, dst_width_height);
-    draw_mono_box(dev, size, border);
-    snprintf(fixture, sizeof(fixture), "host_data_%s_no_clip_%dx%d",
-             dir, size, size);
-    ASSERT_TRUE(ati_screen_compare_fixture(dev, fixture));
-
-    /* Right clipping */
-    ati_screen_clear(dev, 0);
-    wr_sc_top_left(dev, (min_edge << 16) | min_edge);
-    wr_sc_bottom_right(dev, (max_edge << 16) | max_clipped_edge);
-    wr_dst_width_height(dev, dst_width_height);
-    draw_mono_box(dev, size, border);
-    snprintf(fixture, sizeof(fixture), "host_data_%s_clip_right_%dx%d",
-             dir, size, size);
-    ASSERT_TRUE(ati_screen_compare_fixture(dev, fixture));
-
-    /* Left clipping */
-    ati_screen_clear(dev, 0);
-    wr_sc_top_left(dev, (min_edge << 16) | min_clipped_edge);
-    wr_sc_bottom_right(dev, (max_edge << 16) | max_edge);
-    wr_dst_width_height(dev, dst_width_height);
-    draw_mono_box(dev, size, border);
-    snprintf(fixture, sizeof(fixture), "host_data_%s_clip_left_%dx%d",
-             dir, size, size);
-    ASSERT_TRUE(ati_screen_compare_fixture(dev, fixture));
-
-    /* Left and right clipping */
-    ati_screen_clear(dev, 0);
-    wr_sc_top_left(dev, (min_edge << 16) | min_clipped_edge);
-    wr_sc_bottom_right(dev, (max_edge << 16) | max_clipped_edge);
-    wr_dst_width_height(dev, dst_width_height);
-    draw_mono_box(dev, size, border);
-    snprintf(fixture, sizeof(fixture), "host_data_%s_clip_left_right_%dx%d",
-             dir, size, size);
-    ASSERT_TRUE(ati_screen_compare_fixture(dev, fixture));
-
-    /* Top clipping */
-    ati_screen_clear(dev, 0);
-    wr_sc_top_left(dev, (min_clipped_edge << 16) | min_edge);
-    wr_sc_bottom_right(dev, (max_edge << 16) | max_edge);
-    wr_dst_width_height(dev, dst_width_height);
-    draw_mono_box(dev, size, border);
-    snprintf(fixture, sizeof(fixture), "host_data_%s_clip_top_%dx%d",
-             dir, size, size);
-    ASSERT_TRUE(ati_screen_compare_fixture(dev, fixture));
-
-    /* Bottom clipping */
-    ati_screen_clear(dev, 0);
-    wr_sc_top_left(dev, (min_edge << 16) | min_edge);
-    wr_sc_bottom_right(dev, (max_clipped_edge << 16) | max_edge);
-    wr_dst_width_height(dev, dst_width_height);
-    draw_mono_box(dev, size, border);
-    snprintf(fixture, sizeof(fixture), "host_data_%s_clip_bottom_%dx%d",
-             dir, size, size);
-    ASSERT_TRUE(ati_screen_compare_fixture(dev, fixture));
-
-    /* Top and bottom clipping */
-    ati_screen_clear(dev, 0);
-    wr_sc_top_left(dev, (min_clipped_edge << 16) | min_edge);
-    wr_sc_bottom_right(dev, (max_clipped_edge << 16) | max_edge);
-    wr_dst_width_height(dev, dst_width_height);
-    draw_mono_box(dev, size, border);
-    snprintf(fixture, sizeof(fixture), "host_data_%s_clip_top_bottom_%dx%d",
-             dir, size, size);
-    ASSERT_TRUE(ati_screen_compare_fixture(dev, fixture));
-
-    /* All sides clipping */
-    ati_screen_clear(dev, 0);
-    wr_sc_top_left(dev, (min_clipped_edge << 16) | min_clipped_edge);
-    wr_sc_bottom_right(dev, (max_clipped_edge << 16) | max_clipped_edge);
-    wr_dst_width_height(dev, dst_width_height);
-    draw_mono_box(dev, size, border);
-    snprintf(fixture, sizeof(fixture), "host_data_%s_clip_all_%dx%d",
-             dir, size, size);
-    ASSERT_TRUE(ati_screen_compare_fixture(dev, fixture));
+    for (int i = 0; i < (int)(sizeof(cases) / sizeof(cases[0])); i++) {
+        ati_screen_clear(dev, 0);
+        wr_sc_top_left(dev, (cases[i].top << 16) | cases[i].left);
+        wr_sc_bottom_right(dev, (cases[i].bottom << 16) | cases[i].right);
+        wr_dst_width_height(dev, dst_width_height);
+        draw_mono_box(dev, size, border);
+        snprintf(fixture, sizeof(fixture),
+                 "host_data_%s_%s_%s_%dx%d",
+                 hdir_str, vdir_str, cases[i].name, size, size);
+        ASSERT_TRUE(ati_screen_compare_fixture(dev, fixture));
+    }
 
     return true;
 }
 
-bool
-test_host_data_clipping(ati_device_t *dev)
-{
+void setup_draw_defaults(ati_device_t *dev) {
     static const uint32_t BORDER = 0x00cc3355;
     static const uint32_t TRIANGLE_FILL = 0x0055cc33;
-
-    int margin = 10;
-    int size = 32;
-    int border = 4;
 
     /* Common setup */
     wr_dst_offset(dev, 0x0);
@@ -344,46 +299,45 @@ test_host_data_clipping(ati_device_t *dev)
     wr_r128_default_pitch(dev, 0x50);
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
+}
 
-    // Top to bottom, left to right
-    wr_dp_cntl(dev, 0x3);              /* L->R, T->B */
-    wr_dst_y_x(dev, (margin << 16) | margin);
-    ASSERT_TRUE(do_clipping(dev, margin, size, border, "ltr_ttb"));
+bool
+test_host_data_clipping_32x32(ati_device_t *dev)
+{
+    int margin = 10;
+    int size = 32;
+    int border = 4;
+    setup_draw_defaults(dev);
 
+    ASSERT_TRUE(do_clipping(dev, margin, size, border,
+                            LEFT_TO_RIGHT, TOP_TO_BOTTOM));
     //// TODO: Not yet implemented in QEMU
-    //// Bottom to top, left to right
-    //wr_dp_cntl(dev, 0x1);              /* L->R, B->T */
-    //wr_dst_y_x(dev, ((margin + size - 1) << 16) | margin);
-    //ASSERT_TRUE(do_clipping(dev, margin, size, border, "ltr_btt"));
+    //ASSERT_TRUE(do_clipping(dev, margin, size, border,
+    //                        LEFT_TO_RIGHT, BOTTOM_TO_TOP));
 
     /* Right to left seems to produce undefined behavior for HOST_DATA
      * Dumps are maintained in the fixtures directory for reference */
-    // Top to bottom, right to left
-    //wr_dp_cntl(dev, 0x2);              /* R->L, T->B */
-    //wr_dst_y_x(dev, (margin << 16) | (margin + size - 2));
-    //do_clipping(dev, margin, size, border, "rtl_ttb");
+    //ASSERT_TRUE(do_clipping(dev, margin, size, border,
+    //                        RIGHT_TO_LEFT, TOP_TO_BOTTOM));
+    //ASSERT_TRUE(do_clipping(dev, margin, size, border,
+    //                        RIGHT_TO_LEFT, BOTTOM_TO_TOP));
 
-    /* Right to left seems to produce undefined behavior for HOST_DATA
-     * Dumps are maintained in the fixtures directory for reference */
-    // Bottom to top, right to left
-    //wr_dp_cntl(dev, 0x0);              /* R->L, B->T */
-    //wr_dst_y_x(dev, ((margin + size - 1) << 16) | (margin + size - 1));
-    //do_clipping(dev, margin, size, border, "rtl_btt");
+    return true;
+}
 
-    int margin2 = 10;
-    int size2 = 48;
-    int border2 = 4;
+bool
+test_host_data_clipping_48x48(ati_device_t *dev)
+{
+    int margin = 10;
+    int size = 48;
+    int border = 4;
+    setup_draw_defaults(dev);
 
-    // Top to bottom, left to right
-    wr_dp_cntl(dev, 0x3);              /* L->R, T->B */
-    wr_dst_y_x(dev, (margin2 << 16) | margin2);
-    ASSERT_TRUE(do_clipping(dev, margin2, size2, border2, "ltr_ttb"));
-
+    ASSERT_TRUE(do_clipping(dev, margin, size, border,
+                            LEFT_TO_RIGHT, TOP_TO_BOTTOM));
     //// TODO: Not yet implemented in QEMU
-    //// Bottom to top, left to right
-    //wr_dp_cntl(dev, 0x1);              /* L->R, B->T */
-    //wr_dst_y_x(dev, ((margin2 + size2 - 1) << 16) | margin2);
-    //ASSERT_TRUE(do_clipping(dev, margin2, size2, border2, "ltr_btt"));
+    //ASSERT_TRUE(do_clipping(dev, margin, size, border,
+    //                        LEFT_TO_RIGHT, BOTTOM_TO_TOP));
 
     return true;
 }
@@ -395,5 +349,6 @@ register_host_data_tests(void)
     REGISTER_TEST(test_host_data_mono_is_bit_packed,
                   "host_data mono is bit packed");
     REGISTER_TEST(test_host_data_morphos, "test host data morphos");
-    REGISTER_TEST(test_host_data_clipping, "host_data clipping");
+    REGISTER_TEST(test_host_data_clipping_32x32, "host_data clipping 32x32");
+    REGISTER_TEST(test_host_data_clipping_48x48, "host_data clipping 48x48");
 }
