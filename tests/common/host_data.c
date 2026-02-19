@@ -49,6 +49,33 @@ mono_box_word(int size, int border, int word_index)
     return word;
 }
 
+static uint32_t
+color_box_word(int size, int border, int word_index)
+{
+    static const uint32_t BORDER = 0x00cc3355;
+    static const uint32_t TRIANGLE_FILL = 0x0055cc33;
+    static const uint32_t BACKGROUND_FILL = 0x003355cc;
+
+    int marker_size = border;
+    int marker_gap = border;
+    int x = word_index % size;
+    int y = word_index / size;
+
+
+    bool is_border = (y < border || y >= size - border ||
+                      x < border || x >= size - border);
+    bool is_triangle = x <= y;
+    bool is_marker = (!is_border &&
+                      x >= size - border - marker_size - marker_gap &&
+                      x < size - border - marker_gap &&
+                      y >= border + marker_gap &&
+                      y < border + marker_size + marker_gap);
+    uint32_t pixel =  is_border                ? BORDER :
+                      is_triangle || is_marker ? TRIANGLE_FILL :
+                                                 BACKGROUND_FILL;
+    return pixel;
+}
+
 static void
 draw_mono_box(ati_device_t *dev, int size, int border)
 {
@@ -58,6 +85,18 @@ draw_mono_box(ati_device_t *dev, int size, int border)
                       mono_box_word(size, border, i));
     ati_reg_write(dev, HOST_DATA_LAST,
                   mono_box_word(size, border, total_words - 1));
+}
+
+static void
+draw_color_box(ati_device_t *dev, int size, int border)
+{
+    int total_words = size * size;
+    for (int i = 0; i < total_words - 1; i++) {
+        uint32_t w = color_box_word(size, border, i);
+        ati_reg_write(dev, HOST_DATA0 + (i % 8) * 4, w);
+    }
+    ati_reg_write(dev, HOST_DATA_LAST,
+                  color_box_word(size, border, total_words - 1));
 }
 
 bool
@@ -339,6 +378,36 @@ test_host_data_clipping_48x48(ati_device_t *dev)
     return true;
 }
 
+bool
+test_host_data_color_32x32(ati_device_t *dev)
+{
+    //int margin = 10;
+    int size = 32;
+    int border = 4;
+    uint32_t dst_width_height = (size << 16) | size;
+    ati_screen_clear(dev, 0);
+    setup_draw_defaults(dev);
+
+    /* Set src_datatype to color */
+    wr_dp_datatype(dev, 0x40030006);
+
+    wr_dp_cntl(dev, 0x3);  // L->R, T->B
+    wr_sc_top_left(dev, 0);
+    wr_sc_bottom_right(dev, 0x1fff1fff);
+    wr_dst_width_height(dev, dst_width_height);
+    draw_color_box(dev, size, border);
+    ASSERT_TRUE(ati_screen_compare_fixture(dev,
+                                           "host_data_color_32x32_ttb_ltr"));
+
+    /*
+     * Bottom to top and right to left blits produce strange results.
+     * It's likely HOST_DATA blits were never intended to be used in that
+     * way. Bottom to top may work for mono HOST_DATA by accident.
+     */
+
+    return true;
+}
+
 void
 register_host_data_tests(void)
 {
@@ -348,4 +417,5 @@ register_host_data_tests(void)
     REGISTER_TEST(test_host_data_morphos, "test host data morphos");
     REGISTER_TEST(test_host_data_clipping_32x32, "host_data clipping 32x32");
     REGISTER_TEST(test_host_data_clipping_48x48, "host_data clipping 48x48");
+    REGISTER_TEST(test_host_data_color_32x32, "host_data color 32x32");
 }
