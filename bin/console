@@ -81,10 +81,11 @@ SUBCOMMANDS = {
 
 # Console client
 class Console
-  def initialize(conn, registers: [], output_dir: '.', raw_mode: false)
+  def initialize(conn, registers: [], output_dir: '.', raw_mode: false, prompt_tag: nil)
     @conn = conn
     @output_dir = output_dir
     @raw_mode = raw_mode
+    @prompt_tag = prompt_tag
     @registers = registers
     @tests = []
   end
@@ -98,7 +99,8 @@ class Console
     setup_completion
 
     print_banner
-    prompt = "#{@chip_family.downcase} \e[36m▸\e[0m "
+    tag = @prompt_tag ? " #{@prompt_tag}" : ''
+    prompt = "#{@chip_family.downcase}#{tag} \e[36m▸\e[0m "
     puts 'Type ? for help, Tab for completion'
 
     loop do
@@ -366,6 +368,10 @@ OptionParser.new do |opts|
     options[:raw_mode] = true
   end
 
+  opts.on('--prompt TAG', 'Additional label shown in prompt') do |tag|
+    options[:prompt_tag] = tag
+  end
+
   opts.on('--help', 'Show this help') do
     puts opts
     exit
@@ -385,7 +391,8 @@ conn = if options[:device]
 console = Console.new(conn,
                       registers: registers,
                       output_dir: options[:output_dir],
-                      raw_mode: options[:raw_mode])
+                      raw_mode: options[:raw_mode],
+                      prompt_tag: options[:prompt_tag])
 
 begin
   if ARGV.empty? && $stdin.tty?

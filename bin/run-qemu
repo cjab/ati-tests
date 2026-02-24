@@ -75,4 +75,5 @@ trap 'kill $QEMU_PID 2>/dev/null' EXIT
 sleep 0.5
 
 # Connect console
-"$SCRIPT_DIR/console" --host localhost --port $PORT $COMMAND
+"$SCRIPT_DIR/console" --host localhost --port $PORT \
+  --prompt $'\e[38;2;69;133;136mqemu\e[0m' $COMMAND

@@ -24,4 +24,5 @@ fi
 echo -e "\033[1;36mConnecting to $REMOTE_HOST:$REMOTE_PORT\033[0m"
 
 # Connect console
-"$SCRIPT_DIR/console" --host "$REMOTE_HOST" --port "$REMOTE_PORT" "$@"
+"$SCRIPT_DIR/console" --host "$REMOTE_HOST" --port "$REMOTE_PORT" \
+  --prompt $'\e[38;2;214;93;14mhw\e[0m' "$@"
