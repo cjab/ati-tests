@@ -26,7 +26,7 @@ class Connection
   FIELD_SEP = "\x1E".b  # Record Separator — header/payload boundary
   EOT       = "\x04".b  # End of Transmission — precedes prompt
 
-  DEFAULT_TIMEOUT = 30
+  DEFAULT_TIMEOUT = 120
 
   def initialize(io, timeout: DEFAULT_TIMEOUT)
     @io = io

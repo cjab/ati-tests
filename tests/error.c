@@ -6,8 +6,7 @@
 #include <string.h>
 
 #define ERROR_BUF_SIZE 4096
-#define ERROR_START_MARKER "===ERROR_START==="
-#define ERROR_END_MARKER   "===ERROR_END==="
+#define RECORD_GROUP_SEP "\x1d" // Group Separator — delimits error records
 
 static char error_buf[ERROR_BUF_SIZE];
 static size_t error_len;
@@ -36,9 +35,7 @@ error_flush(void)
     if (error_len == 0)
         return;
 
-    printf(ERROR_START_MARKER "\n");
-    printf("%s", error_buf);
-    printf(ERROR_END_MARKER "\n");
+    printf(RECORD_GROUP_SEP "%s" RECORD_GROUP_SEP, error_buf);
     fflush(stdout);
 
     error_clear();

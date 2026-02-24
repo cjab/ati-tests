@@ -15,7 +15,7 @@ require_relative '../lib/connection'
 DEFAULT_HOST = 'localhost'
 DEFAULT_PORT = 9001
 DEFAULT_BAUD = 115_200
-DEFAULT_TIMEOUT = 30
+DEFAULT_TIMEOUT = 120
 
 # XDG directories
 def xdg_state_home
@@ -139,6 +139,8 @@ class Console
           @last_progress = nil
           print "\r\e[2K"
           save_file(segment)
+        when ErrorSegment
+          render_error(segment.data)
         end
       end
     end
@@ -148,10 +150,18 @@ class Console
 
   def execute(cmd)
     @conn.drain
-    text, files = @conn.command(cmd)
-    files.each { |f| save_file(f) }
-    text = text.gsub(/\e\[[0-9;]*m/, '') if @raw_mode
-    print text
+    @conn.command(cmd) do |segment|
+      case segment
+      when TextSegment
+        text = segment.data
+        text = text.gsub(/\e\[[0-9;]*m/, '') if @raw_mode
+        print text
+      when FileSegment
+        save_file(segment)
+      when ErrorSegment
+        render_error(segment.data)
+      end
+    end
   end
 
   private
@@ -215,13 +225,63 @@ class Console
     end
   end
 
+  BOX_WIDTH = 80
+  CONTENT_WIDTH = BOX_WIDTH - 3 # 2 for │ borders, 1 for left padding
+
+  def render_error(text)
+    lines = text.lines.map(&:chomp)
+    lines.reject!(&:empty?)
+    return if lines.empty?
+
+    if @raw_mode
+      lines.each { |l| warn "ERROR: #{l}" }
+      return
+    end
+
+    wrapped = lines.flat_map { |l| word_wrap(l, CONTENT_WIDTH) }
+    inner_width = BOX_WIDTH - 2 # space between │ and │
+    red = "\e[31m"
+    rst = "\e[0m"
+
+    warn "#{red}╭─ Error #{'─' * [inner_width - 8, 0].max}╮#{rst}"
+    wrapped.each do |line|
+      warn "#{red}│#{rst} #{line.ljust(inner_width - 1)}#{red}│#{rst}"
+    end
+    warn "#{red}╰#{'─' * inner_width}╯#{rst}"
+  end
+
+  def word_wrap(line, width)
+    return [line] if line.length <= width
+
+    result = []
+    remaining = line
+
+    while remaining.length > width
+      # Find last space within width
+      break_at = remaining.rindex(' ', width)
+
+      if break_at.nil? || break_at.zero?
+        # No space found — hard break
+        result << remaining[0, width]
+        remaining = remaining[width..]
+      else
+        result << remaining[0, break_at]
+        remaining = remaining[(break_at + 1)..]
+      end
+    end
+
+    result << remaining unless remaining.empty?
+    result
+  end
+
   def save_file(segment)
     output_path = File.join(@output_dir, segment.filename)
     FileUtils.mkdir_p(File.dirname(output_path))
     File.binwrite(output_path, segment.rle_data)
 
     status = segment.crc_ok ? 'CRC OK' : 'CRC FAILED'
-    warn "Received: #{output_path} (#{format_bytes(segment.rle_data.bytesize)}, #{status})"
+    warn "Received: #{output_path} (#{format_bytes(segment.rle_data.bytesize)}, #{status})\n"
+    warn "\n"
   end
 
   def setup_completion

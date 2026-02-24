@@ -8,17 +8,15 @@
  *
  * During test execution, errors are buffered rather than printed
  * immediately. After the test verdict (PASS/FAILED) is printed,
- * the error buffer is flushed wrapped in ===ERROR_START=== /
- * ===ERROR_END=== markers for structured parsing by the console
- * client.
+ * the error buffer is flushed wrapped in \x1D (Group Separator)
+ * control characters for structured parsing by the console client.
  */
 
 /* Append formatted text to the error buffer. */
 void error_printf(const char *fmt, ...);
 
-/* Flush the error buffer: prints ===ERROR_START===, buffer
- * contents, ===ERROR_END===, then clears the buffer. No-op if
- * the buffer is empty. */
+/* Flush the error buffer: emits \x1D, buffer contents, \x1D,
+ * then clears the buffer. No-op if the buffer is empty. */
 void error_flush(void);
 
 /* Clear the error buffer without printing. */
