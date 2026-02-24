@@ -12,3 +12,4 @@ fixtures/fixtures_registry.c
 tmp/
 build/
 ati/registers/*_gen.h
+FAILED.rle
