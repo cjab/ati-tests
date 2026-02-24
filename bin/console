@@ -133,7 +133,7 @@ class Console
           now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           if @last_progress.nil? || now - @last_progress >= 0.2
             @last_progress = now
-            print "\r#{spinner} Receiving #{segment.filename}: " \
+            print "\r#{INDENT}#{spinner} Receiving #{segment.filename}: " \
                   "#{format_bytes(segment.bytes_received)}"
             $stdout.flush
           end
@@ -227,7 +227,8 @@ class Console
     end
   end
 
-  BOX_WIDTH = 80
+  INDENT = '    '
+  BOX_WIDTH = 76 # 80 - 4 for indent
   CONTENT_WIDTH = BOX_WIDTH - 3 # 2 for │ borders, 1 for left padding
 
   def render_error(text)
@@ -236,7 +237,7 @@ class Console
     return if lines.empty?
 
     if @raw_mode
-      lines.each { |l| warn "ERROR: #{l}" }
+      lines.each { |l| warn "#{INDENT}ERROR: #{l}" }
       return
     end
 
@@ -245,11 +246,11 @@ class Console
     red = "\e[31m"
     rst = "\e[0m"
 
-    warn "#{red}╭─ Error #{'─' * [inner_width - 8, 0].max}╮#{rst}"
+    warn "#{INDENT}#{red}╭─ Error #{'─' * [inner_width - 8, 0].max}╮#{rst}"
     wrapped.each do |line|
-      warn "#{red}│#{rst} #{line.ljust(inner_width - 1)}#{red}│#{rst}"
+      warn "#{INDENT}#{red}│#{rst} #{line.ljust(inner_width - 1)}#{red}│#{rst}"
     end
-    warn "#{red}╰#{'─' * inner_width}╯#{rst}"
+    warn "#{INDENT}#{red}╰#{'─' * inner_width}╯#{rst}"
   end
 
   def word_wrap(line, width)
@@ -285,7 +286,7 @@ class Console
     File.binwrite(output_path, segment.rle_data)
 
     status = segment.crc_ok ? 'CRC OK' : 'CRC FAILED'
-    warn "Received: #{output_path} (#{format_bytes(segment.rle_data.bytesize)}, #{status})"
+    warn "#{INDENT}Received: #{output_path} (#{format_bytes(segment.rle_data.bytesize)}, #{status})"
 
     auto_diff(segment.filename, output_path)
   end
@@ -301,8 +302,11 @@ class Console
     FileUtils.mkdir_p(diff_dir)
     diff_output = File.join(diff_dir, "#{fixture_name}_diff.png")
     system(DIFF_RLE, fixture_path, actual_path, '-o', diff_output,
-           out: '/dev/null')
-    warn "Diff: #{diff_output}" if File.exist?(diff_output)
+           out: '/dev/null', err: '/dev/null')
+    if File.exist?(diff_output)
+      warn "#{INDENT}Diff: #{diff_output}"
+      warn ''
+    end
   end
 
   def setup_completion
