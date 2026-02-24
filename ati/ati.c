@@ -235,17 +235,17 @@ ati_screen_async_compare_fixture(ati_device_t *dev, const char *fixture_name)
     const uint8_t *fixture = platform_get_fixture(fixture_name, &fixture_size);
 
     if (!fixture) {
-        fprintf(stderr, "Fixture '%s' not found\n", fixture_name);
+        error_printf("Fixture '%s' not found\n", fixture_name);
         char path[256];
         snprintf(path, sizeof(path), "fixtures/%s.rle", fixture_name);
-        ati_screen_dump(dev, path);
+        error_set_pending_dump(path);
         return false;
     }
 
     size_t screen_size = 640 * 480 * 4;
     if (fixture_size != screen_size) {
-        fprintf(stderr, "Fixture size mismatch: expected %zu, got %zu\n",
-                screen_size, fixture_size);
+        error_printf("Fixture size mismatch: expected %zu, got %zu\n",
+                     screen_size, fixture_size);
         platform_free_fixture(fixture);
         return false;
     }
@@ -265,18 +265,19 @@ ati_screen_async_compare_fixture(ati_device_t *dev, const char *fixture_name)
     }
     if (mismatch_count > 0) {
         match = false;
-        printf("MISMATCH: %d bytes differ\n", mismatch_count);
+        error_printf("MISMATCH: %d bytes differ\n", mismatch_count);
         if (first_mismatch >= 0) {
-            printf("First mismatch at byte offset 0x%x:\n", first_mismatch);
-            printf("  Expected: 0x%02x\n", fixture[first_mismatch]);
-            printf("  Got:      0x%02x\n", vram[first_mismatch]);
+            error_printf("First mismatch at byte offset 0x%x:\n",
+                         first_mismatch);
+            error_printf("  Expected: 0x%02x\n", fixture[first_mismatch]);
+            error_printf("  Got:      0x%02x\n", vram[first_mismatch]);
 
             int pixel_offset = first_mismatch / 4;
             int y = pixel_offset / 640;
             int x = pixel_offset % 640;
-            printf("  Pixel at (%d, %d)\n", x, y);
+            error_printf("  Pixel at (%d, %d)\n", x, y);
         }
-        ati_screen_dump(dev, "FAILED.rle");
+        error_set_pending_dump("FAILED.rle");
     }
     platform_free_fixture(fixture);
     return match;

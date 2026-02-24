@@ -6,6 +6,7 @@
 
 #include "ati/ati.h"
 #include "tests/test.h"
+#include "tests/error.h"
 #include "repl/repl.h"
 
 #define MAX_TESTS 100
@@ -43,9 +44,12 @@ run_test(ati_device_t *dev, const test_case_t *test)
     fflush(stdout);
     if (test->func(dev)) {
         printf(GREEN "ok" RESET "\n");
+        error_clear();
     } else {
         printf(RED "FAILED" RESET "\n");
-    };
+        error_flush();
+        error_flush_dump(dev);
+    }
 }
 
 void

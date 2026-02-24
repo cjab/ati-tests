@@ -31,7 +31,7 @@ endif
 # Test source files from all test directories
 TEST_SRCS = $(wildcard tests/common/*.c) $(wildcard tests/r128/*.c) $(wildcard tests/r100/*.c)
 
-COMMON_SRCS = main.c ati/ati.c ati/r128.c ati/r100.c ati/cce.c repl/repl.c repl/cce_cmd.c repl/dump_cmd.c $(TEST_SRCS)
+COMMON_SRCS = main.c tests/error.c ati/ati.c ati/r128.c ati/r100.c ati/cce.c repl/repl.c repl/cce_cmd.c repl/dump_cmd.c $(TEST_SRCS)
 SRCS = $(COMMON_SRCS) $(PLATFORM_SRC)
 
 # Transform source paths to build paths

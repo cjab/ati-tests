@@ -7,6 +7,7 @@
 // IWYU pragma: end_exports
 
 #include "../ati/ati.h"
+#include "error.h"
 
 #define YELLOW "\033[33m"
 #define GREEN "\033[32m"
@@ -18,9 +19,9 @@
         uint32_t _a = (actual);                                                \
         uint32_t _e = (expected);                                              \
         if (_a != _e) {                                                        \
-            fprintf(stderr,                                                    \
-                    "%s:%d: ASSERT_EQ failed: got 0x%08x, expected 0x%08x\n",  \
-                    __FILE__, __LINE__, _a, _e);                               \
+            error_printf(                                                      \
+                "%s:%d: ASSERT_EQ failed: got 0x%08x, expected 0x%08x\n",      \
+                __FILE__, __LINE__, _a, _e);                                   \
             return false;                                                      \
         }                                                                      \
     } while (0)
@@ -28,8 +29,8 @@
 #define ASSERT_TRUE(cond)                                                      \
     do {                                                                       \
         if (!(cond)) {                                                         \
-            fprintf(stderr, "%s:%d: ASSERT_TRUE failed: %s\n", __FILE__,       \
-                    __LINE__, #cond);                                          \
+            error_printf("%s:%d: ASSERT_TRUE failed: %s\n", __FILE__,          \
+                         __LINE__, #cond);                                     \
             return false;                                                      \
         }                                                                      \
     } while (0)
