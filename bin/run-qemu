@@ -44,6 +44,7 @@ if ! make -C "$TESTS_DIR" --no-print-directory PLATFORM=baremetal -q 2>/dev/null
 fi
 
 echo -e "\033[1;36mUsing QEMU:\033[0m $QEMU"
+echo -e "\033[1;36mQEMU log:\033[0m /tmp/qemu-debug.log"
 
 MODEL="rage128p"
 if [ "$CHIP" = "r100" ]; then
@@ -63,7 +64,7 @@ $QEMU \
   -kernel "$KERNEL" \
   -append "repl" \
   -serial tcp:localhost:$PORT,server,nowait \
-  &
+  >>/tmp/qemu-debug.log 2>&1 &
 
 QEMU_PID=$!
 
