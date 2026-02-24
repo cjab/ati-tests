@@ -221,7 +221,7 @@ class Console
     File.binwrite(output_path, segment.rle_data)
 
     status = segment.crc_ok ? 'CRC OK' : 'CRC FAILED'
-    warn "Captured: #{output_path} (#{format_bytes(segment.rle_data.bytesize)}, #{status})"
+    warn "Received: #{output_path} (#{format_bytes(segment.rle_data.bytesize)}, #{status})"
   end
 
   def setup_completion

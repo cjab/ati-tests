@@ -7,8 +7,11 @@
 
 #include "tinyprintf.h"
 
-#define FILE_START_MARKER "===FILE_START==="
-#define FILE_END_MARKER "===FILE_END==="
+// Record framing: single ASCII control characters for unambiguous parsing.
+// File record:  \x1C <header> \x1E <payload> \x1C
+// Error record: \x1D <text> \x1D  (reserved for future use)
+#define RECORD_FILE_SEP '\x1C'  // File Separator — delimits file records
+#define RECORD_FIELD_SEP '\x1E' // Record Separator — header/payload boundary
 
 void serial_init(void);
 void serial_putc(void *p, char c);

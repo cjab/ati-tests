@@ -227,11 +227,11 @@ send_file_to_serial(const char *path, const void *data, size_t size)
     // Reset Base64 streaming buffer
     b64_chunk_len = 0;
 
-    // Send start marker and header
-    // Format: path:rle+base64:original_size:crc32_hex
-    serial_puts(FILE_START_MARKER);
-    serial_putc(NULL, '\n');
-    printf("%s:rle+base64:%zu:%08x\n", path, size, checksum);
+    // File record: \x1C <header> \x1E <payload> \x1C
+    // Header format: path:rle+base64:original_size:crc32_hex
+    serial_raw_putc(NULL, RECORD_FILE_SEP);
+    printf("%s:rle+base64:%zu:%08x", path, size, checksum);
+    serial_raw_putc(NULL, RECORD_FIELD_SEP);
 
     // Stream RLE-encoded data through Base64 encoder
     rle_encode_to_b64((const uint8_t *) data, size);
@@ -239,9 +239,8 @@ send_file_to_serial(const char *path, const void *data, size_t size)
     // Flush any remaining Base64 data
     b64_flush();
 
-    // Send end marker
-    serial_puts(FILE_END_MARKER);
-    serial_putc(NULL, '\n');
+    // Close file record
+    serial_raw_putc(NULL, RECORD_FILE_SEP);
 
     return size;
 }

@@ -9,21 +9,22 @@ require_relative 'rle'
 TextSegment = Struct.new(:data)
 FileSegment = Struct.new(:filename, :rle_data, :original_size, :crc_ok)
 FileProgressSegment = Struct.new(:filename, :bytes_received)
+ErrorSegment = Struct.new(:data)
 
 # Connection to ATI Rage 128 test firmware over TCP or serial.
 #
 # Understands the firmware's protocol: EOT+prompt framing, command echo,
-# and file transfer markers. Callers receive parsed TextSegment and
-# FileSegment objects rather than raw byte chunks.
+# and structured records delimited by ASCII control characters.
+# Callers receive parsed TextSegment, FileSegment, and ErrorSegment
+# objects rather than raw byte chunks.
 class Connection
-  FILE_START_MARKER = "===FILE_START===\r\n".b
-  FILE_END_MARKER   = "===FILE_END===\r\n".b
-  EOT_PROMPT        = "\x04> ".b
-
-  # Maximum bytes to hold back when scanning for split markers.
-  # Ensures we catch a marker split across two reads.
-  HOLDBACK = [FILE_START_MARKER.bytesize, FILE_END_MARKER.bytesize,
-              EOT_PROMPT.bytesize].max - 1
+  # Protocol framing: single ASCII control characters.
+  # File record:  \x1C <header> \x1E <payload> \x1C
+  # Error record: \x1D <text> \x1D
+  FILE_SEP  = "\x1C".b  # File Separator — delimits file records
+  GROUP_SEP = "\x1D".b  # Group Separator — delimits error records
+  FIELD_SEP = "\x1E".b  # Record Separator — header/payload boundary
+  EOT       = "\x04".b  # End of Transmission — precedes prompt
 
   DEFAULT_TIMEOUT = 30
 
@@ -124,6 +125,8 @@ class Connection
           buf, state, strip_echo = scan_text(buf, strip_echo, file_buf, &block)
         when :file
           buf, state = scan_file(buf, file_buf, &block)
+        when :error
+          buf, state = scan_error(buf, file_buf, &block)
         end
 
         break if state == :done
@@ -136,8 +139,10 @@ class Connection
 
   # Process buffer while in :text state.
   #
-  # Scans for echo to strip, EOT+prompt, and FILE_START_MARKER.
-  # Flushes safe text as TextSegments via the block.
+  # Scans for control characters: \x1C (file record), \x1D (error
+  # record), or \x04 (EOT/prompt). Everything before the first
+  # control character is plain text and is flushed immediately —
+  # no holdback needed since markers are single bytes.
   #
   # Returns [remaining_buf, new_state, strip_echo].
   def scan_text(buf, strip_echo, file_buf, &block)
@@ -152,49 +157,46 @@ class Connection
       end
     end
 
-    # Check for EOT+prompt — response is complete
-    eot_idx = buf.index(EOT_PROMPT)
-    if eot_idx
-      flush_text(buf[0...eot_idx], &block) if eot_idx.positive?
+    # Find the first control character that signals a state change
+    ctrl_idx = buf.index(/[\x04\x1C\x1D]/)
+
+    unless ctrl_idx
+      # No control characters — flush entire buffer as text
+      flush_text(buf, &block)
+      return [''.b, :text, false]
+    end
+
+    # Flush any text before the control character
+    flush_text(buf[0...ctrl_idx], &block) if ctrl_idx.positive?
+
+    case buf.getbyte(ctrl_idx)
+    when 0x04 # EOT — response is complete
       return [''.b, :done, false]
-    end
-
-    # Check for file transfer start
-    start_idx = buf.index(FILE_START_MARKER)
-    if start_idx
-      flush_text(buf[0...start_idx], &block) if start_idx.positive?
-      buf = buf[(start_idx + FILE_START_MARKER.bytesize)..]
+    when 0x1C # File record start
       file_buf.clear
-      return [buf, :file, false]
+      return [buf[(ctrl_idx + 1)..], :file, false]
+    when 0x1D # Error record start
+      file_buf.clear
+      return [buf[(ctrl_idx + 1)..], :error, false]
     end
-
-    # No markers found. Flush everything except holdback region,
-    # which might contain the beginning of a split marker.
-    if buf.bytesize > HOLDBACK
-      safe_end = buf.bytesize - HOLDBACK
-      flush_text(buf[0...safe_end], &block)
-      buf = buf[safe_end..]
-    end
-
-    [buf, :text, false]
   end
 
   # Process buffer while in :file state.
   #
-  # Accumulates data into file_buf until FILE_END_MARKER is found,
+  # Accumulates data into file_buf until the closing \x1C is found,
   # then decodes the file and yields a FileSegment. Yields
   # FileProgressSegments as data arrives.
   #
   # Returns [remaining_buf, new_state].
   def scan_file(buf, file_buf, &block)
     file_buf << buf
-    end_idx = file_buf.index(FILE_END_MARKER)
+    end_idx = file_buf.index(FILE_SEP)
 
     unless end_idx
       # Yield progress if we can extract the filename from the header
-      newline_idx = file_buf.index("\n".b)
-      if newline_idx
-        header = parse_header(file_buf[0...newline_idx])
+      sep_idx = file_buf.index(FIELD_SEP)
+      if sep_idx
+        header = parse_header(file_buf[0...sep_idx])
         filename = header ? header[0] : nil
         yield FileProgressSegment.new(filename, file_buf.bytesize) if filename
       end
@@ -202,11 +204,35 @@ class Connection
     end
 
     file_content = file_buf[0...end_idx]
-    remaining = file_buf[(end_idx + FILE_END_MARKER.bytesize)..]
+    remaining = file_buf[(end_idx + 1)..]
     file_buf.clear
 
     segment = decode_file(file_content)
     yield segment if segment
+
+    [remaining, :text]
+  end
+
+  # Process buffer while in :error state.
+  #
+  # Accumulates data into file_buf until the closing \x1D is found,
+  # then yields an ErrorSegment.
+  #
+  # Returns [remaining_buf, new_state].
+  def scan_error(buf, file_buf, &block)
+    file_buf << buf
+    end_idx = file_buf.index(GROUP_SEP)
+
+    unless end_idx
+      return [''.b, :error]
+    end
+
+    error_text = file_buf[0...end_idx]
+    remaining = file_buf[(end_idx + 1)..]
+    file_buf.clear
+
+    cleaned = error_text.gsub("\r\n", "\n").gsub("\r", '')
+    yield ErrorSegment.new(cleaned) unless cleaned.empty?
 
     [remaining, :text]
   end
@@ -219,14 +245,14 @@ class Connection
     yield TextSegment.new(cleaned) unless cleaned.empty?
   end
 
-  # Parse a file transfer block: header line + encoded payload.
+  # Parse a file transfer block: header + \x1E + encoded payload.
   # Returns a FileSegment or nil on error.
   def decode_file(data)
-    newline_idx = data.index("\n".b)
-    return nil unless newline_idx
+    sep_idx = data.index(FIELD_SEP)
+    return nil unless sep_idx
 
-    header_line = data[0...newline_idx]
-    payload = data[(newline_idx + 1)..]
+    header_line = data[0...sep_idx]
+    payload = data[(sep_idx + 1)..]
 
     filename, encoding, original_size, expected_crc = parse_header(header_line)
     return nil unless filename
