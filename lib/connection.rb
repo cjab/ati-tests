@@ -8,6 +8,7 @@ require_relative 'rle'
 # Segment types yielded by Connection#command
 TextSegment = Struct.new(:data)
 FileSegment = Struct.new(:filename, :rle_data, :original_size, :crc_ok)
+FileProgressSegment = Struct.new(:filename, :bytes_received)
 
 # Connection to ATI Rage 128 test firmware over TCP or serial.
 #
@@ -181,7 +182,8 @@ class Connection
   # Process buffer while in :file state.
   #
   # Accumulates data into file_buf until FILE_END_MARKER is found,
-  # then decodes the file and yields a FileSegment.
+  # then decodes the file and yields a FileSegment. Yields
+  # FileProgressSegments as data arrives.
   #
   # Returns [remaining_buf, new_state].
   def scan_file(buf, file_buf, &block)
@@ -189,6 +191,13 @@ class Connection
     end_idx = file_buf.index(FILE_END_MARKER)
 
     unless end_idx
+      # Yield progress if we can extract the filename from the header
+      newline_idx = file_buf.index("\n".b)
+      if newline_idx
+        header = parse_header(file_buf[0...newline_idx])
+        filename = header ? header[0] : nil
+        yield FileProgressSegment.new(filename, file_buf.bytesize) if filename
+      end
       return [''.b, :file]
     end
 

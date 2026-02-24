@@ -127,7 +127,17 @@ class Console
           text = text.gsub(/\e\[[0-9;]*m/, '') if @raw_mode
           print text
           $stdout.flush
+        when FileProgressSegment
+          now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          if @last_progress.nil? || now - @last_progress >= 0.2
+            @last_progress = now
+            print "\r#{spinner} Receiving #{segment.filename}: " \
+                  "#{format_bytes(segment.bytes_received)}"
+            $stdout.flush
+          end
         when FileSegment
+          @last_progress = nil
+          print "\r\e[2K"
           save_file(segment)
         end
       end
@@ -186,6 +196,23 @@ class Console
     puts "\e[36m╭#{'─' * width}╮\e[0m"
     puts "\e[36m│\e[0m  #{name}  \e[36m│\e[0m"
     puts "\e[36m╰#{'─' * width}╯\e[0m"
+  end
+
+  SPINNER_FRAMES = %w[⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏].freeze
+
+  def spinner
+    @spin_idx = (@spin_idx || 0) + 1
+    SPINNER_FRAMES[@spin_idx % SPINNER_FRAMES.length]
+  end
+
+  def format_bytes(bytes)
+    if bytes >= 1_048_576
+      format('%.1f MB', bytes / 1_048_576.0)
+    elsif bytes >= 1024
+      format('%.1f KB', bytes / 1024.0)
+    else
+      "#{bytes} B"
+    end
   end
 
   def save_file(segment)
