@@ -335,6 +335,7 @@ void setup_draw_defaults(ati_device_t *dev) {
     wr_r128_default_pitch(dev, 0x50);
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
+    wr_dst_y_x(dev, 0x0);
 }
 
 bool
