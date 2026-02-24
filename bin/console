@@ -276,14 +276,33 @@ class Console
     result
   end
 
+  TESTS_DIR = File.expand_path('..', __dir__)
+  DIFF_RLE = File.join(__dir__, 'diff-rle')
+
   def save_file(segment)
     output_path = File.join(@output_dir, segment.filename)
     FileUtils.mkdir_p(File.dirname(output_path))
     File.binwrite(output_path, segment.rle_data)
 
     status = segment.crc_ok ? 'CRC OK' : 'CRC FAILED'
-    warn "Received: #{output_path} (#{format_bytes(segment.rle_data.bytesize)}, #{status})\n"
-    warn "\n"
+    warn "Received: #{output_path} (#{format_bytes(segment.rle_data.bytesize)}, #{status})"
+
+    auto_diff(segment.filename, output_path)
+  end
+
+  def auto_diff(filename, actual_path)
+    return unless filename.start_with?('failed/') && filename.end_with?('.rle')
+
+    fixture_name = File.basename(filename, '.rle')
+    fixture_path = File.join(TESTS_DIR, 'fixtures', "#{fixture_name}.rle")
+    return unless File.exist?(fixture_path)
+
+    diff_dir = File.join(@output_dir, 'diffs')
+    FileUtils.mkdir_p(diff_dir)
+    diff_output = File.join(diff_dir, "#{fixture_name}_diff.png")
+    system(DIFF_RLE, fixture_path, actual_path, '-o', diff_output,
+           out: '/dev/null')
+    warn "Diff: #{diff_output}" if File.exist?(diff_output)
   end
 
   def setup_completion
