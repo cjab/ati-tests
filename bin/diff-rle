@@ -1,0 +1,206 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Visual diff of two RLE-encoded screen dumps.
+#
+# Produces a composite image with three panels side by side:
+#   Expected | Actual | Diff
+#
+# Auto-crops to the interesting region (non-black pixels) with a
+# small margin so individual pixels remain visible.
+#
+# Usage: diff-rle expected.rle actual.rle [-o output.png]
+
+require 'optparse'
+require 'tempfile'
+require_relative '../lib/rle'
+
+WIDTH = 640
+HEIGHT = 480
+BPP = 4
+MARGIN = 8
+MARGIN_COLOR = '#222222'
+LABEL_HEIGHT = 16
+MIN_PANEL_WIDTH = 80
+
+def check_dependencies!
+  unless system('which magick > /dev/null 2>&1')
+    warn "Error: ImageMagick 'magick' command not found."
+    exit 1
+  end
+  unless system('which compare > /dev/null 2>&1')
+    warn "Error: ImageMagick 'compare' command not found."
+    exit 1
+  end
+end
+
+def rle_to_tempfile(rle_path)
+  encoded = File.binread(rle_path)
+  raw = RLE.decode(encoded)
+
+  expected_size = WIDTH * HEIGHT * BPP
+  if raw.bytesize != expected_size
+    warn "Warning: #{rle_path}: decoded size #{raw.bytesize} != expected #{expected_size}"
+  end
+
+  tmp = Tempfile.new(['diff-rle-', '.png'])
+  IO.popen(
+    ['magick', '-size', "#{WIDTH}x#{HEIGHT}", '-depth', '8',
+     'BGRA:-', '-alpha', 'off', tmp.path], 'wb'
+  ) { |io| io.write(raw) }
+
+  tmp
+end
+
+# Find the bounding box of non-black pixels across both images combined.
+# Returns [x, y, width, height] or nil if both images are entirely black.
+def union_bounding_box(path_a, path_b)
+  # Composite with Lighten to get all non-black pixels from either image,
+  # then trim and report the geometry.
+  info = `magick #{path_a} #{path_b} -compose Lighten -composite -trim -format '%X %Y %w %h' info: 2>/dev/null`.strip
+  return nil if info.empty?
+
+  parts = info.split
+  return nil unless parts.length == 4
+
+  x = parts[0].to_i
+  y = parts[1].to_i
+  w = parts[2].to_i
+  h = parts[3].to_i
+
+  # The trim offsets can be negative with the +X+Y format; parse signs
+  return nil if w.zero? || h.zero?
+
+  [x, y, w, h]
+end
+
+def crop_image(src_path, dst_path, x, y, w, h)
+  system('magick', src_path,
+         '-crop', "#{w}x#{h}+#{x}+#{y}", '+repage',
+         '-bordercolor', MARGIN_COLOR, '-border', MARGIN.to_s,
+         dst_path,
+         err: '/dev/null')
+end
+
+def generate_diff(expected_path, actual_path, diff_path, crop_geom)
+  x, y, w, h = crop_geom
+  # Crop both, compare to get a diff, then add border.
+  diff_tmp = Tempfile.new(['diff-raw-', '.png'])
+  system('compare',
+         '(', expected_path, '-crop', "#{w}x#{h}+#{x}+#{y}", '+repage', ')',
+         '(', actual_path, '-crop', "#{w}x#{h}+#{x}+#{y}", '+repage', ')',
+         diff_tmp.path,
+         err: '/dev/null')
+  system('magick', diff_tmp.path,
+         '-bordercolor', MARGIN_COLOR, '-border', MARGIN.to_s,
+         diff_path,
+         err: '/dev/null')
+  diff_tmp.close!
+end
+
+def make_label(text, width, path)
+  system('magick',
+         '-size', "#{width}x#{LABEL_HEIGHT}",
+         "xc:#{MARGIN_COLOR}",
+         '-fill', 'white', '-font', 'DejaVu-Sans',
+         '-pointsize', '12', '-gravity', 'center',
+         '-annotate', '+0+0', text,
+         path,
+         err: '/dev/null')
+end
+
+def stitch_panels(expected_crop, actual_crop, diff_img, output_path)
+  # Get panel dimensions from the cropped image
+  info = `magick identify -format '%w %h' #{expected_crop}`.strip
+  w, h = info.split.map(&:to_i)
+  panel_width = [w, MIN_PANEL_WIDTH].max
+
+  # Create labels
+  labels = %w[Expected Actual Diff].map do |text|
+    tmp = Tempfile.new(['label-', '.png'])
+    make_label(text, panel_width, tmp.path)
+    tmp
+  end
+
+  # Stack each label + panel vertically, then append all three horizontally.
+  # Pad narrow panels to minimum width so labels always fit.
+  labeled = [expected_crop, actual_crop, diff_img].each_with_index.map do |panel, i|
+    tmp = Tempfile.new(['labeled-', '.png'])
+    system('magick', labels[i].path,
+           '(', panel, '-gravity', 'center',
+           '-background', MARGIN_COLOR,
+           '-extent', "#{panel_width}x#{h}", ')',
+           '-append', tmp.path,
+           err: '/dev/null')
+    tmp
+  end
+
+  # Horizontal stitch with 2px gap
+  system('magick', *labeled.map(&:path), '-background', MARGIN_COLOR,
+         '+smush', '2', output_path,
+         err: '/dev/null')
+
+  # Cleanup
+  labels.each(&:close!)
+  labeled.each(&:close!)
+end
+
+# --- Main ---
+
+check_dependencies!
+
+output_path = nil
+parser = OptionParser.new do |opts|
+  opts.banner = "Usage: #{$PROGRAM_NAME} expected.rle actual.rle [-o output.png]"
+  opts.on('-o', '--output PATH', 'Output file path') { |o| output_path = o }
+  opts.on('--help', 'Show this help') { puts opts; exit }
+end
+parser.parse!
+
+if ARGV.length != 2
+  warn parser.banner
+  exit 1
+end
+
+expected_rle, actual_rle = ARGV
+
+[expected_rle, actual_rle].each do |path|
+  unless File.exist?(path)
+    warn "Error: #{path} not found"
+    exit 1
+  end
+end
+
+# Default output name from the expected file's basename
+output_path ||= "#{File.basename(expected_rle, '.rle')}_diff.png"
+
+# Convert RLE to PNG
+expected_png = rle_to_tempfile(expected_rle)
+actual_png = rle_to_tempfile(actual_rle)
+
+# Find the interesting region
+bbox = union_bounding_box(expected_png.path, actual_png.path)
+
+unless bbox
+  warn 'Both images are entirely black — nothing to diff.'
+  expected_png.close!
+  actual_png.close!
+  exit 0
+end
+
+# Crop both images to the interesting region, then add gray border
+cropped_expected = Tempfile.new(['crop-expected-', '.png'])
+cropped_actual = Tempfile.new(['crop-actual-', '.png'])
+diff_img = Tempfile.new(['diff-', '.png'])
+
+crop_image(expected_png.path, cropped_expected.path, *bbox)
+crop_image(actual_png.path, cropped_actual.path, *bbox)
+generate_diff(expected_png.path, actual_png.path, diff_img.path, bbox)
+
+# Stitch into composite
+stitch_panels(cropped_expected.path, cropped_actual.path, diff_img.path, output_path)
+
+# Cleanup
+[expected_png, actual_png, cropped_expected, cropped_actual, diff_img].each(&:close!)
+
+warn "Created #{output_path}"
