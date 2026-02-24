@@ -234,7 +234,7 @@ send_file_to_serial(const char *path, const void *data, size_t size)
     printf("%s:rle+base64:%zu:%08x\n", path, size, checksum);
 
     // Stream RLE-encoded data through Base64 encoder
-    size_t encoded_size = rle_encode_to_b64((const uint8_t *) data, size);
+    rle_encode_to_b64((const uint8_t *) data, size);
 
     // Flush any remaining Base64 data
     b64_flush();
@@ -242,12 +242,6 @@ send_file_to_serial(const char *path, const void *data, size_t size)
     // Send end marker
     serial_puts(FILE_END_MARKER);
     serial_putc(NULL, '\n');
-
-    // Use integer math to avoid FPU - compute ratio as percentage * 10 for one
-    // decimal
-    unsigned ratio_x10 = (unsigned) (encoded_size * 1000 / size);
-    printf("Sent %s (%zu bytes RLE, %zu bytes original, %u.%u%% ratio)\n",
-           path, encoded_size, size, ratio_x10 / 10, ratio_x10 % 10);
 
     return size;
 }

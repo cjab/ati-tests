@@ -308,8 +308,7 @@ ati_vram_dump(ati_device_t *dev, const char *filename)
 {
     volatile uint32_t *vram = (volatile uint32_t *) dev->bar[0];
     size_t vram_size = platform_pci_get_bar_size(dev->pci_dev, 0);
-    size_t written = platform_write_file(filename, (void *) vram, vram_size);
-    printf("Dumped %zu bytes of VRAM to %s\n", written, filename);
+    platform_write_file(filename, (void *) vram, vram_size);
 }
 
 void
@@ -317,8 +316,7 @@ ati_screen_dump(ati_device_t *dev, const char *filename)
 {
     volatile uint32_t *vram = (volatile uint32_t *) dev->bar[0];
     size_t screen_size = 640 * 480 * 4;
-    size_t written = platform_write_file(filename, (void *) vram, screen_size);
-    printf("Dumped %zu bytes of screen to %s\n", written, filename);
+    platform_write_file(filename, (void *) vram, screen_size);
 }
 
 void
