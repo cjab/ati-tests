@@ -410,40 +410,6 @@ test_host_data_color_32x32(ati_device_t *dev)
 }
 
 bool
-test_host_data_write_after_complete(ati_device_t *dev)
-{
-    uint32_t red = 0x00ff0000;
-    uint32_t green = 0x0000ff00;
-    unsigned width = 2;
-    unsigned height = 2;
-
-    ati_screen_clear(dev, 0);
-
-    wr_dp_src_frgd_clr(dev, red);
-    wr_dp_src_bkgd_clr(dev, green);
-
-    wr_r128_default_offset(dev, 0x0);
-    wr_r128_default_pitch(dev, 0x50);
-    wr_default_sc_bottom_right(dev, 0x1fff1fff);
-    wr_dp_write_msk(dev, 0xffffffff);
-
-    wr_dp_gui_master_cntl(dev, GMC_BRUSH_NONE | GMC_DST_32BPP |
-        GMC_BYTE_LSB_TO_MSB | GMC_ROP3_SRCCOPY | GMC_SRC_SOURCE_HOST_DATA);
-
-    wr_dst_x_y(dev, 0x0);
-    wr_dst_width_height(dev, (width << 16) | height);
-
-    wr_host_data_last(dev, 0x00000033);
-    wr_host_data0(dev, 0x11111111);
-    wr_host_data1(dev, 0x11111111);
-    wr_host_data2(dev, 0x11111111);
-    wr_host_data3(dev, 0x11111111);
-    ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_mono_bitpacked"));
-
-    return true;
-}
-
-bool
 test_host_data_has_a_256_bit_buffer(ati_device_t *dev)
 {
     uint32_t red = 0x00ff0000;
@@ -476,6 +442,11 @@ test_host_data_has_a_256_bit_buffer(ati_device_t *dev)
     wr_host_data6(dev, 0x00000000);
     wr_host_data7(dev, 0x00000000);
 
+    // Now place recognizable patterns into the first 5 words
+    // of the host_data buffer and call host_data_last early.
+    // The remaining data is pulled from the end of the previously
+    // cleared buffer and wraps around to repeat what we've just
+    // sent.
     wr_dst_x_y(dev, 0x0);
     wr_dst_width_height(dev, (384 << 16) | 1);
     wr_host_data0(dev, 0xaaaaaaaa);
@@ -484,52 +455,28 @@ test_host_data_has_a_256_bit_buffer(ati_device_t *dev)
     wr_host_data3(dev, 0xdddddddd);
     wr_host_data_last(dev, 0xeeeeeeee);
 
+    // Host data writes outside of a blit are ignored.
+    // If they weren't then we would expect to see this
+    // pattern appear in the next blit. But instead we
+    // see the patterns sent above used to complete
+    // the next blit.
+    wr_host_data0(dev, 0xffffffff);
+    wr_host_data1(dev, 0xffffffff);
+    wr_host_data2(dev, 0xffffffff);
+    wr_host_data3(dev, 0xffffffff);
+
+    // Send a single word with a new pattern and end the blit.
+    // The remainder of the data is pulled from the patterns
+    // remaining in the buffer from the previous blits.
     wr_dst_y_x(dev, (5 << 16) | 0);
     wr_dst_width_height(dev, (384 << 16) | 1);
     wr_host_data_last(dev, 0x55555555);
 
+    // The wrapping behavior seen on the screen proves we have a 256-bit
+    // buffer. Beginning a new blit clears the position in the buffer but leaves
+    // data in the buffer and wraps when reading from the buffer if a blit ends
+    // before all host_data is sent.
     ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_256_bit_buffer"));
-
-    //// This proves that we repeat every 256-bits
-    //wr_dst_width_height(dev, (width << 16) | height);
-    //wr_host_data0(dev, 0x55555555);
-    //wr_host_data1(dev, 0x55555555);
-    //wr_host_data2(dev, 0x55555555);
-    //wr_host_data3(dev, 0x55555555);
-    //wr_host_data4(dev, 0x55555555);
-    //wr_host_data5(dev, 0x55555555);
-    //wr_host_data6(dev, 0x55555555);
-    //wr_host_data_last(dev, 0x55555555);
-
-    //wr_dst_width_height(dev, (width << 16) | height);
-    //wr_host_data_last(dev, 0xffffffff);
-
-    //ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_state_early_end"));
-
-    //// Flush early and ignore any further host data
-    //wr_dst_width_height(dev, (width << 16) | height);
-    //wr_host_data_last(dev, 0xffff0000);
-    //// The 32 bits (expanded to 32 pixels) should be drawn
-    //ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_state_early_end"));
-    //// The remainder of the blit is filled with garbage.
-    //wr_host_data_last(dev, 0x0000000);
-    //ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_state_early_end"));
-
-    //// Flush early and ignore any further host data
-    //wr_dst_width_height(dev, (width << 16) | height);
-    //wr_host_data0(dev, 0xffff0000);
-    //wr_host_data_last(dev, 0xffff0000);
-    //ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_state_early_end_again"));
-    //wr_host_data0(dev, 0x11111111);
-    //ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_state_early_end_again"));
-
-    //// Flush as soon as end is reached even if not "host_data_last" and then ignore
-    //wr_dst_width_height(dev, (width << 16) | height);
-    //wr_host_data1(dev, 0xffffffff);
-    //wr_host_data2(dev, 0x00000000);
-    //ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_state_blit_ended"));
-    //wr_host_data3(dev, 0xffffffff);
-    //ASSERT_TRUE(ati_screen_compare_fixture(dev, "host_data_state_blit_ended"));
 
     return true;
 }
@@ -544,8 +491,6 @@ register_host_data_tests(void)
     REGISTER_TEST(test_host_data_clipping_32x32, "host_data clipping 32x32");
     REGISTER_TEST(test_host_data_clipping_48x48, "host_data clipping 48x48");
     REGISTER_TEST(test_host_data_color_32x32, "host_data color 32x32");
-    REGISTER_TEST(test_host_data_write_after_complete,
-                  "host_data write after complete");
     REGISTER_TEST(test_host_data_has_a_256_bit_buffer,
                   "host_data has a 256-bit buffer");
 }
