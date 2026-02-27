@@ -28,10 +28,6 @@ def check_dependencies!
     warn "Error: ImageMagick 'magick' command not found."
     exit 1
   end
-  unless system('which compare > /dev/null 2>&1')
-    warn "Error: ImageMagick 'compare' command not found."
-    exit 1
-  end
 end
 
 def rle_to_tempfile(rle_path)
@@ -74,6 +70,34 @@ def union_bounding_box(path_a, path_b)
   [x, y, w, h]
 end
 
+def read_raw_pixels(png_path)
+  IO.popen(['magick', png_path, '-depth', '8', 'BGRA:-'], 'rb', err: '/dev/null', &:read)
+end
+
+def generate_diff_image(expected_path, actual_path, output_path, x, y, w, h)
+  exp_raw = read_raw_pixels(expected_path)
+  act_raw = read_raw_pixels(actual_path)
+
+  # Build a cropped BGRA diff image: green for unchanged, red for changed
+  unchanged = [0x1A, 0x97, 0x98, 0xFF].pack('C4')
+  changed   = [0x1D, 0x24, 0xCC, 0xFF].pack('C4')
+
+  diff = String.new(capacity: w * h * 4)
+  h.times do |row|
+    w.times do |col|
+      offset = ((y + row) * WIDTH + (x + col)) * BPP
+      exp_pixel = exp_raw.byteslice(offset, BPP)
+      act_pixel = act_raw.byteslice(offset, BPP)
+      diff << (exp_pixel == act_pixel ? unchanged : changed)
+    end
+  end
+
+  IO.popen(
+    ['magick', '-size', "#{w}x#{h}", '-depth', '8', 'BGRA:-', '-alpha', 'off', output_path],
+    'wb', err: '/dev/null'
+  ) { |io| io.write(diff) }
+end
+
 def crop_image(src_path, dst_path, x, y, w, h)
   system('magick', src_path,
          '-crop', "#{w}x#{h}+#{x}+#{y}", '+repage',
@@ -84,18 +108,15 @@ end
 
 def generate_diff(expected_path, actual_path, diff_path, crop_geom)
   x, y, w, h = crop_geom
-  # Crop both, compare to get a diff, then add border.
-  diff_tmp = Tempfile.new(['diff-raw-', '.png'])
-  system('compare',
-         '(', expected_path, '-crop', "#{w}x#{h}+#{x}+#{y}", '+repage', ')',
-         '(', actual_path, '-crop', "#{w}x#{h}+#{x}+#{y}", '+repage', ')',
-         diff_tmp.path,
-         err: '/dev/null')
-  system('magick', diff_tmp.path,
+  # Generate diff mask as raw BGRA in Ruby to avoid ImageMagick
+  # colorspace issues, then add the border with magick.
+  diff_raw = Tempfile.new(['diff-raw-', '.png'])
+  generate_diff_image(expected_path, actual_path, diff_raw.path, x, y, w, h)
+  system('magick', diff_raw.path,
          '-bordercolor', MARGIN_COLOR, '-border', MARGIN.to_s,
          diff_path,
          err: '/dev/null')
-  diff_tmp.close!
+  diff_raw.close!
 end
 
 def make_label(text, width, path)
@@ -127,7 +148,7 @@ def stitch_panels(expected_crop, actual_crop, diff_img, output_path)
   labeled = [expected_crop, actual_crop, diff_img].each_with_index.map do |panel, i|
     tmp = Tempfile.new(['labeled-', '.png'])
     system('magick', labels[i].path,
-           '(', panel, '-gravity', 'center',
+           '(', panel, '-alpha', 'off', '-gravity', 'center',
            '-background', MARGIN_COLOR,
            '-extent', "#{panel_width}x#{h}", ')',
            '-append', tmp.path,
