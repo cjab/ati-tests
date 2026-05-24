@@ -63,6 +63,7 @@ $QEMU \
   -D /tmp/qemu-debug.log \
   -kernel "$KERNEL" \
   -append "repl" \
+  -display sdl \
   -serial tcp:localhost:$PORT,server,nowait \
   >>/tmp/qemu-debug.log 2>&1 &
 
