@@ -99,6 +99,42 @@ test_cce_packet_submission(ati_device_t *dev)
 }
 
 bool
+test_cce_mm_indirect(ati_device_t *dev)
+{
+    wr_mm_index(dev, BIOS_0_SCRATCH);
+    wr_mm_data(dev, 0x1337beef);
+
+    ati_init_cce_engine(dev);
+    ASSERT_EQ(rd_pm4_stat(dev), 192);
+
+    uint32_t idx_packets[] = {CCE_PKT0(MM_INDEX, 1), BIOS_1_SCRATCH};
+    wr_pm4_fifo_data_even(dev, idx_packets[0]);
+    ati_wait_for_reg_value(dev, PM4_STAT, MICRO_BUSY | PM4_GUI_ACTIVE | 192);
+    ASSERT_EQ(rd_pm4_stat(dev), MICRO_BUSY | PM4_GUI_ACTIVE | 192);
+    wr_pm4_fifo_data_odd(dev, idx_packets[1]);
+    ati_wait_for_reg_value(dev, PM4_STAT, 192);
+    ASSERT_EQ(rd_pm4_stat(dev), 192);
+    // The CCE engine cannot write to MM_INDEX
+    ASSERT_NEQ(rd_mm_index(dev), BIOS_1_SCRATCH);
+
+    // Because the CCE write failed MM_INDEX should not have changed
+    ASSERT_EQ(rd_mm_index(dev), BIOS_0_SCRATCH);
+
+    uint32_t data_packets[] = {CCE_PKT0(MM_DATA, 1), 0x11111111};
+    wr_pm4_fifo_data_even(dev, data_packets[0]);
+    ati_wait_for_reg_value(dev, PM4_STAT, MICRO_BUSY | PM4_GUI_ACTIVE | 192);
+    ASSERT_EQ(rd_pm4_stat(dev), MICRO_BUSY | PM4_GUI_ACTIVE | 192);
+    wr_pm4_fifo_data_odd(dev, data_packets[1]);
+    ati_wait_for_reg_value(dev, PM4_STAT, 192);
+    ASSERT_EQ(rd_pm4_stat(dev), 192);
+    // The CCE engine cannot write to MM_DATA
+    ASSERT_NEQ(rd_mm_data(dev), 0x11111111);
+
+    return true;
+}
+
+
+bool
 test_pm4_microcode(ati_device_t *dev)
 {
     /* Microcode writes */
@@ -247,4 +283,5 @@ register_cce_tests(void)
     REGISTER_TEST(test_cce_setup, "cce setup");
     REGISTER_TEST(test_cce_packet_submission, "cce packet submission");
     REGISTER_TEST(test_pm4_microcode, "pm4 microcode");
+    REGISTER_TEST(test_cce_mm_indirect, "cce MM_INDEX and MM_DATA");
 }

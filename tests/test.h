@@ -26,6 +26,19 @@
         }                                                                      \
     } while (0)
 
+#define ASSERT_NEQ(actual, expected)                                            \
+    do {                                                                       \
+        uint32_t _a = (actual);                                                \
+        uint32_t _e = (expected);                                              \
+        if (_a == _e) {                                                        \
+            error_printf(                                                      \
+                "%s:%d: ASSERT_NEQ failed: matched 0x%08x, expected values to differ\n",      \
+                __FILE__, __LINE__, _a, _e);                                   \
+            return false;                                                      \
+        }                                                                      \
+    } while (0)
+
+
 #define ASSERT_TRUE(cond)                                                      \
     do {                                                                       \
         if (!(cond)) {                                                         \

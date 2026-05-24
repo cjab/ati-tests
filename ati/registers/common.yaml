@@ -1180,3 +1180,13 @@ registers:
   SCALE_3D_CNTL:
     offset: 0x1a00
     group: misc
+
+  # ===========================================================================
+  # Indirect MM Registers
+  # ===========================================================================
+  MM_INDEX:
+    offset: 0x0
+    group: misc
+  MM_DATA:
+    offset: 0x4
+    group: misc
