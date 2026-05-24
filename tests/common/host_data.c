@@ -485,6 +485,51 @@ test_host_data_color_32x32(ati_device_t *dev)
 //    return true;
 //}
 
+bool
+test_host_data_draw_after_pan(ati_device_t *dev)
+{
+    int size = 32;
+    int border = 4;
+    uint32_t dst_width_height = (size << 16) | size;
+    ati_screen_clear(dev, 0);
+    setup_draw_defaults(dev);
+
+    /* Set src_datatype to color */
+    wr_dp_datatype(dev, 0x40030006);
+
+    // Visible width is 640px from initial modesetting
+    // Setup virtual desktop: 800px wide
+    uint32_t virtual_pitch = 800 / 8;
+    wr_r128_crtc_pitch(dev, virtual_pitch);
+    wr_r128_default_pitch(dev, virtual_pitch);
+    wr_dst_pitch(dev, virtual_pitch);
+    wr_crtc_offset(dev, 0);
+
+    //wr_dst_x(dev, 0x0);
+    //wr_dst_y(dev, 0x0);
+    //wr_dst_width_height(dev, dst_width_height);
+    //draw_color_box(dev, size, border);
+
+    //udelay(9999999);
+
+    // Pan down
+    uint32_t pan_offset = 32 * virtual_pitch * 8;
+    wr_crtc_offset(dev, pan_offset);
+
+    wr_dst_x(dev, 0x40);
+    wr_dst_y(dev, 0x0);
+    wr_dst_width_height(dev, dst_width_height);
+    draw_color_box(dev, size, border);
+
+    // Pan down 8 more pixels
+    //wr_crtc_offset(dev, pan_offset * 2);
+
+    //wr_dst_width_height(dev, dst_width_height);
+    //draw_color_box(dev, size, border);
+
+    return true;
+}
+
 void
 register_host_data_tests(void)
 {
@@ -497,4 +542,5 @@ register_host_data_tests(void)
     REGISTER_TEST(test_host_data_color_32x32, "host_data color 32x32");
     //REGISTER_TEST(test_host_data_has_a_256_bit_buffer,
     //              "host_data has a 256-bit buffer");
+    REGISTER_TEST(test_host_data_draw_after_pan, "host_data draw after pan");
 }
