@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "../../ati/cce.h"
+#include "../../ati/r128_cce.h"
 #include "../test.h"
 
 bool test_cce(ati_device_t *dev) {
@@ -9,7 +10,7 @@ bool test_cce(ati_device_t *dev) {
     /* Type-0 packets */
     // Single register write
     uint32_t packets[] = {CCE_PKT0(BIOS_0_SCRATCH, 1), 0xcafebabe};
-    ati_cce_pio_submit(dev, packets, 2);
+    ati_r128_cce_pio_submit(dev, packets, 2);
 
     ati_wait_for_idle(dev);
     ASSERT_EQ(rd_bios_0_scratch(dev), packets[1]);
@@ -17,7 +18,7 @@ bool test_cce(ati_device_t *dev) {
     // Multi-register write
     uint32_t packets2[] = {CCE_PKT0(BIOS_0_SCRATCH, 2), 0xdeadbeef,
                            0xbeefc0de};
-    ati_cce_pio_submit(dev, packets2, 3);
+    ati_r128_cce_pio_submit(dev, packets2, 3);
 
     ati_wait_for_idle(dev);
     ASSERT_EQ(rd_bios_0_scratch(dev), packets2[1]);
@@ -27,7 +28,7 @@ bool test_cce(ati_device_t *dev) {
     uint32_t packets3[] = {CCE_PKT0_ONE(BIOS_0_SCRATCH, 2), 0x11111111,
                            0x22222222};
     wr_bios_1_scratch(dev, 0x00000000);
-    ati_cce_pio_submit(dev, packets3, 3);
+    ati_r128_cce_pio_submit(dev, packets3, 3);
 
     ati_wait_for_idle(dev);
     ASSERT_EQ(rd_bios_0_scratch(dev), packets3[2]);
