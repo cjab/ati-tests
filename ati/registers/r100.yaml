@@ -112,3 +112,24 @@ registers:
     reserved:
       - bits: [11, 15]
       - bits: [27, 31]
+
+  # ===========================================================================
+  # CommandProcessor Registers
+  # ===========================================================================
+  CP_ME_RAM_DATAH:
+    offset: 0x07dc
+    group: misc
+    flags: [indirect]
+    fields:
+      ME_RAM_DATAH:
+        bits: [0, 5]
+        description: "MicroEngine RAM data high used to load the MicroEngine RAM."
+
+  CP_ME_RAM_DATAL:
+    offset: 0x07e0
+    group: misc
+    flags: [read_side_effects, indirect]
+    fields:
+      ME_RAM_DATAL:
+        bits: [0, 31]
+        description: "MicroEngine RAM data low used to load the MicroEngine RAM."

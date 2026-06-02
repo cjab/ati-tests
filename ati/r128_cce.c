@@ -75,26 +75,26 @@ ati_r128_init_cce_engine(ati_device_t *dev)
     ati_wait_for_idle(dev);
 
     // Load CCE microcode
-    wr_pm4_microcode_addr(dev, 0);
+    wr_r128_pm4_microcode_addr(dev, 0);
     for (int i = 0; i < 256; i += 1) {
-        wr_pm4_microcode_datah(dev, r128_cce_microcode[i * 2]);
-        wr_pm4_microcode_datal(dev, r128_cce_microcode[i * 2 + 1]);
+        wr_r128_pm4_microcode_datah(dev, r128_cce_microcode[i * 2]);
+        wr_r128_pm4_microcode_datal(dev, r128_cce_microcode[i * 2 + 1]);
     }
 
     // Set to PIO-based CCE mode with 192 entries
-    wr_pm4_buffer_cntl(dev, PM4_BUFFER_MODE_192PIO | PM4_BUFFER_CNTL_NOUPDATE);
+    wr_r128_pm4_buffer_cntl(dev, R128_PM4_BUFFER_MODE_192PIO | R128_PM4_BUFFER_CNTL_NOUPDATE);
 
     // Read as per sample code (may be required for mode change to take effect)
-    (void) rd_pm4_buffer_addr(dev);
+    (void) rd_r128_pm4_buffer_addr(dev);
 
     // Start the CCE engine
-    wr_pm4_micro_cntl(dev, PM4_MICRO_FREERUN);
+    wr_r128_pm4_micro_cntl(dev, R128_PM4_MICRO_FREERUN);
 }
 
 void
 ati_r128_start_cce_engine(ati_device_t *dev)
 {
-    wr_pm4_micro_cntl(dev, PM4_MICRO_FREERUN);
+    wr_r128_pm4_micro_cntl(dev, R128_PM4_MICRO_FREERUN);
 }
 
 void
@@ -103,20 +103,20 @@ ati_r128_stop_cce_engine(ati_device_t *dev)
     // Wait for CCE to finish processing
     ati_wait_for_idle(dev);
     // Stop the microengine (clear FREERUN bit)
-    wr_pm4_micro_cntl(dev, 0);
+    wr_r128_pm4_micro_cntl(dev, 0);
     ati_engine_reset(dev);
     // Set back to non-PM4 (standard PIO) mode
-    wr_pm4_buffer_cntl(dev, PM4_BUFFER_MODE_NONPM4);
+    wr_r128_pm4_buffer_cntl(dev, R128_PM4_BUFFER_MODE_NONPM4);
 }
 
 void
 ati_r128_dump_microcode(ati_device_t *dev, uint32_t *out)
 {
-    wr_pm4_microcode_raddr(dev, 0);
+    wr_r128_pm4_microcode_raddr(dev, 0);
     for (uint32_t addr = 0; addr < 256; addr++) {
         int idx = addr * 2;
-        out[idx] = rd_pm4_microcode_datah(dev);
-        out[idx + 1] = rd_pm4_microcode_datal(dev);
+        out[idx] = rd_r128_pm4_microcode_datah(dev);
+        out[idx + 1] = rd_r128_pm4_microcode_datal(dev);
     }
 }
 
@@ -124,9 +124,9 @@ uint64_t
 ati_r128_read_microcode(ati_device_t *dev, uint8_t addr)
 {
     uint64_t out;
-    wr_pm4_microcode_raddr(dev, addr);
-    out = (uint64_t) rd_pm4_microcode_datah(dev) << 32;
-    out |= rd_pm4_microcode_datal(dev);
+    wr_r128_pm4_microcode_raddr(dev, addr);
+    out = (uint64_t) rd_r128_pm4_microcode_datah(dev) << 32;
+    out |= rd_r128_pm4_microcode_datal(dev);
     return out;
 }
 
@@ -137,16 +137,16 @@ ati_r128_write_microcode(ati_device_t *dev, uint8_t addr, uint64_t inst)
     uint32_t low = inst;
     // Must wait for idle before writing microcode
     ati_wait_for_idle(dev);
-    wr_pm4_microcode_addr(dev, addr);
-    wr_pm4_microcode_datah(dev, high);
-    wr_pm4_microcode_datal(dev, low);
+    wr_r128_pm4_microcode_addr(dev, addr);
+    wr_r128_pm4_microcode_datah(dev, high);
+    wr_r128_pm4_microcode_datal(dev, low);
 }
 
 
 static void
 ati_r128_cce_wait_for_fifo(ati_device_t *dev, uint32_t entries)
 {
-    while ((rd_pm4_stat(dev) & PM4_FIFOCNT_MASK) < entries) {
+    while ((rd_r128_pm4_stat(dev) & R128_PM4_FIFOCNT_MASK) < entries) {
         // spin
     }
 }
@@ -156,11 +156,11 @@ ati_r128_cce_pio_submit(ati_device_t *dev, uint32_t *packets, size_t dwords)
 {
     for (size_t i = 0; i < dwords; i += 2) {
         ati_r128_cce_wait_for_fifo(dev, 2);
-        wr_pm4_fifo_data_even(dev, packets[i]);
+        wr_r128_pm4_fifo_data_even(dev, packets[i]);
         if (i + 1 < dwords) {
-            wr_pm4_fifo_data_odd(dev, packets[i + 1]);
+            wr_r128_pm4_fifo_data_odd(dev, packets[i + 1]);
         } else {
-            wr_pm4_fifo_data_odd(dev, CCE_PKT2());
+            wr_r128_pm4_fifo_data_odd(dev, CCE_PKT2());
         }
     }
 }
@@ -170,8 +170,8 @@ ati_r128_cce_wait_for_idle(ati_device_t *dev)
 {
 
     for (int i = 0; i < CCE_WAIT_TIMEOUT; i++) {
-        uint32_t pm4_stat = rd_pm4_stat(dev);
-        uint32_t fifocnt = pm4_stat & PM4_FIFOCNT_MASK;
+        uint32_t pm4_stat = rd_r128_pm4_stat(dev);
+        uint32_t fifocnt = pm4_stat & R128_PM4_FIFOCNT_MASK;
         bool busy = pm4_stat & (PM4_BUSY | GUI_ACTIVE);
         bool fifo_empty = fifocnt >= 192;
         if (fifo_empty && !busy) {
