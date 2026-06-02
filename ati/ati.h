@@ -69,7 +69,6 @@ void ati_vram_memcpy(ati_device_t *dev, uint32_t dst_offset, const void *src,
 bool ati_screen_async_compare_fixture(ati_device_t *dev,
                                       const char *fixture_name);
 bool ati_screen_compare_fixture(ati_device_t *dev, const char *fixture_name);
-void ati_dump_mode(ati_device_t *dev);
 void ati_print_info(ati_device_t *dev);
 
 // ============================================================================
@@ -186,6 +185,9 @@ ati_get_dst_datatype(int bpp)
         return GMC_DST_DATATYPE_ARGB_8888;
     }
 }
+
+uint32_t ati_get_bytes_per_pixel(ati_device_t *dev);
+
 // clang-format off
 
 #endif

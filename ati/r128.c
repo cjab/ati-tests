@@ -22,7 +22,7 @@ r128_set_display_mode(ati_device_t *dev)
     wr_mpp_tb_config(dev, 0x0);
     wr_mpp_gp_config(dev, 0x0);
     wr_subpic_cntl(dev, 0x0);
-    wr_viph_control(dev, 0x0);
+    wr_r128_viph_control(dev, 0x0);
     wr_i2c_cntl_1(dev, 0x0);
     wr_gen_int_cntl(dev, 0x0);
     wr_cap0_trig_cntl(dev, 0x0);
@@ -34,11 +34,11 @@ r128_set_display_mode(ati_device_t *dev)
                     DAC_8BIT_EN | (0xff << DAC_MASK_SHIFT));
 
     // Enable acceleration, ensure interlace/double-scan are disabled
-    uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
-    wr_crtc_gen_cntl(dev, (crtc_gen_cntl & ~CRTC_PIX_WIDTH_MASK & ~CRTC_CUR_EN &
-                           ~CRTC_C_SYNC_EN & ~CRTC_DBL_SCAN_EN & ~CRTC_INTERLACE_EN) |
-                              CRTC_EXT_DISP_EN | CRTC_EN |
-                              CRTC_PIX_WIDTH_32BPP);
+    uint32_t crtc_gen_cntl = rd_r128_crtc_gen_cntl(dev);
+    wr_r128_crtc_gen_cntl(dev, (crtc_gen_cntl & ~R128_CRTC_PIX_WIDTH_MASK & ~R128_CRTC_CUR_EN &
+                           ~R128_CRTC_C_SYNC_EN & ~R128_CRTC_DBL_SCAN_EN & ~R128_CRTC_INTERLACE_EN) |
+                              R128_CRTC_EXT_DISP_EN | R128_CRTC_EN |
+                              R128_CRTC_PIX_WIDTH_32BPP);
 
     // VESA 640x480@60Hz standard timings
     // Horizontal: 640 visible + 16 front porch + 96 sync + 48 back porch = 800
@@ -103,4 +103,170 @@ r128_set_display_mode(ati_device_t *dev)
     wr_crtc_ext_cntl(dev, (crtc_ext_cntl & ~CRTC_HSYNC_DIS & ~CRTC_VSYNC_DIS &
                            ~CRTC_DISPLAY_DIS) |
                               VGA_ATI_LINEAR | VGA_XCRT_CNT_EN | CRTC_CRT_ON);
+}
+
+void
+ati_r128_wait_for_fifo(ati_device_t *dev, uint32_t entries)
+{
+    uint32_t timeout = 1000000;
+    while (timeout--) {
+        uint32_t slots = rd_r128_gui_stat(dev) & R128_GUI_FIFO_CNT_MASK;
+        if (slots >= entries) {
+            return;
+        }
+    }
+    printf("ati_wait_for_fifo timed out! (waiting for %d entries)\n", entries);
+    // TODO: I'm not sure what should happen on a timeout here.
+    //       It looks like the r128 driver resets the engine.
+    //       We'll see if we can get away with not worrying about it...
+}
+
+
+void
+ati_r128_wait_for_engine(ati_device_t *dev)
+{
+    // Wait for engine to be idle
+    uint32_t timeout = 1000000;
+    while (timeout--) {
+        uint32_t status = rd_r128_gui_stat(dev);
+        if ((status & R128_GUI_ACTIVE) == 0) {
+            break;
+        }
+    }
+    if (timeout == 0) {
+        printf("ati_wait_for_idle timed out! GUI still active.\n");
+    }
+}
+
+
+void
+ati_r128_engine_flush(ati_device_t *dev)
+{
+    // Flush the pixel cache
+    wr_r128_pc_ngui_ctlstat(dev, R128_PC_FLUSH_ALL_MASK);
+
+    // Wait for flush to complete (PC_BUSY bit to clear)
+    uint32_t timeout = 1000000;
+    while (timeout--) {
+        uint32_t status = rd_r128_pc_ngui_ctlstat(dev);
+        if ((status & R128_PC_BUSY) == 0) {
+            return;
+        }
+    }
+    printf("ati_engine_flush timed out! Pixel cache still busy.\n");
+}
+
+void
+ati_r128_engine_reset(ati_device_t *dev)
+{
+    // Flush pixel cache first
+    ati_r128_engine_flush(dev);
+
+    // Read current GEN_RESET_CNTL value
+    uint32_t gen_reset_cntl = rd_r128_gen_reset_cntl(dev);
+
+    // Assert soft reset
+    wr_r128_gen_reset_cntl(dev, gen_reset_cntl | R128_SOFT_RESET_GUI);
+    // Read back to ensure write completes
+    rd_r128_gen_reset_cntl(dev);
+
+    // Deassert soft reset
+    wr_r128_gen_reset_cntl(dev, gen_reset_cntl & ~R128_SOFT_RESET_GUI);
+    // Read back to ensure write completes
+    rd_r128_gen_reset_cntl(dev);
+
+    // Restore original value
+    wr_r128_gen_reset_cntl(dev, gen_reset_cntl);
+}
+
+void
+ati_r128_init_gui_engine(ati_device_t *dev)
+{
+    // Disable 3D scaling
+    wr_r128_scale_3d_cntl(dev, 0x0);
+
+    // Reset the engine
+    ati_engine_reset(dev);
+
+    // Wait for engine to be idle after reset
+    ati_wait_for_idle(dev);
+
+    // Set default offset and pitch - chip-specific register layouts
+    //ati_chip_family_t chip = ati_get_chip_family(dev);
+    //if (chip == CHIP_R100) {
+    //    // R100: Combined register with pitch in bits 29:22, offset in bits 21:0
+    //    // Pitch is in 64-byte units: (640 * 4) / 64 = 40
+    //    // Offset is in 1KB units: 0
+    //    uint32_t pitch_64 = (X_RES * BYPP) / 64;
+    //    wr_r100_default_pitch_offset(dev, pitch_64 << 22);
+    //} else {
+    //}
+    wr_r128_default_offset(dev, 0x0);
+    wr_r128_default_pitch(dev, X_RES / 8);
+
+    // Disable auxiliary scissor
+    wr_aux_sc_cntl(dev, 0x0);
+
+    // Set scissor clipping to the max.
+    // Range is -8192 to +8191 which is why these aren't just set to the mask.
+    wr_default_sc_bottom_right(dev, (0x1fff << DEFAULT_SC_RIGHT_SHIFT) |
+                                        (0x1fff << DEFAULT_SC_BOTTOM_SHIFT));
+    // The docs say to set DEFAULT_SC_TOP_LEFT... That doesn't exist as far as I
+    // can tell. So, set the actual scissor top left just to be safe.
+    wr_sc_top_left(dev, 0x00000000);
+    wr_sc_bottom_right(dev, (0x1fff << DEFAULT_SC_RIGHT_SHIFT) |
+                                (0x1fff << DEFAULT_SC_BOTTOM_SHIFT));
+
+    // Set blit direction to left-to-right, top-to-bottom
+    wr_dp_cntl(dev, DST_X_LEFT_TO_RIGHT | DST_Y_TOP_TO_BOTTOM);
+
+    // Set GUI master control
+    wr_dp_gui_master_cntl(
+        dev, GMC_BRUSH_DATATYPE_SOLIDCOLOR |
+                 ati_get_dst_datatype(BPP) |
+                 GMC_SRC_DATATYPE_DST_COLOR |
+                 GMC_BYTE_PIX_ORDER | // LSB to MSB
+                 GMC_ROP3_SRCCOPY |
+                 GMC_SRC_SOURCE_MEMORY |
+                 GMC_CLR_CMP_CNTL_DIS | GMC_AUX_CLIP_DIS | GMC_WR_MSK_DIS);
+
+    // Clear the line drawing registers
+    wr_dst_bres_err(dev, 0);
+    wr_dst_bres_inc(dev, 0);
+    wr_dst_bres_dec(dev, 0);
+
+    // Set brush colors
+    wr_dp_brush_frgd_clr(dev, 0xffffffff);
+    wr_dp_brush_bkgd_clr(dev, 0x00000000);
+
+    // Set source colors
+    wr_dp_src_frgd_clr(dev, 0xffffffff);
+    wr_dp_src_bkgd_clr(dev, 0x00000000);
+
+    // Set write mask
+    wr_dp_write_msk(dev, 0xffffffff);
+
+    // Wait for idle to ensure initialization is complete
+    ati_wait_for_idle(dev);
+}
+
+uint32_t
+ati_r128_get_bytes_per_pixel(ati_device_t *dev)
+{
+    uint32_t crtc_gen_cntl = rd_r128_crtc_gen_cntl(dev);
+    uint32_t pix_width = crtc_gen_cntl & R128_CRTC_PIX_WIDTH_MASK;
+
+    switch (pix_width) {
+    case R128_CRTC_PIX_WIDTH_8BPP:
+        return 1;
+    case R128_CRTC_PIX_WIDTH_15BPP:
+    case R128_CRTC_PIX_WIDTH_16BPP:
+        return 2;
+    case R128_CRTC_PIX_WIDTH_24BPP:
+        return 3;
+    case R128_CRTC_PIX_WIDTH_32BPP:
+        return 4;
+    default:
+        return 1;
+    }
 }

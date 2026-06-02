@@ -53,9 +53,47 @@ registers:
       - bits: [17, 31]
 
   # ===========================================================================
-  # CRTC Pitch Register
-  # R128 has 10-bit pitch field only, no stereo support
+  # CRTC Registers
   # ===========================================================================
+  CRTC_GEN_CNTL:
+    offset: 0x0050
+    group: crtc
+    ref: "RRG:80"
+    fields:
+      CRTC_DBL_SCAN_EN:
+        bit: 0
+      CRTC_INTERLACE_EN:
+        bit: 1
+      CRTC_C_SYNC_EN:
+        bit: 4
+      CRTC_PIX_WIDTH:
+        bits: [8, 10]
+        values:
+          4BPP: 1
+          8BPP: 2
+          15BPP: 3
+          16BPP: 4
+          24BPP: 5
+          32BPP: 6
+      CRTC_CUR_EN:
+        bit: 16
+      CRTC_CUR_MODE:
+        bits: [17, 19]
+        values:
+          64X64_MONO: 0
+      CRTC_EXT_DISP_EN:
+        bit: 24
+      CRTC_EN:
+        bit: 25
+      CRTC_DISP_REQ_EN_B:
+        bit: 26
+    reserved:
+      - bits: [2, 3]
+      - bits: [5, 7]
+      - bits: [11, 15]
+      - bits: [20, 23]
+      - bits: [27, 31]
+
   CRTC_PITCH:
     offset: 0x022c
     group: crtc
@@ -271,3 +309,114 @@ registers:
     reserved:
       - bits: [12, 15]
       - bit: 30
+
+  # ===========================================================================
+  # GUI Status Registers
+  # ===========================================================================
+  GUI_STAT:
+    offset: 0x1740
+    group: gui_status
+    flags: [no_write]
+    ref: "RRG:201"
+    fields:
+      GUI_FIFO_CNT:
+        bits: [0, 11]
+      PM4_BUSY:
+        bit: 16
+      MICRO_BUSY:
+        bit: 17
+      FPU_BUSY:
+        bit: 18
+      VC_BUSY:
+        bit: 19
+      IDCT_BUSY:
+        bit: 20
+      ENG_EV_BUSY:
+        bit: 21
+      SETUP_BUSY:
+        bit: 22
+      EDGEWALK_BUSY:
+        bit: 23
+      ADDRESSING_BUSY:
+        bit: 24
+      ENG_3D_BUSY:
+        bit: 25
+      ENG_2D_SM_BUSY:
+        bit: 26
+      ENG_2D_BUSY:
+        bit: 27
+      GUI_WB_BUSY:
+        bit: 28
+      CACHE_BUSY:
+        bit: 29
+      GUI_ACTIVE:
+        bit: 31
+    reserved:
+      - bits: [12, 15]
+      - bit: 30
+
+
+  # ===========================================================================
+  # Reset & Engine Control Registers
+  # ===========================================================================
+  GEN_RESET_CNTL:
+    offset: 0x00f0
+    group: misc
+    ref: "RRG:219"
+    fields:
+      SOFT_RESET_GUI:
+        bit: 0
+
+  PC_NGUI_CTLSTAT:
+    offset: 0x0184
+    group: gui_control
+    ref: "RRG:253"
+    fields:
+      PC_FLUSH_GUI:
+        bits: [0, 1]
+      PC_RI_GUI:
+        bits: [2, 3]
+      PC_FLUSH_NONGUI:
+        bits: [4, 5]
+      PC_RI_NONGUI:
+        bits: [6, 7]
+      PC_PURGE_GUI:
+        bit: 8
+      PC_PURGE_NONGUI:
+        bit: 9
+      PC_DIRTY:
+        bit: 24
+      PC_PURGE_DOPURGE:
+        bit: 25
+      PC_FLUSH_DOFLUSH:
+        bit: 26
+      PC_BUSY_INIT:
+        bit: 27
+      PC_BUSY_FLUSH:
+        bit: 28
+      PC_BUSY_GUI:
+        bit: 29
+      PC_BUSY_NGUI:
+        bit: 30
+      PC_BUSY:
+        bit: 31
+    aliases:
+      PC_FLUSH_ALL:
+        bits: [0, 7]
+        ref: "linux:drivers/char/drm/r128_drv.h:247"
+    reserved:
+      - bits: [10, 23]
+
+  # ===========================================================================
+  # 3D Registers
+  # ===========================================================================
+  SCALE_3D_CNTL:
+    offset: 0x1a00
+    group: misc
+
+  # ===========================================================================
+  # VIP & I2C Registers
+  # ===========================================================================
+  VIPH_CONTROL:
+    offset: 0x01d0
+    group: misc

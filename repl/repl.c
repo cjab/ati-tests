@@ -591,35 +591,14 @@ print_swatch(uint8_t r, uint8_t g, uint8_t b)
     printf("\x1b[48;2;%d;%d;%dm  " C_RESET, r, g, b);
 }
 
-// Get bytes per pixel for current CRTC mode
-static uint32_t
-get_bytes_per_pixel(ati_device_t *dev)
-{
-    uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
-    uint32_t pix_width = crtc_gen_cntl & CRTC_PIX_WIDTH_MASK;
-
-    switch (pix_width) {
-    case CRTC_PIX_WIDTH_8BPP:
-        return 1;
-    case CRTC_PIX_WIDTH_15BPP:
-    case CRTC_PIX_WIDTH_16BPP:
-        return 2;
-    case CRTC_PIX_WIDTH_24BPP:
-        return 3;
-    case CRTC_PIX_WIDTH_32BPP:
-        return 4;
-    default:
-        return 1;
-    }
-}
-
 // Print pixel value and color swatch based on current pixel format
+// FIXME: Currently assumes r128
 static void
 print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
 {
-    uint32_t crtc_gen_cntl = rd_crtc_gen_cntl(dev);
-    uint32_t pix_width = crtc_gen_cntl & CRTC_PIX_WIDTH_MASK;
-    uint32_t bpp = get_bytes_per_pixel(dev);
+    uint32_t crtc_gen_cntl = rd_r128_crtc_gen_cntl(dev);
+    uint32_t pix_width = crtc_gen_cntl & R128_CRTC_PIX_WIDTH_MASK;
+    uint32_t bpp = ati_get_bytes_per_pixel(dev);
     uint32_t byte_offset = pixel_idx * bpp;
     uint32_t val = ati_vram_read(dev, byte_offset & ~3); // Align to dword
     uint32_t shift = (byte_offset & 3) * 8;
@@ -627,7 +606,7 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
     printf(C_DIM "pixel %d" C_RESET " %c ", pixel_idx, separator);
 
     switch (pix_width) {
-    case CRTC_PIX_WIDTH_32BPP: {
+    case R128_CRTC_PIX_WIDTH_32BPP: {
         // aRGB 8888: 0xAARRGGBB
         uint8_t r = (val >> 16) & 0xff;
         uint8_t g = (val >> 8) & 0xff;
@@ -636,7 +615,7 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
         print_swatch(r, g, b);
         break;
     }
-    case CRTC_PIX_WIDTH_16BPP: {
+    case R128_CRTC_PIX_WIDTH_16BPP: {
         // RGB 565
         uint16_t pixel = (val >> shift) & 0xffff;
         uint8_t r = ((pixel >> 11) & 0x1f) << 3;
@@ -646,7 +625,7 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
         print_swatch(r, g, b);
         break;
     }
-    case CRTC_PIX_WIDTH_15BPP: {
+    case R128_CRTC_PIX_WIDTH_15BPP: {
         // aRGB 1555
         uint16_t pixel = (val >> shift) & 0xffff;
         uint8_t r = ((pixel >> 10) & 0x1f) << 3;
@@ -878,7 +857,7 @@ cmd_pixel_write(ati_device_t *dev, int argc, char **args)
 
     if (argc >= 4)
         parse_int(args[3], &count);
-    uint32_t bpp = get_bytes_per_pixel(dev);
+    uint32_t bpp = ati_get_bytes_per_pixel(dev);
     for (uint32_t i = 0; i < count; i++) {
         uint32_t byte_offset = (pixel + i) * bpp;
         // Write pixel value at appropriate size

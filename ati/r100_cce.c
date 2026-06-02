@@ -261,7 +261,11 @@ static uint32_t r100_cce_microcode[][2] = {
     { 0000000000, 0000000000 },
 };
 
-void ati_r100_init_cce_engine(ati_device_t *dev) {}
+void
+ati_r100_init_cce_engine(ati_device_t *dev)
+{
+}
+
 void ati_r100_start_cce_engine(ati_device_t *dev) {}
 void ati_r100_stop_cce_engine(ati_device_t *dev) {}
 

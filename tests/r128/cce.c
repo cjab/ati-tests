@@ -87,8 +87,8 @@ test_cce_packet_submission(ati_device_t *dev)
     ASSERT_EQ(rd_r128_pm4_stat(dev), 192);
 
     wr_r128_pm4_fifo_data_even(dev, packets[0]);
-    ati_wait_for_reg_value(dev, R128_PM4_STAT, MICRO_BUSY | R128_PM4_GUI_ACTIVE | 192);
-    ASSERT_EQ(rd_r128_pm4_stat(dev), MICRO_BUSY | R128_PM4_GUI_ACTIVE | 192);
+    ati_wait_for_reg_value(dev, R128_PM4_STAT, R128_MICRO_BUSY | R128_PM4_GUI_ACTIVE | 192);
+    ASSERT_EQ(rd_r128_pm4_stat(dev), R128_MICRO_BUSY | R128_PM4_GUI_ACTIVE | 192);
 
     wr_r128_pm4_fifo_data_odd(dev, packets[1]);
     ati_wait_for_reg_value(dev, R128_PM4_STAT, 192);
@@ -108,8 +108,8 @@ test_cce_mm_indirect(ati_device_t *dev)
 
     uint32_t idx_packets[] = {CCE_PKT0(MM_INDEX, 1), BIOS_1_SCRATCH};
     wr_r128_pm4_fifo_data_even(dev, idx_packets[0]);
-    ati_wait_for_reg_value(dev, R128_PM4_STAT, MICRO_BUSY | R128_PM4_GUI_ACTIVE | 192);
-    ASSERT_EQ(rd_r128_pm4_stat(dev), MICRO_BUSY | R128_PM4_GUI_ACTIVE | 192);
+    ati_wait_for_reg_value(dev, R128_PM4_STAT, R128_MICRO_BUSY | R128_PM4_GUI_ACTIVE | 192);
+    ASSERT_EQ(rd_r128_pm4_stat(dev), R128_MICRO_BUSY | R128_PM4_GUI_ACTIVE | 192);
     wr_r128_pm4_fifo_data_odd(dev, idx_packets[1]);
     ati_wait_for_reg_value(dev, R128_PM4_STAT, 192);
     ASSERT_EQ(rd_r128_pm4_stat(dev), 192);
@@ -121,8 +121,8 @@ test_cce_mm_indirect(ati_device_t *dev)
 
     uint32_t data_packets[] = {CCE_PKT0(MM_DATA, 1), 0x11111111};
     wr_r128_pm4_fifo_data_even(dev, data_packets[0]);
-    ati_wait_for_reg_value(dev, R128_PM4_STAT, MICRO_BUSY | R128_PM4_GUI_ACTIVE | 192);
-    ASSERT_EQ(rd_r128_pm4_stat(dev), MICRO_BUSY | R128_PM4_GUI_ACTIVE | 192);
+    ati_wait_for_reg_value(dev, R128_PM4_STAT, R128_MICRO_BUSY | R128_PM4_GUI_ACTIVE | 192);
+    ASSERT_EQ(rd_r128_pm4_stat(dev), R128_MICRO_BUSY | R128_PM4_GUI_ACTIVE | 192);
     wr_r128_pm4_fifo_data_odd(dev, data_packets[1]);
     ati_wait_for_reg_value(dev, R128_PM4_STAT, 192);
     ASSERT_EQ(rd_r128_pm4_stat(dev), 192);

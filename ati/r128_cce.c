@@ -15,8 +15,7 @@ static uint32_t r128_cce_microcode[] = {
     1,  147854772,   16, 420483072,  3,  8192,        0,  10240,
     1,  198656,      1,  15630,      1,  51200,       10, 34858,
     9,  42,          1,  33559823,   2,  10276,       1,  15717,
-    1,  15718,       2,  43,         1,  15936948,    1,  570480831,
-    1,  14715071,    12, 322123831,  1,  33953125,    12, 55,
+    1,  15718,       2,  43,         1,  15936948,    1,  570480831, 1,  14715071,    12, 322123831,  1,  33953125,    12, 55,
     1,  33559908,    1,  15718,      2,  46,          4,  2099258,
     1,  526336,      1,  442623,     4,  4194365,     1,  509952,
     1,  459007,      3,  0,          12, 92,          2,  46,
@@ -172,7 +171,7 @@ ati_r128_cce_wait_for_idle(ati_device_t *dev)
     for (int i = 0; i < CCE_WAIT_TIMEOUT; i++) {
         uint32_t pm4_stat = rd_r128_pm4_stat(dev);
         uint32_t fifocnt = pm4_stat & R128_PM4_FIFOCNT_MASK;
-        bool busy = pm4_stat & (PM4_BUSY | GUI_ACTIVE);
+        bool busy = pm4_stat & (R128_PM4_BUSY | R128_GUI_ACTIVE);
         bool fifo_empty = fifocnt >= 192;
         if (fifo_empty && !busy) {
             ati_r128_flush_pixcache(dev);
@@ -186,11 +185,11 @@ ati_r128_cce_wait_for_idle(ati_device_t *dev)
 int
 ati_r128_flush_pixcache(ati_device_t *dev)
 {
-    uint32_t tmp = rd_pc_ngui_ctlstat(dev) | PC_FLUSH_ALL_MASK;
-    wr_pc_ngui_ctlstat(dev, tmp);
+    uint32_t tmp = rd_r128_pc_ngui_ctlstat(dev) | R128_PC_FLUSH_ALL_MASK;
+    wr_r128_pc_ngui_ctlstat(dev, tmp);
 
     for (int i = 0; i < CCE_WAIT_TIMEOUT; i++) {
-        if (!(rd_pc_ngui_ctlstat(dev) & PC_BUSY)) {
+        if (!(rd_r128_pc_ngui_ctlstat(dev) & R128_PC_BUSY)) {
             return 0;
         }
         udelay(1);

@@ -14,7 +14,6 @@
 registers:
   # ===========================================================================
   # Display FIFO Arbitration
-  # R100 only - replaces R128's DDA_CONFIG/DDA_ON_OFF registers
   # ===========================================================================
   GRPH_BUFFER_CNTL:
     offset: 0x02f0
@@ -95,9 +94,55 @@ registers:
         description: "End of framebuffer in internal address space"
 
   # ===========================================================================
-  # CRTC Pitch Register
-  # R100 has 11-bit pitch field plus CRTC_PITCH_RIGHT for stereo display
+  # CRTC Registers
   # ===========================================================================
+  CRTC_GEN_CNTL:
+    offset: 0x0050
+    group: crtc
+    ref: "M6RG:29"
+    fields:
+      CRTC_DBL_SCAN_EN:
+        bit: 0
+      CRTC_INTERLACE_EN:
+        bit: 1
+      CRTC_C_SYNC_EN:
+        bit: 4
+      CRTC_PIX_WIDTH:
+        bits: [8, 11]
+        values:
+          DISABLED: 0
+          4BPP: 1
+          8BPP: 2
+          15BPP: 3
+          16BPP_RGB: 4
+          24BPP: 5
+          32BPP: 6
+          16BPP_ARGB: 7
+          16BPP_AIDX: 8
+      CRTC_ICON_EN:
+        bit: 15
+      CRTC_CUR_EN:
+        bit: 16
+      CRTC_VSTAT_MODE:
+        bits: [17, 18]
+      CRTC_CUR_MODE:
+        bits: [20, 22]
+        values:
+          64X64_MONO: 0
+      CRTC_EXT_DISP_EN:
+        bit: 24
+      CRTC_EN:
+        bit: 25
+      CRTC_DISP_REQ_EN_B:
+        bit: 26
+    reserved:
+      - bits: [2, 3]
+      - bits: [5, 7]
+      - bits: [12, 14]
+      - bit: 19
+      - bit: 23
+      - bits: [27, 31]
+
   CRTC_PITCH:
     offset: 0x022c
     group: crtc
@@ -133,3 +178,10 @@ registers:
       ME_RAM_DATAL:
         bits: [0, 31]
         description: "MicroEngine RAM data low used to load the MicroEngine RAM."
+
+  # ===========================================================================
+  # VIP & I2C Registers
+  # ===========================================================================
+  VIPH_CONTROL:
+    offset: 0x0c40
+    group: misc

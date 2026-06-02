@@ -76,45 +76,6 @@ registers:
   # ===========================================================================
   # CRTC Registers
   # ===========================================================================
-  CRTC_GEN_CNTL:
-    offset: 0x0050
-    group: crtc
-    ref: "RRG:80"
-    fields:
-      CRTC_DBL_SCAN_EN:
-        bit: 0
-      CRTC_INTERLACE_EN:
-        bit: 1
-      CRTC_C_SYNC_EN:
-        bit: 4
-      CRTC_PIX_WIDTH:
-        bits: [8, 10]
-        values:
-          4BPP: 1
-          8BPP: 2
-          15BPP: 3
-          16BPP: 4
-          24BPP: 5
-          32BPP: 6
-      CRTC_CUR_EN:
-        bit: 16
-      CRTC_CUR_MODE:
-        bits: [17, 19]
-        values:
-          64X64_MONO: 0
-      CRTC_EXT_DISP_EN:
-        bit: 24
-      CRTC_EN:
-        bit: 25
-      CRTC_DISP_REQ_EN_B:
-        bit: 26
-    reserved:
-      - bits: [2, 3]
-      - bits: [5, 7]
-      - bits: [11, 15]
-      - bits: [20, 23]
-      - bits: [27, 31]
-
   CRTC_EXT_CNTL:
     offset: 0x0054
     group: crtc
@@ -242,7 +203,9 @@ registers:
   DAC_CNTL:
     offset: 0x0058
     group: dac
-    ref: "RRG:142"
+    ref:
+      - "RRG:142"
+      - "M6RG:26"
     fields:
       DAC_RANGE_CNTL:
         bits: [0, 1]
@@ -250,6 +213,12 @@ registers:
         bit: 2
       DAC_CMP_EN:
         bit: 3
+      DAC_CMP_OUT_R:
+        bit: 4
+      DAC_CMP_OUT_G:
+        bit: 5
+      DAC_CMP_OUT_B:
+        bit: 6
       DAC_CMP_OUTPUT:
         bit: 7
       DAC_8BIT_EN:
@@ -264,17 +233,26 @@ registers:
         bit: 12
       DAC_VGA_ADR_EN:
         bit: 13
+      DAC_EXPAND_MODE:
+        bit: 14
       DAC_PDWN:
         bit: 15
+      CRT_SENSE:
+        bit: 16
+      CRT_DETECTION_ON:
+        bit: 17
+      DAC_CRC_CONT_EN:
+        bit: 18
       DAC_CRC_EN:
         bit: 19
+      DAC_CRC_FIELD:
+        bit: 20
+      DAC_LUT_COUNTER_LIMIT:
+        bits: [21, 22]
+      DAC_LUT_READ_SEL:
+        bit: 23
       DAC_MASK:
         bits: [24, 31]
-    reserved:
-      - bits: [4, 6]
-      - bit: 14
-      - bits: [16, 18]
-      - bits: [20, 23]
 
   PALETTE_INDEX:
     offset: 0x00b0
@@ -286,63 +264,14 @@ registers:
     flags: [read_side_effects]
 
   # ===========================================================================
-  # Reset & Engine Control Registers
-  # ===========================================================================
-  GEN_RESET_CNTL:
-    offset: 0x00f0
-    group: misc
-    ref: "RRG:219"
-    fields:
-      SOFT_RESET_GUI:
-        bit: 0
-
-  PC_NGUI_CTLSTAT:
-    offset: 0x0184
-    group: gui_control
-    ref: "RRG:253"
-    fields:
-      PC_FLUSH_GUI:
-        bits: [0, 1]
-      PC_RI_GUI:
-        bits: [2, 3]
-      PC_FLUSH_NONGUI:
-        bits: [4, 5]
-      PC_RI_NONGUI:
-        bits: [6, 7]
-      PC_PURGE_GUI:
-        bit: 8
-      PC_PURGE_NONGUI:
-        bit: 9
-      PC_DIRTY:
-        bit: 24
-      PC_PURGE_DOPURGE:
-        bit: 25
-      PC_FLUSH_DOFLUSH:
-        bit: 26
-      PC_BUSY_INIT:
-        bit: 27
-      PC_BUSY_FLUSH:
-        bit: 28
-      PC_BUSY_GUI:
-        bit: 29
-      PC_BUSY_NGUI:
-        bit: 30
-      PC_BUSY:
-        bit: 31
-    aliases:
-      PC_FLUSH_ALL:
-        bits: [0, 7]
-        ref: "linux:drivers/char/drm/r128_drv.h:247"
-    reserved:
-      - bits: [10, 23]
-
-  # ===========================================================================
   # Interrupt Registers
   # ===========================================================================
   GEN_INT_CNTL:
     offset: 0x0040
     group: misc
-    ref: "RRG:211"
+    ref:
+      - "RRG:211"
+      - "M6RG:92"
     fields:
       CRTC_VBLANK_INT_EN:
         bit: 0
@@ -352,8 +281,20 @@ registers:
         bit: 2
       SNAPSHOT_INT_EN:
         bit: 3
+      FP_DETECT_MASK:
+        bit: 4
+      CRTC2_VLINE_MASK:
+        bit: 5
+      CRTC2_VSYNC_MASK:
+        bit: 6
+      SNAPSHOT2_MASK:
+        bit: 7
+      CRTC_VBLANK_MASK:
+        bit: 9
       FP_DETECT_INT_EN:
         bit: 10
+      VSYNC_DIFF_OVER_LIMIT_MASK:
+        bit: 11
       BUSMASTER_EOL_INT_EN:
         bit: 16
       I2C_INT_EN:
@@ -364,11 +305,22 @@ registers:
         bit: 19
       VIPH_INT_EN:
         bit: 24
+      SW_INT_EN:
+        bit: 25
+      GEYSERVILLE_MASK:
+        bit: 27
+      HDCP_AUTHORIZED_INT_MASK:
+        bit: 28
+      DVI_I2C_INT_MASK:
+        bit: 29
+      GUIDMA_MASK:
+        bit: 30
     reserved:
-      - bits: [4, 9]
-      - bits: [11, 15]
+      - bit: 8
+      - bits: [12, 15]
       - bits: [20, 23]
-      - bits: [25, 31]
+      - bit: 26
+      - bit: 31
 
   # ===========================================================================
   # Overscan Registers
@@ -380,10 +332,12 @@ registers:
   OVR_WID_LEFT_RIGHT:
     offset: 0x0234
     group: overscan
+    notes: Minor differences in field widths between r128 and r100. See docs.
 
   OVR_WID_TOP_BOTTOM:
     offset: 0x0238
     group: overscan
+    notes: Minor differences in field widths between r128 and r100. See docs.
 
   # ===========================================================================
   # Overlay & Video Registers
@@ -413,10 +367,6 @@ registers:
   # ===========================================================================
   # VIP & I2C Registers
   # ===========================================================================
-  VIPH_CONTROL:
-    offset: 0x01d0
-    group: misc
-
   I2C_CNTL_1:
     offset: 0x0094
     group: misc
@@ -435,48 +385,6 @@ registers:
   # ===========================================================================
   # GUI Status Registers
   # ===========================================================================
-  GUI_STAT:
-    offset: 0x1740
-    group: gui_status
-    flags: [no_write]
-    ref: "RRG:201"
-    fields:
-      GUI_FIFO_CNT:
-        bits: [0, 11]
-      PM4_BUSY:
-        bit: 16
-      MICRO_BUSY:
-        bit: 17
-      FPU_BUSY:
-        bit: 18
-      VC_BUSY:
-        bit: 19
-      IDCT_BUSY:
-        bit: 20
-      ENG_EV_BUSY:
-        bit: 21
-      SETUP_BUSY:
-        bit: 22
-      EDGEWALK_BUSY:
-        bit: 23
-      ADDRESSING_BUSY:
-        bit: 24
-      ENG_3D_BUSY:
-        bit: 25
-      ENG_2D_SM_BUSY:
-        bit: 26
-      ENG_2D_BUSY:
-        bit: 27
-      GUI_WB_BUSY:
-        bit: 28
-      CACHE_BUSY:
-        bit: 29
-      GUI_ACTIVE:
-        bit: 31
-    reserved:
-      - bits: [12, 15]
-      - bit: 30
-
   GUI_PROBE:
     offset: 0x16bc
     group: gui_status
@@ -968,13 +876,6 @@ registers:
     offset: 0x17e0
     group: host_data
     flags: [no_read]
-
-  # ===========================================================================
-  # 3D Registers
-  # ===========================================================================
-  SCALE_3D_CNTL:
-    offset: 0x1a00
-    group: misc
 
   # ===========================================================================
   # Indirect MM Registers

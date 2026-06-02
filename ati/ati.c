@@ -323,16 +323,6 @@ ati_screen_dump(ati_device_t *dev, const char *filename)
 }
 
 void
-ati_dump_mode(ati_device_t *dev)
-{
-    // Note: CRTC_PITCH is chip-specific but at the same offset (0x022c) for both
-    DUMP_REGISTERS(dev, CRTC_H_TOTAL_DISP, CRTC_H_SYNC_STRT_WID,
-                   CRTC_V_TOTAL_DISP, CRTC_V_SYNC_STRT_WID, CRTC_GEN_CNTL,
-                   CRTC_EXT_CNTL, CRTC_OFFSET, CRTC_OFFSET_CNTL, R128_CRTC_PITCH,
-                   DAC_CNTL);
-}
-
-void
 ati_print_info(ati_device_t *dev)
 {
     const char *color;
@@ -506,6 +496,20 @@ ati_dump_all_registers(ati_device_t *dev)
     printf("============================================\n");
 }
 
+uint32_t
+ati_get_bytes_per_pixel(ati_device_t *dev)
+{
+    switch (dev->family) {
+    case CHIP_R128:
+        return ati_r128_get_bytes_per_pixel(dev);
+    case CHIP_R100:
+        return ati_r100_get_bytes_per_pixel(dev);
+    default:
+        return 0;
+    }
+}
+
+
 // ============================================================================
 // Display Mode Setup
 // ============================================================================
@@ -533,112 +537,46 @@ ati_set_display_mode(ati_device_t *dev)
 void
 ati_init_gui_engine(ati_device_t *dev)
 {
-    // Disable 3D scaling
-    wr_scale_3d_cntl(dev, 0x0);
-
-    // Reset the engine
-    ati_engine_reset(dev);
-
-    // Wait for engine to be idle after reset
-    ati_wait_for_idle(dev);
-
-    // Set default offset and pitch - chip-specific register layouts
-    if (dev->family == CHIP_R100) {
-        // R100: Combined register with pitch in bits 29:22, offset in bits 21:0
-        // Pitch is in 64-byte units: (640 * 4) / 64 = 40
-        // Offset is in 1KB units: 0
-        uint32_t pitch_64 = (X_RES * BYPP) / 64;
-        wr_r100_default_pitch_offset(dev, pitch_64 << 22);
-    } else {
-        // R128 or unknown: Separate registers
-        wr_r128_default_offset(dev, 0x0);
-        wr_r128_default_pitch(dev, X_RES / 8);
+    switch (dev->family) {
+    case CHIP_R128:
+        ati_r128_init_gui_engine(dev);
+        break;
+    case CHIP_R100:
+        //ati_r100_init_gui_engine(dev);
+        break;
+    default:
+        break;
     }
-
-    // Disable auxiliary scissor
-    wr_aux_sc_cntl(dev, 0x0);
-
-    // Set scissor clipping to the max.
-    // Range is -8192 to +8191 which is why these aren't just set to the mask.
-    wr_default_sc_bottom_right(dev, (0x1fff << DEFAULT_SC_RIGHT_SHIFT) |
-                                        (0x1fff << DEFAULT_SC_BOTTOM_SHIFT));
-    // The docs say to set DEFAULT_SC_TOP_LEFT... That doesn't exist as far as I
-    // can tell. So, set the actual scissor top left just to be safe.
-    wr_sc_top_left(dev, 0x00000000);
-    wr_sc_bottom_right(dev, (0x1fff << DEFAULT_SC_RIGHT_SHIFT) |
-                                (0x1fff << DEFAULT_SC_BOTTOM_SHIFT));
-
-    // Set blit direction to left-to-right, top-to-bottom
-    wr_dp_cntl(dev, DST_X_LEFT_TO_RIGHT | DST_Y_TOP_TO_BOTTOM);
-
-    // Set GUI master control
-    wr_dp_gui_master_cntl(
-        dev, GMC_BRUSH_DATATYPE_SOLIDCOLOR |
-                 ati_get_dst_datatype(BPP) |
-                 GMC_SRC_DATATYPE_DST_COLOR |
-                 GMC_BYTE_PIX_ORDER | // LSB to MSB
-                 GMC_ROP3_SRCCOPY |
-                 GMC_SRC_SOURCE_MEMORY |
-                 GMC_CLR_CMP_CNTL_DIS | GMC_AUX_CLIP_DIS | GMC_WR_MSK_DIS);
-
-    // Clear the line drawing registers
-    wr_dst_bres_err(dev, 0);
-    wr_dst_bres_inc(dev, 0);
-    wr_dst_bres_dec(dev, 0);
-
-    // Set brush colors
-    wr_dp_brush_frgd_clr(dev, 0xffffffff);
-    wr_dp_brush_bkgd_clr(dev, 0x00000000);
-
-    // Set source colors
-    wr_dp_src_frgd_clr(dev, 0xffffffff);
-    wr_dp_src_bkgd_clr(dev, 0x00000000);
-
-    // Set write mask
-    wr_dp_write_msk(dev, 0xffffffff);
-
-    // Wait for idle to ensure initialization is complete
-    ati_wait_for_idle(dev);
 }
 
 void
 ati_engine_flush(ati_device_t *dev)
 {
-    // Flush the pixel cache (write 0xff to flush all)
-    wr_pc_ngui_ctlstat(dev, PC_FLUSH_ALL_MASK);
-
-    // Wait for flush to complete (PC_BUSY bit to clear)
-    uint32_t timeout = 1000000;
-    while (timeout--) {
-        uint32_t status = rd_pc_ngui_ctlstat(dev);
-        if ((status & PC_BUSY) == 0) {
-            return;
-        }
+    switch (ati_get_chip_family(dev)) {
+    case CHIP_R128:
+        ati_r128_engine_flush(dev); break;
+    case CHIP_R100:
+        //ati_r100_wait_for_engine(dev);
+        break;
+    case CHIP_UNKNOWN:
+    default:
+        break;
     }
-    printf("ati_engine_flush timed out! Pixel cache still busy.\n");
 }
 
 void
 ati_engine_reset(ati_device_t *dev)
 {
-    // Flush pixel cache first
-    ati_engine_flush(dev);
-
-    // Read current GEN_RESET_CNTL value
-    uint32_t gen_reset_cntl = rd_gen_reset_cntl(dev);
-
-    // Assert soft reset
-    wr_gen_reset_cntl(dev, gen_reset_cntl | SOFT_RESET_GUI);
-    // Read back to ensure write completes
-    rd_gen_reset_cntl(dev);
-
-    // Deassert soft reset
-    wr_gen_reset_cntl(dev, gen_reset_cntl & ~SOFT_RESET_GUI);
-    // Read back to ensure write completes
-    rd_gen_reset_cntl(dev);
-
-    // Restore original value
-    wr_gen_reset_cntl(dev, gen_reset_cntl);
+    switch (ati_get_chip_family(dev)) {
+    case CHIP_R128:
+        ati_r128_engine_reset(dev); break;
+    case CHIP_R100:
+        //ati_r100_engine_reset(dev);
+        break;
+    case CHIP_UNKNOWN:
+    default:
+        break;
+    }
 }
 
 void
@@ -674,17 +612,31 @@ ati_wait_for_reg_value(ati_device_t *dev, uint32_t reg, uint32_t value)
 void
 ati_wait_for_fifo(ati_device_t *dev, uint32_t entries)
 {
-    uint32_t timeout = 1000000;
-    while (timeout--) {
-        uint32_t slots = rd_gui_stat(dev) & GUI_FIFO_CNT_MASK;
-        if (slots >= entries) {
-            return;
-        }
+    switch (ati_get_chip_family(dev)) {
+    case CHIP_R128:
+        ati_r128_wait_for_fifo(dev, entries); break;
+    case CHIP_R100:
+        //ati_r100_init_cce_engine(dev);
+        break;
+    case CHIP_UNKNOWN:
+    default:
+        break;
     }
-    printf("ati_wait_for_fifo timed out! (waiting for %d entries)\n", entries);
-    // TODO: I'm not sure what should happen on a timeout here.
-    //       It looks like the r128 driver resets the engine.
-    //       We'll see if we can get away with not worrying about it...
+}
+
+void
+ati_wait_for_engine(ati_device_t *dev)
+{
+    switch (ati_get_chip_family(dev)) {
+    case CHIP_R128:
+        ati_r128_wait_for_engine(dev); break;
+    case CHIP_R100:
+        //ati_r100_wait_for_engine(dev);
+        break;
+    case CHIP_UNKNOWN:
+    default:
+        break;
+    }
 }
 
 void
@@ -693,17 +645,7 @@ ati_wait_for_idle(ati_device_t *dev)
     // Wait for FIFO to be completely empty
     ati_wait_for_fifo(dev, FIFO_MAX);
 
-    // Wait for engine to be idle
-    uint32_t timeout = 1000000;
-    while (timeout--) {
-        uint32_t status = rd_gui_stat(dev);
-        if ((status & GUI_ACTIVE) == 0) {
-            break;
-        }
-    }
-    if (timeout == 0) {
-        printf("ati_wait_for_idle timed out! GUI still active.\n");
-    }
+    ati_wait_for_engine(dev);
 
     // Flush pixel cache
     ati_engine_flush(dev);
