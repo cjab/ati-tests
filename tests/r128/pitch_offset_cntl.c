@@ -9,11 +9,6 @@
 bool
 test_src_pitch_offset_cntl_latching(ati_device_t *dev)
 {
-    if (ati_get_chip_family(dev) != CHIP_R128) {
-        printf("  (skipped - R128 only)\n");
-        return true;
-    }
-
     uint32_t dp_gui_master_cntl;
 
     // Setting initial state
@@ -103,10 +98,10 @@ test_dst_pitch_offset_cntl_latching(ati_device_t *dev)
 }
 
 void
-register_pitch_offset_cntl_tests(void)
+register_r128_pitch_offset_cntl_tests(void)
 {
-    REGISTER_TEST(test_src_pitch_offset_cntl_latching,
-                  "SRC pitch offset latches");
-    REGISTER_TEST(test_dst_pitch_offset_cntl_latching,
-                  "DST pitch offset latches");
+    REGISTER_TEST_FOR(test_src_pitch_offset_cntl_latching,
+                  "SRC pitch offset latches", CHIP_R128);
+    REGISTER_TEST_FOR(test_dst_pitch_offset_cntl_latching,
+                  "DST pitch offset latches", CHIP_R128);
 }

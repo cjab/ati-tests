@@ -531,16 +531,16 @@ test_host_data_draw_after_pan(ati_device_t *dev)
 }
 
 void
-register_host_data_tests(void)
+register_r128_host_data_tests(void)
 {
-    REGISTER_TEST(test_host_data_32x32, "host_data 32x32");
-    REGISTER_TEST(test_host_data_mono_is_bit_packed,
-                  "host_data mono is bit packed");
-    REGISTER_TEST(test_host_data_morphos, "test host data morphos");
-    REGISTER_TEST(test_host_data_clipping_32x32, "host_data clipping 32x32");
-    REGISTER_TEST(test_host_data_clipping_48x48, "host_data clipping 48x48");
-    REGISTER_TEST(test_host_data_color_32x32, "host_data color 32x32");
-    //REGISTER_TEST(test_host_data_has_a_256_bit_buffer,
-    //              "host_data has a 256-bit buffer");
-    REGISTER_TEST(test_host_data_draw_after_pan, "host_data draw after pan");
+    REGISTER_TEST_FOR(test_host_data_32x32, "host_data 32x32", CHIP_R128);
+    REGISTER_TEST_FOR(test_host_data_mono_is_bit_packed,
+                  "host_data mono is bit packed", CHIP_R128);
+    REGISTER_TEST_FOR(test_host_data_morphos, "test host data morphos", CHIP_R128);
+    REGISTER_TEST_FOR(test_host_data_clipping_32x32, "host_data clipping 32x32", CHIP_R128);
+    REGISTER_TEST_FOR(test_host_data_clipping_48x48, "host_data clipping 48x48", CHIP_R128);
+    REGISTER_TEST_FOR(test_host_data_color_32x32, "host_data color 32x32", CHIP_R128);
+    //REGISTER_TEST_FOR(test_host_data_has_a_256_bit_buffer,
+    //              "host_data has a 256-bit buffer", CHIP_R128);
+    REGISTER_TEST_FOR(test_host_data_draw_after_pan, "host_data draw after pan", CHIP_R128);
 }

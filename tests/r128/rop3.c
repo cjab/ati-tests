@@ -242,7 +242,7 @@ test_r128_mem_blit_clipping(ati_device_t *dev)
 void
 register_r128_rop3_tests(void)
 {
-    REGISTER_TEST(test_r128_rop3_16x16, "r128 rop3 16x16");
-    REGISTER_TEST(test_r128_overlapping_mem_blit, "r128 overlapping mem blit");
-    REGISTER_TEST(test_r128_mem_blit_clipping, "r128 mem blit clipping");
+    REGISTER_TEST_FOR(test_r128_rop3_16x16, "r128 rop3 16x16", CHIP_R128);
+    REGISTER_TEST_FOR(test_r128_overlapping_mem_blit, "r128 overlapping mem blit", CHIP_R128);
+    REGISTER_TEST_FOR(test_r128_mem_blit_clipping, "r128 mem blit clipping", CHIP_R128);
 }

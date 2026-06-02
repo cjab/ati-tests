@@ -2,9 +2,7 @@
 #include "../../ati/cce.h"
 #include "../test.h"
 
-bool
-test_cce(ati_device_t *dev)
-{
+bool test_cce(ati_device_t *dev) {
     // Initialize CCE engine for this test
     ati_init_cce_engine(dev);
 
@@ -277,11 +275,11 @@ test_pm4_microcode(ati_device_t *dev)
 }
 
 void
-register_cce_tests(void)
+register_r128_cce_tests(void)
 {
-    REGISTER_TEST(test_cce, "cce");
-    REGISTER_TEST(test_cce_setup, "cce setup");
-    REGISTER_TEST(test_cce_packet_submission, "cce packet submission");
-    REGISTER_TEST(test_pm4_microcode, "pm4 microcode");
-    REGISTER_TEST(test_cce_mm_indirect, "cce MM_INDEX and MM_DATA");
+    REGISTER_TEST_FOR(test_cce, "cce", CHIP_R128);
+    REGISTER_TEST_FOR(test_cce_setup, "cce setup", CHIP_R128);
+    REGISTER_TEST_FOR(test_cce_packet_submission, "cce packet submission", CHIP_R128);
+    REGISTER_TEST_FOR(test_pm4_microcode, "pm4 microcode", CHIP_R128);
+    REGISTER_TEST_FOR(test_cce_mm_indirect, "cce MM_INDEX and MM_DATA", CHIP_R128);
 }
