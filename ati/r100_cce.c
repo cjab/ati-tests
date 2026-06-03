@@ -1,3 +1,5 @@
+#include "ati.h"
+#include "cce.h"
 #include "r100_cce.h"
 
 #define CCE_WAIT_TIMEOUT 10000000
@@ -264,15 +266,113 @@ static uint32_t r100_cce_microcode[][2] = {
 void
 ati_r100_init_cce_engine(ati_device_t *dev)
 {
+    ati_wait_for_idle(dev);
+
+    // Load CP microcode
+    wr_r100_cp_me_ram_addr(dev, 0);
+    for (int i = 0; i < 256; i += 1) {
+        int idx = i * 2;
+        wr_r100_cp_me_ram_datah(dev, r100_cce_microcode[idx][1]);
+        wr_r100_cp_me_ram_datal(dev, r100_cce_microcode[idx][0]);
+    }
+
+    // Set to PIO-based CP mode
+    wr_r100_cp_csq_cntl(dev, R100_CSQ_MODE_PIO);
 }
 
-void ati_r100_start_cce_engine(ati_device_t *dev) {}
-void ati_r100_stop_cce_engine(ati_device_t *dev) {}
+void
+ati_r100_start_cce_engine(ati_device_t *dev)
+{
+    wr_r100_cp_csq_cntl(dev, R100_CSQ_MODE_PIO);
+}
 
-void ati_r100_dump_microcode(ati_device_t *dev, uint32_t *out) {}
-uint64_t ati_r100_read_microcode(ati_device_t *dev, uint8_t addr) { return 0; }
-void ati_r100_write_microcode(ati_device_t *dev, uint8_t addr, uint64_t inst) {}
+void
+ati_r100_stop_cce_engine(ati_device_t *dev)
+{
+    ati_wait_for_idle(dev);
+    wr_r100_cp_csq_cntl(dev, R100_CSQ_MODE_DISABLED);
+}
 
-void ati_r100_cce_pio_submit(ati_device_t *dev, uint32_t *packets, size_t dwords) {}
-int ati_r100_cce_wait_for_idle(ati_device_t *dev) {}
-int ati_r100_flush_pixcache(ati_device_t *dev) {}
+void
+ati_r100_dump_microcode(ati_device_t *dev, uint32_t *out)
+{
+    wr_r100_cp_me_ram_raddr(dev, 0);
+    for (uint32_t addr = 0; addr < 256; addr++) {
+        int idx = addr * 2;
+        out[idx] = rd_r100_cp_me_ram_datah(dev);
+        out[idx + 1] = rd_r100_cp_me_ram_datal(dev);
+    }
+}
+
+uint64_t
+ati_r100_read_microcode(ati_device_t *dev, uint8_t addr)
+{
+    uint64_t out;
+    wr_r100_cp_me_ram_raddr(dev, addr);
+    out = (uint64_t) rd_r100_cp_me_ram_datah(dev) << 32;
+    out |= rd_r100_cp_me_ram_datal(dev);
+    return out;
+}
+
+void
+ati_r100_write_microcode(ati_device_t *dev, uint8_t addr, uint64_t inst)
+{
+    ati_wait_for_idle(dev);
+    wr_r100_cp_me_ram_addr(dev, addr);
+    wr_r100_cp_me_ram_datah(dev, inst << 32);
+    wr_r100_cp_me_ram_datal(dev, inst);
+}
+
+void
+ati_r100_cce_wait_for_fifo(ati_device_t *dev, uint32_t entries)
+{
+    while ((rd_r100_rbbm_status(dev) & R100_CMDFIFO_AVAIL_MASK) < entries) {
+        // spin
+    }
+}
+
+void
+ati_r100_cce_pio_submit(ati_device_t *dev, uint32_t *packets, size_t dwords)
+{
+    for (size_t i = 0; i < dwords; i += 2) {
+        ati_r100_cce_wait_for_fifo(dev, 2);
+        wr_r100_cp_csq_aper_primary(dev, packets[i]);
+        if (i + 1 < dwords) {
+            wr_r100_cp_csq_aper_primary(dev, packets[i + 1]);
+        } else {
+            wr_r100_cp_csq_aper_primary(dev, CCE_PKT2());
+        }
+    }
+}
+
+int
+ati_r100_cce_wait_for_idle(ati_device_t *dev)
+{
+    ati_r100_cce_wait_for_fifo(dev, 64);
+    for (int i = 0; i < CCE_WAIT_TIMEOUT; i++) {
+        if (!(rd_r100_rbbm_status(dev) & R100_GUI_ACTIVE)) {
+            ati_r100_flush_pixcache(dev);
+            return 0;
+        }
+        udelay(1);
+    }
+    printf("Failed to wait for cce idle\n");
+    return 1;
+}
+
+int
+ati_r100_flush_pixcache(ati_device_t *dev)
+{
+
+    uint32_t tmp = rd_r100_rb2d_dstcache_ctlstat(dev) | R100_RB2D_DC_FLUSH_ALL_MASK;
+    wr_r100_rb2d_dstcache_ctlstat(dev, tmp);
+
+    for (int i = 0; i < CCE_WAIT_TIMEOUT; i++) {
+        if(!(rd_r100_rb2d_dstcache_ctlstat(dev) & R100_RB2D_DC_BUSY)) {
+            return 0;
+        }
+        udelay(1);
+    }
+    printf("Failed to flush pixcache\n");
+    return 1;
+}

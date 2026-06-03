@@ -1,3 +1,4 @@
+#include "cce.h"
 #include "r128_cce.h"
 
 #define CCE_WAIT_TIMEOUT 10000000

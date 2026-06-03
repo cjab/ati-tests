@@ -161,6 +161,55 @@ registers:
   # ===========================================================================
   # CommandProcessor Registers
   # ===========================================================================
+  CP_CSQ_CNTL:
+    offset: 0x0740
+    group: misc
+    fields:
+      CSQ_CNT_PRIMARY:
+        bits: [0, 7]
+        description: |
+          Count of available dwords in the queue for the primary stream. (read only)
+      CSQ_CNT_INDIRECT:
+        bits: [8, 15]
+        description: |
+          Count of available dwords in the queue for the indirect stream. (read only)
+      CSQ_MODE:
+        bits: [28, 31]
+        description: |
+          Command Stream Queue Mode. Controls whether each
+          command stream is enabled, and whether it is in push
+          mode (Programmed I/O), or pull mode (Bus-Master).
+          Encodings are chosen to be compatible with Rage128.
+        values:
+          DISABLED: 0
+          PIO: 1
+          BM: 2
+          PIO_INDBM: 3
+          BM_INDBM: 4
+          PIO_INDBM_5: 5
+          BM_INDBM_6: 6
+          PIO_INDBM_7: 7
+          BM_INDBM_8: 8
+          PIO_INDPIO: 15
+
+  CP_ME_RAM_ADDR:
+    offset: 0x07d4
+    group: misc
+    fields:
+      ME_RAM_ADDR:
+        bits: [0, 7]
+    reserved:
+      - bits: [8, 31]
+
+  CP_ME_RAM_RADDR:
+    offset: 0x07d8
+    group: misc
+    fields:
+      ME_RAM_RADDR:
+        bits: [0, 7]
+    reserved:
+      - bits: [8, 31]
+
   CP_ME_RAM_DATAH:
     offset: 0x07dc
     group: misc
@@ -178,6 +227,103 @@ registers:
       ME_RAM_DATAL:
         bits: [0, 31]
         description: "MicroEngine RAM data low used to load the MicroEngine RAM."
+
+  RBBM_STATUS:
+    offset: 0x1740
+    group: misc
+    flags: [no_write]
+    ref: "M6RG:2-79"
+    description: Also accessible at offset 0x0E40.
+    fields:
+      CMDFIFO_AVAIL:
+        bits: [0, 6]
+        description: |
+          Number of available entries (doublewords) in the Command FIFO. (default: 64).
+      HIRQ_ON_RBB:
+        bit: 8
+        description: There is a request from the Host Interface on the backbone.
+      CPRQ_ON_RBB:
+        bit: 9
+        description: There is a request from the Command Processor on the backbone.
+      CFRQ_ON_RBB:
+        bit: 10
+        description: There is a request from the Command FIFO on the backbone.
+      HIRQ_IN_RTBUF:
+        bit: 11
+        description: There is a request from the Host Interface present in the Retry Buffer.
+      CPRQ_IN_RTBUF:
+        bit: 12
+        description: There is a request from the Command Processor present in the Retry Buffer.
+      CFRQ_IN_RTBUF:
+        bit: 13
+        description: There is a request from the Command FIFO present in the Retry Buffer.
+      CF_PIPE_BUSY:
+        bit: 14
+        description: The Command FIFO pipeline is busy.
+      ENG_EV_BUSY:
+        bit: 15
+        description: The RBBM's Event Engine is Busy (waiting for a WAIT_UNTIL synchronization event).
+      CP_CMDSTRM_BUSY:
+        bit: 16
+        description: The Command Processor's Command Stream is Busy.
+      E2_BUSY:
+        bit: 17
+        description: 2D Engine is Busy
+      RB2D_BUSY:
+        bit: 18
+        description: 2D portion of Render Backend is Busy
+      RB3D_BUSY:
+        bit: 19
+        description: 3D portion of Render Backend is Busy
+      SE_BUSY:
+        bit: 20
+        description: 3D Setup Engine is Busy
+      RE_BUSY:
+        bit: 21
+        description: 3D Raster Engine is Busy
+      TAM_BUSY:
+        bit: 22
+        description: 3D Texture Address Module is Busy
+      TDM_BUSY:
+        bit: 23
+        description: 3D Texture Data Module is Busy
+      PB_BUSY:
+        bit: 24
+        description: 3D Pixel Blender is Busy
+      GUI_ACTIVE:
+        bit: 31
+        description: |
+          2D engine busy OR 3D engine busy OR Command FIFO not empty OR
+          CP Microengine busy OR Command Stream Queue not empty OR Ring Buffer not empty
+    reserved:
+      - bit: 7
+      - bits: [25, 30]
+
+  CP_CSQ_APER_PRIMARY:
+    offset: 0x1000
+    ref: "M6RG:2-133"
+    group: misc
+    fields:
+      CP_CSQ_APER_PRIMARY:
+        bits: [0, 31]
+
+  RB2D_DSTCACHE_CTLSTAT:
+    offset: 0x342C
+    ref: "linux:radeon_cp.c"
+    group: misc
+    fields:
+      RB2D_DC_FLUSH:
+        bits: [0, 1]
+      RB2D_DC_FREE:
+        bits: [2, 3]
+      RB2D_DC_BUSY:
+        bit: 31
+    aliases:
+      RB2D_DC_FLUSH_ALL:
+        bits: [0, 7]
+        ref: "linux:drivers/char/drm/r128_drv.h:247"
+    reserved:
+      - bits: [3, 30]
 
   # ===========================================================================
   # VIP & I2C Registers
