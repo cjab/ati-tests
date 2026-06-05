@@ -192,6 +192,66 @@ registers:
           BM_INDBM_8: 8
           PIO_INDPIO: 15
 
+  CP_STAT:
+    offset: 0x07c0
+    group: misc
+    flags: [no_write]
+    ref: "M6RG:2-134"
+    fields:
+      MRU_BUSY:
+        bit: 0
+        description: "Memory Read Unit is Busy"
+      MWU_BUSY:
+        bit: 1
+        description: "Memory Write Unit is Busy"
+      RSIU_BUSY:
+        bit: 2
+        description: "Register Server Interface is Busy"
+      RCIU_BUSY:
+        bit: 3
+        description: "Register Client Interface is Busy"
+      CSF_PRIMARY_BUSY:
+        bit: 9
+        description: "Command Stream Fetcher is Busy operating on the Primary Stream"
+      CSF_INDIRECT_BUSY:
+        bit: 10
+        description: "Command Stream Fetcher is Busy operating on the Indirect Stream"
+      CSQ_PRIMARY_BUSY:
+        bit: 11
+        description: "Command Stream Queue is Busy operating on the Primary Stream"
+      CSQ_INDIRECT_BUSY:
+        bit: 12
+        description: "Command Stream Queue is Busy operating on the Indirect Stream"
+      CSI_BUSY:
+        bit: 13
+        description: "Command Stream Interpreter is Busy"
+      GUIDMA_BUSY:
+        bit: 28
+        description: "GUI DMA Engine is Busy"
+      CMDSTRM_BUSY:
+        bit: 30
+        description: "Command Processor's Command Stream is Busy"
+      CP_BUSY:
+        bit: 31
+        description: "Any Block in the CP is Busy"
+    reserved:
+      - bits: [4, 8]
+      - bits: [14, 27]
+      - bit: 29
+
+  CP_ME_CNTL:
+    offset: 0x07d0
+    group: misc
+    fields:
+      ME_STAT:
+        bits: [0, 15]
+      ME_STATMUX:
+        bits: [16, 20]
+      ME_MODE:
+        bit: 30
+      ME_STEP:
+        bit: 31
+
   CP_ME_RAM_ADDR:
     offset: 0x07d4
     group: misc
@@ -227,6 +287,47 @@ registers:
       ME_RAM_DATAL:
         bits: [0, 31]
         description: "MicroEngine RAM data low used to load the MicroEngine RAM."
+
+  CP_CSQ_ADDR:
+    offset: 0x07f0
+    group: misc
+    flags: [no_read]
+    fields:
+      CSQ_ADDR:
+        bits: [2, 9]
+    reserved:
+      - bits: [0, 1]
+      - bits: [10, 31]
+
+  CP_CSQ_DATA:
+    offset: 0x07f4
+    group: misc
+    flags: [no_write]
+    fields:
+      CSQ_DATA:
+        bits: [0, 31]
+
+  CP_CSQ_STAT:
+    offset: 0x07f8
+    ref: "M6RG:2-132"
+    group: misc
+    flags: [no_write]
+    fields:
+      CSQ_RPTR_PRIMARY:
+        bits: [0, 7]
+      CSQ_WPTR_PRIMARY:
+        bits: [8, 15]
+      CSQ_RPTR_INDIRECT:
+        bits: [16, 23]
+      CSQ_WPTR_INDIRECT:
+        bits: [24, 31]
+
+  CP_DEBUG:
+    offset: 0x07ec
+    group: misc
+    fields:
+      CP_DEBUG:
+        bits: [0, 31]
 
   RBBM_STATUS:
     offset: 0x1740
@@ -331,3 +432,14 @@ registers:
   VIPH_CONTROL:
     offset: 0x0c40
     group: misc
+
+  RE_STIPPLE_ADDR:
+    offset: 0x1cc8
+    ref: "linux:radeon_drv.h"
+    group: misc
+
+  RE_STIPPLE_DATA:
+    offset: 0x1ccc
+    ref: "linux:radeon_drv.h"
+    group: misc
+    flags: [read_side_effects, indirect]

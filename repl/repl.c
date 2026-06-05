@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "../ati/ati.h"
 #include "cce_cmd.h"
+#include "pkt_cmd.h"
 #include "../tests/test.h"
 #include "dump_cmd.h"
 #include "../platform/platform.h"
@@ -69,6 +70,7 @@ typedef enum {
     CMD_T,
     CMD_TL,
     CMD_CCE,
+    CMD_PKT,
     CMD_REGS,
     CMD_DUMP,
     CMD_HELP,
@@ -96,6 +98,7 @@ static const struct {
     {"t",        CMD_T,        "[test_name]",            "run test(s)"},
     {"tl",       CMD_TL,       NULL,                     "list tests"},
     {"cce",      CMD_CCE,      "<cmd>",                  "CCE control (init/start/stop/r/w)"},
+    {"pkt",      CMD_PKT,      "<type>",                 "Send packet"},
     {"regs",     CMD_REGS,     "<save|diff> [all]",      "register snapshot/diff (all=full aperture)"},
     {"dump",     CMD_DUMP,     "<cmd>",                  "dump data (screen/vram)"},
     {"help",     CMD_HELP,     NULL,                     NULL},
@@ -570,7 +573,7 @@ parse_int(const char *s, uint32_t *out)
     return 0;
 }
 
-static int
+int
 parse_reg(ati_device_t *dev, const char *s)
 {
     uint32_t addr;
@@ -649,7 +652,7 @@ print_pixel(ati_device_t *dev, uint32_t pixel_idx, char separator)
 
 // Print usage string with colored arguments
 // <required> in cyan, [optional] in gray
-static void
+void
 print_usage_colored(const char *usage)
 {
     const char *p = usage;
@@ -1191,6 +1194,9 @@ repl(ati_device_t *dev)
             break;
         case CMD_CCE:
             cmd_cce(dev, argc, args);
+            break;
+        case CMD_PKT:
+            cmd_pkt(dev, argc, args);
             break;
         case CMD_REGS:
             cmd_regs(dev, argc, args);

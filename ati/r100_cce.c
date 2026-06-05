@@ -339,8 +339,8 @@ ati_r100_cce_pio_submit(ati_device_t *dev, uint32_t *packets, size_t dwords)
         wr_r100_cp_csq_aper_primary(dev, packets[i]);
         if (i + 1 < dwords) {
             wr_r100_cp_csq_aper_primary(dev, packets[i + 1]);
-        } else {
-            wr_r100_cp_csq_aper_primary(dev, CCE_PKT2());
+        //} else {
+        //    wr_r100_cp_csq_aper_primary(dev, CCE_PKT2());
         }
     }
 }

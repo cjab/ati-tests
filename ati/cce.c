@@ -57,6 +57,24 @@ ati_stop_cce_engine(ati_device_t *dev)
 }
 
 bool
+ati_send_packet(ati_device_t *dev, uint32_t *packets, size_t dwords)
+{
+    switch (ati_get_chip_family(dev)) {
+    case CHIP_R128:
+        ati_r128_cce_pio_submit(dev, packets, dwords);
+        break;
+    case CHIP_R100:
+        ati_r100_cce_pio_submit(dev, packets, dwords);
+        break;
+    case CHIP_UNKNOWN:
+    default:
+        return false;
+        break;
+    }
+    return true;
+}
+
+bool
 ati_dump_microcode(ati_device_t *dev, uint32_t *out)
 {
     switch (ati_get_chip_family(dev)) {

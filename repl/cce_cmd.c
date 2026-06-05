@@ -214,34 +214,6 @@ cce_write(ati_device_t *dev, int argc, char **args)
 }
 
 // Public functions
-
-// Print usage string with colored arguments
-// <required> in cyan, [optional] in gray
-static void
-print_usage_colored(const char *usage)
-{
-    const char *p = usage;
-    while (*p) {
-        if (*p == '<') {
-            printf("\x1b[36m");
-            while (*p && *p != '>')
-                printf("%c", *p++);
-            if (*p == '>')
-                printf("%c", *p++);
-            printf("\x1b[0m");
-        } else if (*p == '[') {
-            printf("\x1b[90m");
-            while (*p && *p != ']')
-                printf("%c", *p++);
-            if (*p == ']')
-                printf("%c", *p++);
-            printf("\x1b[0m");
-        } else {
-            printf("%c", *p++);
-        }
-    }
-}
-
 void
 cce_cmd_help(void)
 {
