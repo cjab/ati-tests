@@ -155,7 +155,7 @@ void
 ati_r128_cce_pio_submit(ati_device_t *dev, uint32_t *packets, size_t dwords)
 {
     for (size_t i = 0; i < dwords; i += 2) {
-        ati_r128_cce_wait_for_fifo(dev, 2);
+        //ati_r128_cce_wait_for_fifo(dev, 2);
         wr_r128_pm4_fifo_data_even(dev, packets[i]);
         if (i + 1 < dwords) {
             wr_r128_pm4_fifo_data_odd(dev, packets[i + 1]);

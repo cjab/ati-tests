@@ -616,7 +616,7 @@ ati_wait_for_fifo(ati_device_t *dev, uint32_t entries)
     case CHIP_R128:
         ati_r128_wait_for_fifo(dev, entries); break;
     case CHIP_R100:
-        //ati_r100_init_cce_engine(dev);
+        //ati_r100_wait_for_fifo(dev);
         break;
     case CHIP_UNKNOWN:
     default:
