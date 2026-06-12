@@ -3,6 +3,9 @@
 #include "../../ati/r100_cce.h"
 #include "../test.h"
 
+static volatile uint32_t gart_mem[1024] __attribute__((aligned(4096)));
+static uint32_t page_table[32] __attribute__((aligned(4096)));
+
 bool test_r100_cce(ati_device_t *dev) {
     // Initialize CCE engine for this test
     ati_init_cce_engine(dev);
@@ -305,6 +308,50 @@ test_r100_microcode(ati_device_t *dev)
     return true;
 }
 
+bool
+test_r100_pci_gart(ati_device_t *dev)
+{
+    // Get the framebuffer and gart locations in
+    // the linear aperture address space
+    uint32_t fb_location = (rd_r100_mc_fb_location(dev) & 0xffff) << 16;
+    uint32_t gart_vm_start = fb_location + rd_r100_config_aper_size(dev);
+
+    // Initialize the PCI GART page table
+    memset((void *)page_table, 0, sizeof(page_table));
+    page_table[0] = (uint32_t)gart_mem;
+
+    // Shrink the framebuffer to make room for the GART
+    wr_r100_mc_fb_location(dev, ((gart_vm_start - 1) & 0xffff0000) | fb_location >> 16);
+
+    // Enable bus mastering. It should be enabled by default but...
+    wr_r100_bus_cntl(dev, rd_r100_bus_cntl(dev) & ~R100_BUS_MASTER_DIS);
+
+    // Enable PCI GART
+    wr_r100_aic_ctrl(dev, R100_TRANSLATE_EN);
+    wr_r100_aic_pt_base(dev, (uint32_t) page_table);
+    wr_r100_aic_lo_addr(dev, gart_vm_start);
+    wr_r100_aic_hi_addr(dev, gart_vm_start);
+
+    // Not entirely sure this is necessary but the Linux DRM driver
+    // does this to disable the AGP GART.
+    wr_r100_mc_agp_location(dev, 0xffffffc0);
+    wr_r100_agp_command(dev, 0);
+
+    // Enable scratch writeback
+    wr_r100_scratch_addr(dev, gart_vm_start);
+    wr_r100_scratch_umsk(dev, R100_SCRATCH0_EN);
+
+    // Test scratch writeback
+    wr_gui_scratch_reg0(dev, 0xdeadbeef);
+    for (int i = 0; i < 10000000; i++) {
+        if (gart_mem[0] == 0xdeadbeef) {
+            return true;
+        }
+        udelay(1);
+    }
+    return false;
+}
+
 void
 register_r100_cce_tests(void)
 {
@@ -313,4 +360,5 @@ register_r100_cce_tests(void)
     //REGISTER_TEST_FOR(test_r100_cce_packet_submission, "cce packet submission", CHIP_R100);
     REGISTER_TEST_FOR(test_r100_cce_mm_indirect, "cce MM_INDEX and MM_DATA", CHIP_R100);
     REGISTER_TEST_FOR(test_r100_microcode, "microcode", CHIP_R100);
+    REGISTER_TEST_FOR(test_r100_pci_gart, "PCI GART", CHIP_R100);
 }

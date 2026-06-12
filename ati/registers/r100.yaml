@@ -13,6 +13,99 @@
 
 registers:
   # ===========================================================================
+  # Bus Control
+  # ===========================================================================
+  BUS_CNTL:
+    offset: 0x0030
+    group: bus
+    ref: "M6RG:2-10"
+    fields:
+      BUS_DBL_RESYNC:
+        bit: 0
+        description: "Add extra resynchronizing clock"
+      BUS_MSTR_RESET:
+        bit: 1
+        access: wo
+        description: "Reset bus master"
+      BUS_FLUSH_BUF:
+        bit: 2
+        access: wo
+        description: "Flush buffer"
+      BUS_STOP_REQ_DIS:
+        bit: 3
+        description: "Disable stop request"
+      BUS_READ_COMBINE_EN:
+        bit: 4
+        description: "Enable read combining"
+      BUS_WRT_COMBINE_EN:
+        bit: 5
+        description: "Enable write combining"
+      BUS_MASTER_DIS:
+        bit: 6
+        description: "Disable bus mastering (0=enable, 1=disable)"
+      BIOS_ROM_WRT_EN:
+        bit: 7
+        description: "Enable BIOS ROM writes"
+      BUS_PREFETCH_MODE:
+        bits: [8, 9]
+        description: "HI prefetch mode"
+      BUS_VGA_PREFETCH_EN:
+        bit: 10
+        description: "Enable VGA prefetch"
+      BUS_SGL_READ_DISABLE:
+        bit: 11
+        description: "Disable single read"
+      BIOS_DIS_ROM:
+        bit: 12
+        description: "Disable ROM (0=enable, 1=disable)"
+      BUS_PCI_READ_RETRY_EN:
+        bit: 13
+        description: "Enable PCI read retry"
+      BUS_AGP_AD_STEPPING_EN:
+        bit: 14
+        description: "Enable AD stepping in AGP and PCI"
+      BUS_PCI_WRT_RETRY_EN:
+        bit: 15
+        description: "Enable PCI write retry"
+      BUS_RETRY_WS:
+        bits: [16, 19]
+      BUS_MSTR_RD_MULT:
+        bit: 20
+        description: "Read line (0) or read multiple (1)"
+      BUS_MSTR_RD_LINE:
+        bit: 21
+        description: "Read multiple (0) or read line (1)"
+      BUS_SUSPEND:
+        bit: 22
+        description: "Suspend bus master transfer"
+      LAT_16X:
+        bit: 23
+        description: "Latency multiplier (0=1X, 1=16X)"
+      BUS_RD_DISCARD_EN:
+        bit: 24
+        description: "Enable read discard"
+      ENFRCWRDY:
+        bit: 25
+      BUS_MSTR_WS:
+        bit: 26
+        description: "Wait states (0=8, 1=32)"
+      BUS_PARKING_DIS:
+        bit: 27
+        description: "Disable parking (0=enable, 1=disable)"
+      BUS_MSTR_DISCONNECT_EN:
+        bit: 28
+        description: "Enable bus master disconnect"
+      SERR_EN:
+        bit: 29
+        description: "Enable SERR"
+      BUS_READ_BURST:
+        bit: 30
+        description: "Enable read burst"
+      BUS_RDY_READ_DLY:
+        bit: 31
+        description: "RDY delayed 1 mem clk"
+
+  # ===========================================================================
   # Display FIFO Arbitration
   # ===========================================================================
   GRPH_BUFFER_CNTL:
@@ -93,6 +186,50 @@ registers:
         bits: [16, 31]
         description: "End of framebuffer in internal address space"
 
+  MC_AGP_LOCATION:
+    offset: 0x014c
+    ref: "M6RG:2-69"
+    group: memory_buffer
+    fields:
+      MC_AGP_START:
+        bits: [0, 15]
+        description: |
+          Start location of AGP aperture. Load 16 MSBs only. LSBs assumed to be 0x0.
+          Bits 0:5 are hardwired to zero.
+      MC_AGP_TOP:
+        bits: [16, 31]
+        description: |
+          Top location within AGP aperture. Load 16 MSBs only. LSBs assumed to be 0xffff.
+          Bits 0:5 are hardwired to one.
+
+  AGP_COMMAND:
+    offset: 0x0f60
+    group: bus
+    ref: "M6RG:2-13"
+    fields:
+      DATA_RATE:
+        bits: [0, 2]
+      AGP_EN:
+        bit: 8
+      SBA_EN:
+        bit: 9
+      RQ_DEPTH:
+        bits: [24, 31]
+    reserved:
+      - bits: [3, 7]
+      - bits: [10, 23]
+
+  CONFIG_APER_SIZE:
+    offset: 0x0108
+    group: config
+    ref: "M6RG:2-7"
+    fields:
+      APER_SIZE:
+        bits: [24, 27]
+    reserved:
+      - bits: [0, 23]
+      - bits: [28, 31]
+
   # ===========================================================================
   # CRTC Registers
   # ===========================================================================
@@ -161,6 +298,51 @@ registers:
   # ===========================================================================
   # CommandProcessor Registers
   # ===========================================================================
+  CP_RB_BASE:
+    offset: 0x0700
+    group: misc
+    ref: "M6RG:2-127"
+    fields:
+      RB_BASE:
+        bits: [2, 31]
+        description: "Ring buffer base. Address of the beginning of the ring buffer."
+
+  CP_RB_WPTR_DELAY:
+    offset: 0x0718
+    group: misc
+    ref: "M6RG:2-128"
+    fields:
+      PRE_WRITE_TIMER:
+        bits: [0, 27]
+      PRE_WRITE_LIMIT:
+        bits: [28, 31]
+
+  CP_RB_RPTR_ADDR:
+    offset: 0x070c
+    group: misc
+    ref: "M6RG:2-127"
+    fields:
+      RB_RPTR_SWAP:
+        bits: [0, 1]
+      RB_RPTR_ADDR:
+        bits: [2, 31]
+
+  CP_RB_RPTR:
+    offset: 0x0710
+    group: misc
+    ref: "M6RG:2-127"
+    fields:
+      RB_RPTR:
+        bits: [0, 22]
+
+  CP_RB_WPTR:
+    offset: 0x0714
+    group: misc
+    ref: "M6RG:2-128"
+    fields:
+      RB_WPTR:
+        bits: [0, 22]
+
   CP_CSQ_CNTL:
     offset: 0x0740
     group: misc
@@ -425,6 +607,143 @@ registers:
         ref: "linux:drivers/char/drm/r128_drv.h:247"
     reserved:
       - bits: [3, 30]
+
+  SCRATCH_ADDR:
+    offset: 0x0774
+    ref: "M6RG:2-130"
+    group: misc
+    fields:
+      SCRATCH_ADDR:
+        bits: [5, 31]
+    reserved:
+      - bits: [0, 4]
+
+  SCRATCH_UMSK:
+    offset: 0x770
+    ref: "M6RG:2-129"
+    group: misc
+    fields:
+      SCRATCH0_EN:
+        bit: 0
+      SCRATCH1_EN:
+        bit: 1
+      SCRATCH2_EN:
+        bit: 2
+      SCRATCH3_EN:
+        bit: 3
+      SCRATCH4_EN:
+        bit: 4
+      SCRATCH5_EN:
+        bit: 5
+      SCRATCH_SWAP:
+        bits: [16, 17]
+    reserved:
+      - bits: [5, 15]
+      - bits: [18, 31]
+
+  # ===========================================================================
+  # GART Registers
+  # ===========================================================================
+  AIC_CTRL:
+    offset: 0x01d0
+    ref: "M6RG:2-25"
+    group: misc
+    fields:
+      TRANSLATE_EN:
+        bit: 0
+        description: "0=disable PCI GART, 1=enable PCI GART"
+      HW_0_DEBUG:
+        bit: 1
+      HW_1_DEBUG:
+        bit: 2
+      HW_2_DEBUG:
+        bit: 3
+      HW_3_DEBUG:
+        bit: 4
+      HW_4_DEBUG:
+        bit: 5
+      HW_5_DEBUG:
+        bit: 6
+      HW_6_DEBUG:
+        bit: 7
+      HW_7_DEBUG:
+        bit: 8
+      HW_8_DEBUG:
+        bit: 9
+      HW_9_DEBUG:
+        bit: 10
+      HW_A_DEBUG:
+        bit: 11
+      HW_B_DEBUG:
+        bit: 12
+      HW_C_DEBUG:
+        bit: 13
+      HW_D_DEBUG:
+        bit: 14
+      HW_E_DEBUG:
+        bit: 15
+      HW_F_DEBUG:
+        bit: 16
+      HW_10_DEBUG:
+        bit: 17
+      HW_11_DEBUG:
+        bit: 18
+      HW_12_DEBUG:
+        bit: 19
+      HW_13_DEBUG:
+        bit: 20
+      HW_14_DEBUG:
+        bit: 21
+      HW_15_DEBUG:
+        bit: 22
+      HW_16_DEBUG:
+        bit: 23
+      HW_17_DEBUG:
+        bit: 24
+      HW_18_DEBUG:
+        bit: 25
+      HW_19_DEBUG:
+        bit: 26
+      HW_1A_DEBUG:
+        bit: 27
+      HW_1B_DEBUG:
+        bit: 28
+      HW_1C_DEBUG:
+        bit: 29
+      HW_1D_DEBUG:
+        bit: 30
+      HW_1E_DEBUG:
+        bit: 31
+
+  AIC_PT_BASE:
+    offset: 0x01d8
+    group: misc
+    ref: "M6RG:2-26"
+    fields:
+      AIC_PT_BASE:
+        bits: [12, 31]
+    reserved:
+      - bits: [0, 11]
+
+  AIC_LO_ADDR:
+    offset: 0x01dc
+    group: misc
+    ref: "M6RG:2-26"
+    fields:
+      AIC_LO_ADDR:
+        bits: [12, 31]
+    reserved:
+      - bits: [0, 11]
+
+  AIC_HI_ADDR:
+    offset: 0x01e0
+    group: misc
+    ref: "M6RG:2-27"
+    fields:
+      AIC_HI_ADDR:
+        bits: [12, 31]
+    reserved:
+      - bits: [0, 11]
 
   # ===========================================================================
   # VIP & I2C Registers
