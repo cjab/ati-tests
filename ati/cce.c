@@ -4,13 +4,13 @@
 #include "r100_cce.h"
 
 bool
-ati_init_cce_engine(ati_device_t *dev)
+ati_init_cce_engine(ati_device_t *dev, uint32_t mode)
 {
     switch (ati_get_chip_family(dev)) {
     case CHIP_R128:
-        ati_r128_init_cce_engine(dev); break;
+        ati_r128_init_cce_engine(dev, mode); break;
     case CHIP_R100:
-        ati_r100_init_cce_engine(dev);
+        ati_r100_init_cce_engine(dev, mode);
         break;
     case CHIP_UNKNOWN:
     default:
@@ -21,14 +21,14 @@ ati_init_cce_engine(ati_device_t *dev)
 }
 
 bool
-ati_start_cce_engine(ati_device_t *dev)
+ati_start_cce_engine(ati_device_t *dev, uint32_t mode)
 {
     switch (ati_get_chip_family(dev)) {
     case CHIP_R128:
-        ati_r128_start_cce_engine(dev);
+        ati_r128_start_cce_engine(dev, mode);
         break;
     case CHIP_R100:
-        ati_r100_start_cce_engine(dev);
+        ati_r100_start_cce_engine(dev, mode);
         break;
     case CHIP_UNKNOWN:
     default:

@@ -3,8 +3,8 @@
 
 #include "ati.h"
 
-void ati_r100_init_cce_engine(ati_device_t *dev);
-void ati_r100_start_cce_engine(ati_device_t *dev);
+void ati_r100_init_cce_engine(ati_device_t *dev, uint32_t mode);
+void ati_r100_start_cce_engine(ati_device_t *dev, uint32_t mode);
 void ati_r100_stop_cce_engine(ati_device_t *dev);
 
 void ati_r100_dump_microcode(ati_device_t *dev, uint32_t *out);

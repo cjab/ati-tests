@@ -26,8 +26,8 @@ enum {
     CCE_CNTL_PAINT_MULTI = 0x9A00,
 };
 
-bool ati_init_cce_engine(ati_device_t *dev);
-bool ati_start_cce_engine(ati_device_t *dev);
+bool ati_init_cce_engine(ati_device_t *dev, uint32_t mode);
+bool ati_start_cce_engine(ati_device_t *dev, uint32_t mode);
 bool ati_stop_cce_engine(ati_device_t *dev);
 
 bool ati_send_packet(ati_device_t *dev, uint32_t *packets, size_t dwords);

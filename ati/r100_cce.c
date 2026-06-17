@@ -264,7 +264,7 @@ static uint32_t r100_cce_microcode[][2] = {
 };
 
 void
-ati_r100_init_cce_engine(ati_device_t *dev)
+ati_r100_init_cce_engine(ati_device_t *dev, uint32_t mode)
 {
     ati_wait_for_idle(dev);
 
@@ -276,14 +276,13 @@ ati_r100_init_cce_engine(ati_device_t *dev)
         wr_r100_cp_me_ram_datal(dev, r100_cce_microcode[idx][0]);
     }
 
-    // Set to PIO-based CP mode
-    wr_r100_cp_csq_cntl(dev, R100_CSQ_MODE_PIO);
+    wr_r100_cp_csq_cntl(dev, mode);
 }
 
 void
-ati_r100_start_cce_engine(ati_device_t *dev)
+ati_r100_start_cce_engine(ati_device_t *dev, uint32_t mode)
 {
-    wr_r100_cp_csq_cntl(dev, R100_CSQ_MODE_PIO);
+    wr_r100_cp_csq_cntl(dev, mode);
 }
 
 void

@@ -70,7 +70,7 @@ static uint32_t r128_cce_microcode[] = {
     0,  0,           0,  0,          0,  0,           0,  0};
 
 void
-ati_r128_init_cce_engine(ati_device_t *dev)
+ati_r128_init_cce_engine(ati_device_t *dev, uint32_t mode)
 {
     ati_wait_for_idle(dev);
 
@@ -81,8 +81,7 @@ ati_r128_init_cce_engine(ati_device_t *dev)
         wr_r128_pm4_microcode_datal(dev, r128_cce_microcode[i * 2 + 1]);
     }
 
-    // Set to PIO-based CCE mode with 192 entries
-    wr_r128_pm4_buffer_cntl(dev, R128_PM4_BUFFER_MODE_192PIO | R128_PM4_BUFFER_CNTL_NOUPDATE);
+    wr_r128_pm4_buffer_cntl(dev, mode | R128_PM4_BUFFER_CNTL_NOUPDATE);
 
     // Read as per sample code (may be required for mode change to take effect)
     (void) rd_r128_pm4_buffer_addr(dev);
@@ -92,8 +91,9 @@ ati_r128_init_cce_engine(ati_device_t *dev)
 }
 
 void
-ati_r128_start_cce_engine(ati_device_t *dev)
+ati_r128_start_cce_engine(ati_device_t *dev, uint32_t mode)
 {
+    wr_r128_pm4_buffer_cntl(dev, mode | R128_PM4_BUFFER_CNTL_NOUPDATE);
     wr_r128_pm4_micro_cntl(dev, R128_PM4_MICRO_FREERUN);
 }
 

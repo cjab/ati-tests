@@ -107,7 +107,7 @@ print_instruction(uint32_t addr, uint32_t high, uint32_t low)
 static void
 cce_init(ati_device_t *dev)
 {
-    if (ati_init_cce_engine(dev)) {
+    if (ati_init_cce_engine(dev, R128_PM4_BUFFER_MODE_192PIO)) {
         printf("CCE initialized\n");
     } else {
         printf("Failed to initialize CCE engine\n");
@@ -117,7 +117,7 @@ cce_init(ati_device_t *dev)
 static void
 cce_start(ati_device_t *dev)
 {
-    if (ati_start_cce_engine(dev)) {
+    if (ati_start_cce_engine(dev, R128_PM4_BUFFER_MODE_192PIO)) {
         printf("CCE engine started\n");
     } else {
         printf("Failed to start CCE engine\n");

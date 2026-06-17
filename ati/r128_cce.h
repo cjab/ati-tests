@@ -4,8 +4,8 @@
 #include "ati.h"
 
 // CCE engine functions
-void ati_r128_init_cce_engine(ati_device_t *dev);
-void ati_r128_start_cce_engine(ati_device_t *dev);
+void ati_r128_init_cce_engine(ati_device_t *dev, uint32_t mode);
+void ati_r128_start_cce_engine(ati_device_t *dev, uint32_t mode);
 void ati_r128_stop_cce_engine(ati_device_t *dev);
 
 void ati_r128_dump_microcode(ati_device_t *dev, uint32_t *out);

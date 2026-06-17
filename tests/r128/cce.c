@@ -5,7 +5,7 @@
 
 bool test_cce(ati_device_t *dev) {
     // Initialize CCE engine for this test
-    ati_init_cce_engine(dev);
+    ati_init_cce_engine(dev, R128_PM4_BUFFER_MODE_192PIO);
 
     /* Type-0 packets */
     // Single register write
@@ -82,7 +82,7 @@ bool
 test_cce_packet_submission(ati_device_t *dev)
 {
     uint32_t packets[] = {CCE_PKT0(BIOS_0_SCRATCH, 1), 0xcafebabe};
-    ati_init_cce_engine(dev);
+    ati_init_cce_engine(dev, R128_PM4_BUFFER_MODE_192PIO);
 
     ASSERT_EQ(rd_r128_pm4_stat(dev), 192);
 
@@ -103,7 +103,7 @@ test_cce_mm_indirect(ati_device_t *dev)
     wr_mm_index(dev, BIOS_0_SCRATCH);
     wr_mm_data(dev, 0x1337beef);
 
-    ati_init_cce_engine(dev);
+    ati_init_cce_engine(dev, R128_PM4_BUFFER_MODE_192PIO);
     //ASSERT_EQ(rd_r128_pm4_stat(dev), 192);
 
     uint32_t idx_packets[] = {CCE_PKT0(MM_INDEX, 1), BIOS_1_SCRATCH};
