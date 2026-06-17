@@ -3,11 +3,6 @@
 #include "../../ati/r100_cce.h"
 #include "../test.h"
 
-//static volatile uint32_t gart_mem[1024] __attribute__((aligned(4096)));
-static volatile uint32_t gart_mem[1024] __attribute__((aligned(0x08000000)));
- 
-static uint32_t page_table[32] __attribute__((aligned(4096)));
-
 bool test_r100_cce(ati_device_t *dev) {
     // Initialize CCE engine for this test
     ati_init_cce_engine(dev);
