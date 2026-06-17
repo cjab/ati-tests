@@ -142,8 +142,6 @@ test_r100_scratch_wb_to_fb(ati_device_t *dev)
         udelay(1);
     }
 
-
-
     return false;
 }
 
