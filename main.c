@@ -129,6 +129,7 @@ extern void register_r128_rop3_tests(void);
 extern void register_r128_cce_tests(void);
 
 extern void register_r100_cce_tests(void);
+extern void register_r100_mc_tests(void);
 
 void
 register_all_tests(void)
@@ -144,6 +145,7 @@ register_all_tests(void)
 
     /* R100 */
     register_r100_cce_tests();
+    register_r100_mc_tests();
 }
 
 int
