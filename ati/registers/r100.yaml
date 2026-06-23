@@ -298,6 +298,27 @@ registers:
   # ===========================================================================
   # CommandProcessor Registers
   # ===========================================================================
+  CP_RB_CNTL:
+    offset: 0x0704
+    group: misc
+    ref: "M6RG:2-126"
+    fields:
+      RB_BUFSZ:
+        bits: [0, 5]
+        description: "Ring buffer size in log2 quadwords (8 bytes)."
+      RB_BLKSZ:
+        bits: [8, 13]
+        description: "Ring buffer block size in log2 quadwords between read pointer updates."
+      BUF_SWAP:
+        bits: [16, 17]
+        description: "Endian swap control for ring buffer in system memory."
+      MAX_FETCH:
+        bits: [18, 19]
+        description: "Maximum fetch size for CP read requests."
+      RB_NO_UPDATE:
+        bit: 27
+        description: "0=Write read pointer to host memory, 1=Do not write."
+
   CP_RB_BASE:
     offset: 0x0700
     group: misc
@@ -341,6 +362,14 @@ registers:
     ref: "M6RG:2-128"
     fields:
       RB_WPTR:
+        bits: [0, 22]
+
+  CP_RB_RPTR_WR:
+    offset: 0x071c
+    group: misc
+    ref: "M6RG:2-127"
+    fields:
+      RB_RPTR_WR:
         bits: [0, 22]
 
   CP_CSQ_CNTL:
@@ -589,6 +618,31 @@ registers:
     fields:
       CP_CSQ_APER_PRIMARY:
         bits: [0, 31]
+
+  ISYNC_CNTL:
+    offset: 0x1724
+    ref: "M6RG:2-80"
+    group: misc
+    description: "Implicit synchronization control between CP, 2D, and 3D engines."
+    fields:
+      ISYNC_ANY2D_IDLE3D:
+        bit: 0
+        description: "2D register writes stall if 3D engine busy."
+      ISYNC_ANY3D_IDLE2D:
+        bit: 1
+        description: "3D register writes stall if 2D engine busy."
+      ISYNC_TRIG2D_IDLE3D:
+        bit: 2
+        description: "2D trigger register writes stall if 3D engine busy."
+      ISYNC_TRIG3D_IDLE2D:
+        bit: 3
+        description: "3D trigger register writes stall if 2D engine busy."
+      ISYNC_WAIT_IDLEGUI:
+        bit: 4
+        description: "WAIT_UNTIL register writes stall if 2D or 3D engine busy."
+      ISYNC_CPSCRATCH_IDLEGUI:
+        bit: 5
+        description: "CP GUI scratch register writes stall if 2D or 3D engine busy."
 
   RB2D_DSTCACHE_CTLSTAT:
     offset: 0x342C

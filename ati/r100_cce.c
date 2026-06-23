@@ -325,16 +325,22 @@ ati_r100_write_microcode(ati_device_t *dev, uint8_t addr, uint64_t inst)
 void
 ati_r100_cce_wait_for_fifo(ati_device_t *dev, uint32_t entries)
 {
-    while ((rd_r100_rbbm_status(dev) & R100_CMDFIFO_AVAIL_MASK) < entries) {
-        // spin
+    uint32_t timeout = 1000000;
+    while (timeout--) {
+        uint32_t slots = rd_r100_rbbm_status(dev) & R100_CMDFIFO_AVAIL_MASK;
+        if (slots >= entries) {
+            return;
+        }
     }
+    printf("ati_r100_cce_wait_for_fifo timed out! (waiting for %d entries)\n", entries);
+
 }
 
 void
 ati_r100_cce_pio_submit(ati_device_t *dev, uint32_t *packets, size_t dwords)
 {
     for (size_t i = 0; i < dwords; i += 2) {
-        //ati_r100_cce_wait_for_fifo(dev, 2);
+        ati_r100_cce_wait_for_fifo(dev, 2);
         wr_r100_cp_csq_aper_primary(dev, packets[i]);
         if (i + 1 < dwords) {
             wr_r100_cp_csq_aper_primary(dev, packets[i + 1]);

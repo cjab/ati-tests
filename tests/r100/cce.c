@@ -4,6 +4,8 @@
 #include "../../ati/r100_mc.h"
 #include "../test.h"
 
+static volatile uint32_t mem[1024] __attribute__((aligned(0x08000000)));
+
 bool test_r100_cce(ati_device_t *dev) {
     // Initialize CCE engine for this test
     ati_init_cce_engine(dev, R100_CSQ_MODE_PIO);
@@ -307,9 +309,81 @@ test_r100_microcode(ati_device_t *dev)
 }
 
 bool test_r100_ring_buffer_setup(ati_device_t *dev) {
+    wr_bios_0_scratch(dev, 0);
+    wr_bios_1_scratch(dev, 0);
+    wr_bios_2_scratch(dev, 0);
+
     ati_init_cce_engine(dev, R100_CSQ_MODE_BM);
+    ati_r100_cce_wait_for_idle(dev);
     uint32_t gart_addr = ati_r100_init_pci_gart(dev);
-    
+    ati_r100_cce_wait_for_idle(dev);
+
+    // Place the ring buffer at the beginning of the gart
+    wr_r100_cp_rb_base(dev, gart_addr);
+    ati_r100_cce_wait_for_idle(dev);
+    wr_r100_cp_rb_wptr_delay(dev, 0);
+
+    // Reset/empty the ring buffer (wptr = rptr)
+    wr_r100_cp_rb_rptr_wr(dev, 0x0);
+    wr_r100_cp_rb_wptr(dev, 0x0);
+    // Ring buffer size of 2^1 qwords or 4 dwords to test wrap
+    wr_r100_cp_rb_cntl(dev, 1);
+    // RPTR writeback placed in memory. Oddly this doesn't seem to go through
+    // the memory controller and from testing requires a physical address.
+    wr_r100_cp_rb_rptr_addr(dev, (uint32_t)&mem[0]);
+
+    // Wait for writeback to flush
+    ati_r100_cce_wait_for_idle(dev);
+    // Clear the writeback memory before running the test
+    memset((void *)mem, 0, sizeof(mem));
+    ASSERT_EQ(mem[0], 0);
+
+    // Now queue up packets for testing
+    gart_mem[0] = CCE_PKT0(BIOS_0_SCRATCH, 1);
+    gart_mem[1] = 0xcafebabe;
+    // And process them
+    wr_r100_cp_rb_wptr(dev, 2);
+    // Wait for packets to be processed
+    ati_r100_cce_wait_for_idle(dev);
+    // The rptr advanced
+    ASSERT_EQ(rd_r100_cp_rb_rptr(dev), 2);
+    udelay(1000);
+    // and it was written back
+    ASSERT_EQ(mem[0], 2);
+
+    gart_mem[2] = CCE_PKT0(BIOS_1_SCRATCH, 1);
+    gart_mem[3] = 0x1337beef;
+    // And process them
+    wr_r100_cp_rb_wptr(dev, 0);
+    // Wait for packets to be processed
+    ati_r100_cce_wait_for_idle(dev);
+    // The rptr advanced and wrapped
+    ASSERT_EQ(rd_r100_cp_rb_rptr(dev), 0);
+    // and it was written back
+    ASSERT_EQ(mem[0], 0);
+
+    // Wrap and queue up another packet
+    gart_mem[0] = CCE_PKT0(BIOS_2_SCRATCH, 1);
+    gart_mem[1] = 0xbeefcafe;
+    // And process them
+    wr_r100_cp_rb_wptr(dev, 2);
+    // Wait for packets to be processed and writeback to flush
+    ati_r100_cce_wait_for_idle(dev);
+
+    // The packets were all processed!
+    ASSERT_EQ(rd_bios_0_scratch(dev), 0xcafebabe);
+    ASSERT_EQ(rd_bios_1_scratch(dev), 0x1337beef);
+    ASSERT_EQ(rd_bios_2_scratch(dev), 0xbeefcafe);
+
+    // The rptr advanced
+    ASSERT_EQ(rd_r100_cp_rb_rptr(dev), 2);
+    // and it was written back
+    ASSERT_EQ(mem[0], 2);
+
+    ati_stop_cce_engine(dev);
+    ati_r100_cce_wait_for_idle(dev);
+
+    return true;
 }
 
 void
