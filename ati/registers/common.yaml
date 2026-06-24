@@ -447,28 +447,6 @@ registers:
       - bits: [3, 7]
       - bits: [22, 31]
 
-  DP_DATATYPE:
-    offset: 0x16c4
-    group: datapath
-    ref: "RRG:183"
-    fields:
-      DP_DST_DATATYPE:
-        bits: [0, 3]
-      DP_BRUSH_DATATYPE:
-        bits: [8, 11]
-      DP_SRC_DATATYPE:
-        bits: [16, 17]
-      HOST_BIG_ENDIAN_EN:
-        bit: 29
-      DP_BYTE_PIX_ORDER:
-        bit: 30
-      DP_CONVERSION_TEMP:
-        bit: 31
-    reserved:
-      - bits: [4, 7]
-      - bits: [12, 15]
-      - bits: [18, 28]
-
   DP_MIX:
     offset: 0x16c8
     group: datapath

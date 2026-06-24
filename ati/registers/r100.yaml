@@ -212,6 +212,50 @@ registers:
       - bit: 29
       - bit: 31
 
+  DP_DATATYPE:
+    offset: 0x16c4
+    group: datapath
+    ref: "M6RG:2-117"
+    fields:
+      DP_DST_DATATYPE:
+        bits: [0, 3]
+        description: "Destination datapath pixel width"
+        values:
+          PSEUDO_COLOR_8: 2
+          ARGB_1555: 3
+          RGB_565: 4
+          ARGB_8888: 6
+      DP_BRUSH_DATATYPE:
+        bits: [8, 11]
+        description: "Brush datapath pixel type"
+        values:
+          8X8_MONO: 0
+          8X8_MONO_TRANS: 1
+          32X1_MONO: 6
+          32X1_MONO_TRANS: 7
+          8X8_COLOR: 10
+          SOLIDCOLOR: 13
+          SOLIDCOLOR_LINES: 14
+          SOLIDCOLOR_ALT: 15
+      DP_SRC_DATATYPE:
+        bits: [16, 18]
+        description: "Source datapath pixel type (3 bits; bit 2 mirrored by GMC_SRC_DATATYPE2)"
+        values:
+          MONO: 0
+          MONO_TRANS: 1
+          DST_COLOR: 3
+          CLUT_8BPP: 5
+          CLUT_32BPP: 6
+          OBUFFER: 7
+      DP_BYTE_PIX_ORDER:
+        bit: 30
+        description: "Mono pixel bit order: 0 = MSBit to LSBit, 1 = LSBit to MSBit"
+    reserved:
+      - bits: [4, 7]
+      - bits: [12, 15]
+      - bits: [19, 29]
+      - bit: 31
+
   # ===========================================================================
   # Default Pitch/Offset Register (Combined)
   # R100 only - R128 uses separate DEFAULT_OFFSET (0x16E0) and DEFAULT_PITCH (0x16E4)
