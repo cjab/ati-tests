@@ -137,6 +137,82 @@ registers:
       - bits: [23, 27]
 
   # ===========================================================================
+  # Datapath / Drawing Engine Registers
+  # ===========================================================================
+  DP_GUI_MASTER_CNTL:
+    offset: 0x146c
+    group: datapath
+    ref: "M6RG:2-93"
+    flags: [no_read]
+    fields:
+      GMC_SRC_PITCH_OFFSET_CNTL:
+        bit: 0
+        description: "0 = source uses DEFAULT offset/pitch/tile, 1 = use SRC offset/pitch/tile (leave alone)"
+      GMC_DST_PITCH_OFFSET_CNTL:
+        bit: 1
+        description: "0 = destination uses DEFAULT offset/pitch/tile, 1 = use DST offset/pitch/tile (leave alone)"
+      GMC_SRC_CLIPPING:
+        bit: 2
+        description: "0 = source scissor uses DEFAULT bottom/right, 1 = use SRC scissor (leave alone)"
+      GMC_DST_CLIPPING:
+        bit: 3
+        description: "0 = destination scissor from DEFAULT (top/left = 0), 1 = use DST scissor (leave alone)"
+      GMC_BRUSH_DATATYPE:
+        bits: [4, 7]
+        description: "Brush pattern type. Mirrors DP_DATATYPE:DP_BRUSH_DATATYPE. 32x1 mono types (6,7) are for lines; 13/15 are solid color for blits, 14 solid for lines"
+        values:
+          8X8_MONO: 0
+          8X8_MONO_TRANS: 1
+          32X1_MONO: 6
+          32X1_MONO_TRANS: 7
+          8X8_COLOR: 10
+          SOLIDCOLOR: 13
+          SOLIDCOLOR_LINES: 14
+          SOLIDCOLOR_ALT: 15
+      GMC_DST_DATATYPE:
+        bits: [8, 11]
+        description: "Destination pixel format. Mirrors DP_DATATYPE:DP_DST_DATATYPE"
+        values:
+          PSEUDO_COLOR_8: 2
+          ARGB_1555: 3
+          RGB_565: 4
+          ARGB_8888: 6
+      GMC_SRC_DATATYPE:
+        bits: [12, 13]
+        description: "Source type, bits 0:1. Mirrors DP_DATATYPE:DP_SRC_DATATYPE"
+        values:
+          MONO: 0
+          MONO_TRANS: 1
+          DST_COLOR: 3
+      GMC_BYTE_PIX_ORDER:
+        bit: 14
+        description: "Mono pixel bit order: 0 = MSBit to LSBit, 1 = LSBit to MSBit. Mirrors DP_DATATYPE:DP_BYTE_PIX_ORDER"
+      GMC_DEFAULT_SEL:
+        bit: 15
+      GMC_ROP3:
+        bits: [16, 23]
+        description: "ROP3 raster-op code. Mirrors DP_MIX:DP_ROP3"
+        values:
+          SRCCOPY: 0xcc
+      GMC_SRC_SOURCE:
+        bits: [24, 26]
+        description: "Draw pixel source. Mirrors DP_MIX:DP_SRC_SOURCE. 2 = memory (rectangular), 3 = host data (linear), 4 = host data (linear, byte-aligned)"
+        values:
+          MEMORY: 2
+          HOST_DATA: 3
+          HOST_DATA_ALIGNED: 4
+      GMC_SRC_DATATYPE2:
+        bit: 27
+        description: "Bit 2 of source datatype. 0 = mono expanded to frgd/bkgd. Mirrors DP_DATATYPE:DP_SRC_DATATYPE bit 2"
+      GMC_CLR_CMP_FCN_DIS:
+        bit: 28
+      GMC_WR_MSK_DIS:
+        bit: 30
+    reserved:
+      - bit: 29
+      - bit: 31
+
+  # ===========================================================================
   # Default Pitch/Offset Register (Combined)
   # R100 only - R128 uses separate DEFAULT_OFFSET (0x16E0) and DEFAULT_PITCH (0x16E4)
   # ===========================================================================
