@@ -61,7 +61,7 @@ test_r128_rop3_16x16(ati_device_t *dev)
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
 
-    wr_dp_gui_master_cntl(dev,
+    wr_r128_dp_gui_master_cntl(dev,
         GMC_BRUSH_NONE | GMC_DST_32BPP | GMC_SRC_DATATYPE_COLOR |
         GMC_BYTE_LSB_TO_MSB | GMC_ROP3_SRCCOPY | GMC_SRC_SOURCE_MEMORY);
 
@@ -88,7 +88,7 @@ test_r128_overlapping_mem_blit(ati_device_t *dev)
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
 
-    wr_dp_gui_master_cntl(dev,
+    wr_r128_dp_gui_master_cntl(dev,
         GMC_BRUSH_NONE | GMC_DST_32BPP | GMC_SRC_DATATYPE_COLOR |
         GMC_BYTE_LSB_TO_MSB | GMC_ROP3_SRCCOPY | GMC_SRC_SOURCE_MEMORY);
 
@@ -223,7 +223,7 @@ test_r128_mem_blit_clipping(ati_device_t *dev)
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
 
-    wr_dp_gui_master_cntl(dev,
+    wr_r128_dp_gui_master_cntl(dev,
         GMC_BRUSH_NONE | GMC_DST_32BPP | GMC_SRC_DATATYPE_COLOR |
         GMC_BYTE_LSB_TO_MSB | GMC_ROP3_SRCCOPY | GMC_SRC_SOURCE_MEMORY);
 

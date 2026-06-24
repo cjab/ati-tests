@@ -172,17 +172,17 @@ ati_get_dst_datatype(int bpp)
 {
     switch (bpp) {
     case 8:
-        return GMC_DST_DATATYPE_PSEUDO_COLOR_8;
+        return R128_GMC_DST_DATATYPE_PSEUDO_COLOR_8;
     case 15:
-        return GMC_DST_DATATYPE_ARGB_1555;
+        return R128_GMC_DST_DATATYPE_ARGB_1555;
     case 16:
-        return GMC_DST_DATATYPE_RGB_565;
+        return R128_GMC_DST_DATATYPE_RGB_565;
     case 24:
-        return GMC_DST_DATATYPE_RGB_888;
+        return R128_GMC_DST_DATATYPE_RGB_888;
     case 32:
-        return GMC_DST_DATATYPE_ARGB_8888;
+        return R128_GMC_DST_DATATYPE_ARGB_8888;
     default:
-        return GMC_DST_DATATYPE_ARGB_8888;
+        return R128_GMC_DST_DATATYPE_ARGB_8888;
     }
 }
 

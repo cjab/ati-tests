@@ -117,7 +117,7 @@ test_host_data_32x32(ati_device_t *dev)
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
 
-    wr_dp_gui_master_cntl(dev, GMC_BRUSH_NONE | GMC_DST_32BPP |
+    wr_r128_dp_gui_master_cntl(dev, GMC_BRUSH_NONE | GMC_DST_32BPP |
         GMC_BYTE_LSB_TO_MSB | GMC_ROP3_SRCCOPY | GMC_SRC_SOURCE_HOST_DATA);
 
     wr_dst_x_y(dev, 0x0);
@@ -208,7 +208,7 @@ test_host_data_mono_is_bit_packed(ati_device_t *dev)
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
 
-    wr_dp_gui_master_cntl(dev, GMC_BRUSH_NONE | GMC_DST_32BPP |
+    wr_r128_dp_gui_master_cntl(dev, GMC_BRUSH_NONE | GMC_DST_32BPP |
         GMC_BYTE_LSB_TO_MSB | GMC_ROP3_SRCCOPY | GMC_SRC_SOURCE_HOST_DATA);
 
     wr_dst_x_y(dev, 0x0);
@@ -227,7 +227,7 @@ test_host_data_morphos(ati_device_t *dev)
     // Adjusted from MorphOS output for 640x480 screen
     wr_dst_offset(dev, 0x0);
     wr_dst_pitch(dev, 0x50);  // 640 pixels at 32bpp
-    wr_dp_datatype(dev, 0x6);  // 32bpp
+    wr_r128_dp_datatype(dev, 0x6);  // 32bpp
     wr_dp_mix(dev, 0xcc0300);  // SRCCOPY
 
     wr_sc_top_left(dev, 0x0);
@@ -326,7 +326,7 @@ void setup_draw_defaults(ati_device_t *dev) {
     /* Common setup */
     wr_dst_offset(dev, 0x0);
     wr_dst_pitch(dev, 0x50);           /* 640 pixels / 8 = 80 = 0x50 */
-    wr_dp_datatype(dev, 0x40000006);   /* 32bpp + LSB_TO_MSB byte order */
+    wr_r128_dp_datatype(dev, 0x40000006);   /* 32bpp + LSB_TO_MSB byte order */
     wr_dp_mix(dev, 0xcc0300);          /* SRCCOPY + HOST_DATA source */
     wr_dp_src_frgd_clr(dev, BORDER);
     wr_dp_src_bkgd_clr(dev, TRIANGLE_FILL);
@@ -390,7 +390,7 @@ test_host_data_color_32x32(ati_device_t *dev)
     setup_draw_defaults(dev);
 
     /* Set src_datatype to color */
-    wr_dp_datatype(dev, 0x40030006);
+    wr_r128_dp_datatype(dev, 0x40030006);
 
     wr_dp_cntl(dev, 0x3);  // L->R, T->B
     wr_sc_top_left(dev, 0);
@@ -429,8 +429,8 @@ test_host_data_color_32x32(ati_device_t *dev)
 //    wr_default_sc_bottom_right(dev, 0x1fff1fff);
 //    wr_dp_write_msk(dev, 0xffffffff);
 //
-//    wr_dp_gui_master_cntl(dev, GMC_BRUSH_NONE | GMC_DST_32BPP |
-//        GMC_BYTE_LSB_TO_MSB | GMC_ROP3_SRCCOPY | GMC_SRC_SOURCE_HOST_DATA);
+//    wr_r128_dp_gui_master_cntl(dev, R128_GMC_BRUSH_NONE | R128_GMC_DST_32BPP |
+//        R128_GMC_BYTE_LSB_TO_MSB | R128_GMC_ROP3_SRCCOPY | R128_GMC_SRC_SOURCE_HOST_DATA);
 //
 //    // Clear the entire 256-bit host_data buffer.
 //    // This allows us to compare things deterministically
@@ -495,7 +495,7 @@ test_host_data_draw_after_pan(ati_device_t *dev)
     setup_draw_defaults(dev);
 
     /* Set src_datatype to color */
-    wr_dp_datatype(dev, 0x40030006);
+    wr_r128_dp_datatype(dev, 0x40030006);
 
     // Visible width is 640px from initial modesetting
     // Setup virtual desktop: 800px wide

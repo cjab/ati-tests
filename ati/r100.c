@@ -143,14 +143,14 @@ ati_r100_init_gui_engine(ati_device_t *dev)
     wr_dp_cntl(dev, DST_X_LEFT_TO_RIGHT | DST_Y_TOP_TO_BOTTOM);
 
     // Set GUI master control
-    wr_dp_gui_master_cntl(
-        dev, GMC_BRUSH_DATATYPE_SOLIDCOLOR |
+    wr_r100_dp_gui_master_cntl(
+        dev, R100_GMC_BRUSH_DATATYPE_SOLIDCOLOR |
                  ati_get_dst_datatype(BPP) |
-                 GMC_SRC_DATATYPE_DST_COLOR |
-                 GMC_BYTE_PIX_ORDER | // LSB to MSB
-                 GMC_ROP3_SRCCOPY |
-                 GMC_SRC_SOURCE_MEMORY |
-                 GMC_CLR_CMP_CNTL_DIS | GMC_AUX_CLIP_DIS | GMC_WR_MSK_DIS);
+                 R100_GMC_SRC_DATATYPE_DST_COLOR |
+                 R100_GMC_BYTE_PIX_ORDER |
+                 R100_GMC_ROP3_SRCCOPY |
+                 R100_GMC_SRC_SOURCE_MEMORY |
+                 R100_GMC_WR_MSK_DIS);
 
     // Clear the line drawing registers
     wr_dst_bres_err(dev, 0);
