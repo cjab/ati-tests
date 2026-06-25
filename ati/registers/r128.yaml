@@ -179,6 +179,7 @@ registers:
     fields:
       DEFAULT_OFFSET:
         bits: [0, 25]
+        description: "Byte-aligned default offset (bits 3:0 hardwired to 0; 16-byte granularity). See DST_OFFSET"
 
   DEFAULT_PITCH:
     offset: 0x16e4
@@ -187,6 +188,7 @@ registers:
     fields:
       DEFAULT_PITCH:
         bits: [0, 9]
+        description: "Default pitch in units of 8 pixels (value = displayWidth / 8; x3 for 24bpp)"
       DEFAULT_TILE:
         bit: 16
     reserved:

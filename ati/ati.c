@@ -542,7 +542,7 @@ ati_init_gui_engine(ati_device_t *dev)
         ati_r128_init_gui_engine(dev);
         break;
     case CHIP_R100:
-        //ati_r100_init_gui_engine(dev);
+        ati_r100_init_gui_engine(dev);
         break;
     default:
         break;
