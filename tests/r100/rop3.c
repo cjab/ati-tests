@@ -59,8 +59,9 @@ test_r100_rop3_16x16(ati_device_t *dev)
     wr_dp_write_msk(dev, 0xffffffff);
 
     wr_r100_dp_gui_master_cntl(dev,
-        GMC_BRUSH_NONE | GMC_DST_32BPP | GMC_SRC_DATATYPE_COLOR |
-        GMC_BYTE_LSB_TO_MSB | GMC_ROP3_SRCCOPY | GMC_SRC_SOURCE_MEMORY);
+        R100_GMC_BRUSH_DATATYPE_SOLIDCOLOR_ALT | R100_GMC_DST_DATATYPE_ARGB_8888 |
+        R100_GMC_SRC_DATATYPE_DST_COLOR | R100_GMC_BYTE_PIX_ORDER |
+        R100_GMC_ROP3_SRCCOPY | R100_GMC_SRC_SOURCE_MEMORY);
 
     wr_dst_x(dev, 0x10);
     wr_dst_y(dev, 0x10);
@@ -84,8 +85,9 @@ test_r100_overlapping_mem_blit(ati_device_t *dev)
     wr_dp_write_msk(dev, 0xffffffff);
 
     wr_r100_dp_gui_master_cntl(dev,
-        GMC_BRUSH_NONE | GMC_DST_32BPP | GMC_SRC_DATATYPE_COLOR |
-        GMC_BYTE_LSB_TO_MSB | GMC_ROP3_SRCCOPY | GMC_SRC_SOURCE_MEMORY);
+        R100_GMC_BRUSH_DATATYPE_SOLIDCOLOR_ALT | R100_GMC_DST_DATATYPE_ARGB_8888 |
+        R100_GMC_SRC_DATATYPE_DST_COLOR | R100_GMC_BYTE_PIX_ORDER |
+        R100_GMC_ROP3_SRCCOPY | R100_GMC_SRC_SOURCE_MEMORY);
 
     // Left to right, top to bottom
     ati_screen_clear(dev, 0);
@@ -145,14 +147,15 @@ do_mem_clipping(ati_device_t *dev, int size, int border,
     int src_x = 100;
     int src_y = 100;
 
+    // NOTE: sc_{bottom,right} are exclusive for r100
     int top            = margin;
     int left           = margin;
-    int bottom         = margin + size - 1;
-    int right          = margin + size - 1;
+    int bottom         = margin + size;
+    int right          = margin + size;
     int top_clipped    = margin + clip;
     int left_clipped   = margin + clip;
-    int bottom_clipped = margin + size - 1 - clip;
-    int right_clipped  = margin + size - 1 - clip;
+    int bottom_clipped = margin + size - clip;
+    int right_clipped  = margin + size - clip;
 
     uint32_t dp_cntl = (hdir == LEFT_TO_RIGHT ? 0x1 : 0x0) |
                        (vdir == TOP_TO_BOTTOM ? 0x2 : 0x0);
@@ -217,8 +220,10 @@ test_r100_mem_blit_clipping(ati_device_t *dev)
     wr_dp_write_msk(dev, 0xffffffff);
 
     wr_r100_dp_gui_master_cntl(dev,
-        GMC_BRUSH_NONE | GMC_DST_32BPP | GMC_SRC_DATATYPE_COLOR |
-        GMC_BYTE_LSB_TO_MSB | GMC_ROP3_SRCCOPY | GMC_SRC_SOURCE_MEMORY);
+        R100_GMC_BRUSH_DATATYPE_SOLIDCOLOR_ALT | R100_GMC_DST_DATATYPE_ARGB_8888 |
+        R100_GMC_SRC_DATATYPE_DST_COLOR | R100_GMC_BYTE_PIX_ORDER |
+        R100_GMC_ROP3_SRCCOPY | R100_GMC_SRC_SOURCE_MEMORY |
+        R100_GMC_DST_CLIPPING);
 
     ASSERT_TRUE(do_mem_clipping(dev, size, border,
                                 LEFT_TO_RIGHT, TOP_TO_BOTTOM));
@@ -237,5 +242,5 @@ register_r100_rop3_tests(void)
 {
     REGISTER_TEST_FOR(test_r100_rop3_16x16, "r100 rop3 16x16", CHIP_R100);
     REGISTER_TEST_FOR(test_r100_overlapping_mem_blit, "r100 overlapping mem blit", CHIP_R100);
-    //REGISTER_TEST_FOR(test_r100_mem_blit_clipping, "r100 mem blit clipping", CHIP_R100);
+    REGISTER_TEST_FOR(test_r100_mem_blit_clipping, "r100 mem blit clipping", CHIP_R100);
 }
