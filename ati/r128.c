@@ -191,16 +191,6 @@ ati_r128_init_gui_engine(ati_device_t *dev)
     // Wait for engine to be idle after reset
     ati_wait_for_idle(dev);
 
-    // Set default offset and pitch - chip-specific register layouts
-    //ati_chip_family_t chip = ati_get_chip_family(dev);
-    //if (chip == CHIP_R100) {
-    //    // R100: Combined register with pitch in bits 29:22, offset in bits 21:0
-    //    // Pitch is in 64-byte units: (640 * 4) / 64 = 40
-    //    // Offset is in 1KB units: 0
-    //    uint32_t pitch_64 = (X_RES * BYPP) / 64;
-    //    wr_r100_default_pitch_offset(dev, pitch_64 << 22);
-    //} else {
-    //}
     wr_r128_default_offset(dev, 0x0);
     wr_r128_default_pitch(dev, X_RES / 8);
 
