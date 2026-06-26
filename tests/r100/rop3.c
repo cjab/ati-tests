@@ -2,17 +2,6 @@
 #include "../../ati/ati.h"
 #include "../test.h"
 
-// clang-format off
-#define GMC_SRC_DATATYPE_COLOR          0x00003000
-#define GMC_SRC_SOURCE_MEMORY           0x02000000
-#define GMC_DST_32BPP                   0x00000600
-#define GMC_ROP3_SRCCOPY                0x00cc0000
-#define GMC_BRUSH_NONE                  0x000000f0
-#define GMC_BRUSH_SOLIDCOLOR            0x000000d0
-#define GMC_DST_PITCH_OFFSET_LEAVE      0x00000002
-#define GMC_BYTE_LSB_TO_MSB             0x00004000
-// clang-format on
-
 static void
 draw_box(ati_device_t *dev, int size, int border, int x0, int y0)
 {

@@ -2,17 +2,6 @@
 #include "../../ati/ati.h"
 #include "../test.h"
 
-// clang-format off
-#define GMC_SRC_DATATYPE_COLOR          0x00030000
-#define GMC_SRC_SOURCE_HOST_DATA        0x03000000
-#define GMC_DST_32BPP                   0x00000600
-#define GMC_ROP3_SRCCOPY                0x00cc0000
-#define GMC_BRUSH_NONE                  0x000000f0
-#define GMC_BRUSH_SOLIDCOLOR            0x000000d0
-#define GMC_DST_PITCH_OFFSET_LEAVE      0x00000002
-#define GMC_BYTE_LSB_TO_MSB             0x00004000
-// clang-format on
-
 static uint32_t
 mono_box_word(int size, int border, int word_index)
 {
@@ -100,8 +89,9 @@ draw_color_box(ati_device_t *dev, int size, int border)
 }
 
 bool
-test_r128_host_data_32x32(ati_device_t *dev)
+test_r100_host_data_32x32(ati_device_t *dev)
 {
+    uint32_t pitch_64 = (X_RES * BYPP) / 64;
     uint32_t red = 0x00ff0000;
     uint32_t green = 0x0000ff00;
     unsigned width = 32;
@@ -112,13 +102,13 @@ test_r128_host_data_32x32(ati_device_t *dev)
     wr_dp_src_frgd_clr(dev, red);
     wr_dp_src_bkgd_clr(dev, green);
 
-    wr_r128_default_offset(dev, 0x0);
-    wr_r128_default_pitch(dev, 0x50);
+    wr_r100_default_pitch_offset(dev, pitch_64 << R100_DEFAULT_PITCH_SHIFT);
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
 
-    wr_r128_dp_gui_master_cntl(dev, GMC_BRUSH_NONE | GMC_DST_32BPP |
-        GMC_BYTE_LSB_TO_MSB | GMC_ROP3_SRCCOPY | GMC_SRC_SOURCE_HOST_DATA);
+    wr_r100_dp_gui_master_cntl(dev,
+        R100_GMC_BRUSH_DATATYPE_SOLIDCOLOR_ALT | R100_GMC_DST_DATATYPE_ARGB_8888 |
+        R100_GMC_BYTE_PIX_ORDER | R100_GMC_ROP3_SRCCOPY | R100_GMC_SRC_SOURCE_HOST_DATA);
 
     wr_dst_x_y(dev, 0x0);
     wr_dst_width_height(dev, (width << 16) | height);
@@ -191,8 +181,9 @@ test_r128_host_data_32x32(ati_device_t *dev)
 // not aligned with either the 128-bit accumulator or the
 // 32-bit writes to HOST_DATA.
 bool
-test_r128_host_data_mono_is_bit_packed(ati_device_t *dev)
+test_r100_host_data_mono_is_bit_packed(ati_device_t *dev)
 {
+    uint32_t pitch_64 = (X_RES * BYPP) / 64;
     uint32_t red = 0x00ff0000;
     uint32_t green = 0x0000ff00;
     unsigned width = 2;
@@ -203,13 +194,13 @@ test_r128_host_data_mono_is_bit_packed(ati_device_t *dev)
     wr_dp_src_frgd_clr(dev, red);
     wr_dp_src_bkgd_clr(dev, green);
 
-    wr_r128_default_offset(dev, 0x0);
-    wr_r128_default_pitch(dev, 0x50);
+    wr_r100_default_pitch_offset(dev, pitch_64 << R100_DEFAULT_PITCH_SHIFT);
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
 
-    wr_r128_dp_gui_master_cntl(dev, GMC_BRUSH_NONE | GMC_DST_32BPP |
-        GMC_BYTE_LSB_TO_MSB | GMC_ROP3_SRCCOPY | GMC_SRC_SOURCE_HOST_DATA);
+    wr_r100_dp_gui_master_cntl(dev,
+        R100_GMC_BRUSH_DATATYPE_SOLIDCOLOR_ALT | R100_GMC_DST_DATATYPE_ARGB_8888 |
+        R100_GMC_BYTE_PIX_ORDER | R100_GMC_ROP3_SRCCOPY | R100_GMC_SRC_SOURCE_HOST_DATA);
 
     wr_dst_x_y(dev, 0x0);
     wr_dst_width_height(dev, (width << 16) | height);
@@ -221,13 +212,14 @@ test_r128_host_data_mono_is_bit_packed(ati_device_t *dev)
 }
 
 bool
-test_r128_host_data_morphos(ati_device_t *dev)
+test_r100_host_data_morphos(ati_device_t *dev)
 {
+    uint32_t pitch_64 = (X_RES * BYPP) / 64;
+
     ati_screen_clear(dev, 0);
     // Adjusted from MorphOS output for 640x480 screen
-    wr_dst_offset(dev, 0x0);
-    wr_dst_pitch(dev, 0x50);  // 640 pixels at 32bpp
-    wr_r128_dp_datatype(dev, 0x6);  // 32bpp
+    wr_r100_default_pitch_offset(dev, pitch_64 << R100_DEFAULT_PITCH_SHIFT);
+    wr_r100_dp_datatype(dev, 0x6);  // 32bpp
     wr_dp_mix(dev, 0xcc0300);  // SRCCOPY
 
     wr_sc_top_left(dev, 0x0);
@@ -264,14 +256,15 @@ do_clipping(ati_device_t *dev, int margin, int size, int border,
     const char *hdir_str = (hdir == LEFT_TO_RIGHT) ? "ltr" : "rtl";
     const char *vdir_str = (vdir == TOP_TO_BOTTOM) ? "ttb" : "btt";
     int clip = 3;
+    // NOTE: sc_{bottom,right} are exclusive for r100
     int top            = margin;
     int left           = margin;
-    int bottom         = margin + size - 1;
-    int right          = margin + size - 1;
+    int bottom         = margin + size;
+    int right          = margin + size;
     int top_clipped    = margin + clip;
     int left_clipped   = margin + clip;
-    int bottom_clipped = margin + size - 1 - clip;
-    int right_clipped  = margin + size - 1 - clip;
+    int bottom_clipped = margin + size - clip;
+    int right_clipped  = margin + size - clip;
     uint32_t dst_width_height = (size << 16) | size;
     uint32_t dp_cntl = (hdir == LEFT_TO_RIGHT ? 0x1 : 0x0) |
                        (vdir == TOP_TO_BOTTOM ? 0x2 : 0x0);
@@ -289,6 +282,11 @@ do_clipping(ati_device_t *dev, int margin, int size, int border,
         {"clip_top_bottom", top_clipped, left,         bottom_clipped, right},
         {"clip_all",        top_clipped, left_clipped, bottom_clipped, right_clipped},
     };
+
+    wr_r100_dp_gui_master_cntl(dev,
+        R100_GMC_BRUSH_DATATYPE_SOLIDCOLOR_ALT | R100_GMC_DST_DATATYPE_ARGB_8888 |
+        R100_GMC_DST_CLIPPING | R100_GMC_SRC_DATATYPE_MONO | R100_GMC_BYTE_PIX_ORDER |
+        R100_GMC_ROP3_SRCCOPY | R100_GMC_SRC_SOURCE_HOST_DATA);
 
     wr_dp_cntl(dev, dp_cntl);
     wr_dst_y_x(dev, dst_y_x);
@@ -319,28 +317,28 @@ do_clipping(ati_device_t *dev, int margin, int size, int border,
     return true;
 }
 
-static void
-setup_draw_defaults(ati_device_t *dev) {
+void setup_draw_defaults(ati_device_t *dev) {
     static const uint32_t BORDER = 0x00cc3355;
     static const uint32_t TRIANGLE_FILL = 0x0055cc33;
+    uint32_t pitch_64 = (X_RES * BYPP) / 64;
 
     /* Common setup */
     wr_dst_offset(dev, 0x0);
-    wr_dst_pitch(dev, 0x50);           /* 640 pixels / 8 = 80 = 0x50 */
-    wr_r128_dp_datatype(dev, 0x40000006);   /* 32bpp + LSB_TO_MSB byte order */
+    wr_dst_pitch(dev, X_RES * BYPP);           /* 640 pixels / 8 = 80 = 0x50 */
+
+    wr_r100_dp_datatype(dev, 0x40000006);   /* 32bpp + LSB_TO_MSB byte order */
     wr_dp_mix(dev, 0xcc0300);          /* SRCCOPY + HOST_DATA source */
     wr_dp_src_frgd_clr(dev, BORDER);
     wr_dp_src_bkgd_clr(dev, TRIANGLE_FILL);
 
-    wr_r128_default_offset(dev, 0x0);
-    wr_r128_default_pitch(dev, 0x50);
+    wr_r100_default_pitch_offset(dev, pitch_64 << R100_DEFAULT_PITCH_SHIFT);
     wr_default_sc_bottom_right(dev, 0x1fff1fff);
     wr_dp_write_msk(dev, 0xffffffff);
     wr_dst_y_x(dev, 0x0);
 }
 
 bool
-test_r128_host_data_clipping_32x32(ati_device_t *dev)
+test_r100_host_data_clipping_32x32(ati_device_t *dev)
 {
     int margin = 10;
     int size = 32;
@@ -364,7 +362,7 @@ test_r128_host_data_clipping_32x32(ati_device_t *dev)
 }
 
 bool
-test_r128_host_data_clipping_48x48(ati_device_t *dev)
+test_r100_host_data_clipping_48x48(ati_device_t *dev)
 {
     int margin = 10;
     int size = 48;
@@ -381,7 +379,7 @@ test_r128_host_data_clipping_48x48(ati_device_t *dev)
 }
 
 bool
-test_r128_host_data_color_32x32(ati_device_t *dev)
+test_r100_host_data_color_32x32(ati_device_t *dev)
 {
     //int margin = 10;
     int size = 32;
@@ -391,7 +389,7 @@ test_r128_host_data_color_32x32(ati_device_t *dev)
     setup_draw_defaults(dev);
 
     /* Set src_datatype to color */
-    wr_r128_dp_datatype(dev, 0x40030006);
+    wr_r100_dp_datatype(dev, 0x40030006);
 
     wr_dp_cntl(dev, 0x3);  // L->R, T->B
     wr_sc_top_left(dev, 0);
@@ -415,7 +413,7 @@ test_r128_host_data_color_32x32(ati_device_t *dev)
  * misbehaving drivers, which have not been encountered in the wild.
  */
 //bool
-//test_r128_host_data_has_a_256_bit_buffer(ati_device_t *dev)
+//test_r100_host_data_has_a_256_bit_buffer(ati_device_t *dev)
 //{
 //    uint32_t red = 0x00ff0000;
 //    uint32_t green = 0x0000ff00;
@@ -425,13 +423,13 @@ test_r128_host_data_color_32x32(ati_device_t *dev)
 //    wr_dp_src_frgd_clr(dev, red);
 //    wr_dp_src_bkgd_clr(dev, green);
 //
-//    wr_r128_default_offset(dev, 0x0);
-//    wr_r128_default_pitch(dev, 0x50);
+//    wr_r100_default_offset(dev, 0x0);
+//    wr_r100_default_pitch(dev, 0x50);
 //    wr_default_sc_bottom_right(dev, 0x1fff1fff);
 //    wr_dp_write_msk(dev, 0xffffffff);
 //
-//    wr_r128_dp_gui_master_cntl(dev, R128_GMC_BRUSH_NONE | R128_GMC_DST_32BPP |
-//        R128_GMC_BYTE_LSB_TO_MSB | R128_GMC_ROP3_SRCCOPY | R128_GMC_SRC_SOURCE_HOST_DATA);
+//    wr_r100_dp_gui_master_cntl(dev, r100_GMC_BRUSH_NONE | r100_GMC_DST_32BPP |
+//        r100_GMC_BYTE_LSB_TO_MSB | r100_GMC_ROP3_SRCCOPY | r100_GMC_SRC_SOURCE_HOST_DATA);
 //
 //    // Clear the entire 256-bit host_data buffer.
 //    // This allows us to compare things deterministically
@@ -487,7 +485,7 @@ test_r128_host_data_color_32x32(ati_device_t *dev)
 //}
 
 bool
-test_r128_host_data_draw_after_pan(ati_device_t *dev)
+test_r100_host_data_draw_after_pan(ati_device_t *dev)
 {
     int size = 32;
     int border = 4;
@@ -496,14 +494,16 @@ test_r128_host_data_draw_after_pan(ati_device_t *dev)
     setup_draw_defaults(dev);
 
     /* Set src_datatype to color */
-    wr_r128_dp_datatype(dev, 0x40030006);
+    wr_r100_dp_datatype(dev, 0x40030006);
 
     // Visible width is 640px from initial modesetting
     // Setup virtual desktop: 800px wide
-    uint32_t virtual_pitch = 800 / 8;
-    wr_r128_crtc_pitch(dev, virtual_pitch);
-    wr_r128_default_pitch(dev, virtual_pitch);
-    wr_dst_pitch(dev, virtual_pitch);
+    uint32_t bypp = 4;
+    uint32_t virtual_pitch = 800 * bypp / 64;
+    wr_r100_crtc_pitch(dev, virtual_pitch);
+    wr_r100_default_pitch_offset(dev, virtual_pitch);
+    // dst_pitch is in bytes
+    wr_dst_pitch(dev, virtual_pitch * 64);
     wr_crtc_offset(dev, 0);
 
     //wr_dst_x(dev, 0x0);
@@ -532,16 +532,16 @@ test_r128_host_data_draw_after_pan(ati_device_t *dev)
 }
 
 void
-register_r128_host_data_tests(void)
+register_r100_host_data_tests(void)
 {
-    REGISTER_TEST_FOR(test_r128_host_data_32x32, "host_data 32x32", CHIP_R128);
-    REGISTER_TEST_FOR(test_r128_host_data_mono_is_bit_packed,
-                  "host_data mono is bit packed", CHIP_R128);
-    REGISTER_TEST_FOR(test_r128_host_data_morphos, "test host data morphos", CHIP_R128);
-    REGISTER_TEST_FOR(test_r128_host_data_clipping_32x32, "host_data clipping 32x32", CHIP_R128);
-    REGISTER_TEST_FOR(test_r128_host_data_clipping_48x48, "host_data clipping 48x48", CHIP_R128);
-    REGISTER_TEST_FOR(test_r128_host_data_color_32x32, "host_data color 32x32", CHIP_R128);
-    //REGISTER_TEST_FOR(test_r128_host_data_has_a_256_bit_buffer,
-    //              "host_data has a 256-bit buffer", CHIP_R128);
-    REGISTER_TEST_FOR(test_r128_host_data_draw_after_pan, "host_data draw after pan", CHIP_R128);
+    REGISTER_TEST_FOR(test_r100_host_data_32x32, "host_data 32x32", CHIP_R100);
+    REGISTER_TEST_FOR(test_r100_host_data_mono_is_bit_packed,
+                  "host_data mono is bit packed", CHIP_R100);
+    REGISTER_TEST_FOR(test_r100_host_data_morphos, "test host data morphos", CHIP_R100);
+    REGISTER_TEST_FOR(test_r100_host_data_clipping_32x32, "host_data clipping 32x32", CHIP_R100);
+    REGISTER_TEST_FOR(test_r100_host_data_clipping_48x48, "host_data clipping 48x48", CHIP_R100);
+    REGISTER_TEST_FOR(test_r100_host_data_color_32x32, "host_data color 32x32", CHIP_R100);
+    //REGISTER_TEST_FOR(test_r100_host_data_has_a_256_bit_buffer,
+    //              "host_data has a 256-bit buffer", CHIP_r100);
+    REGISTER_TEST_FOR(test_r100_host_data_draw_after_pan, "host_data draw after pan", CHIP_R100);
 }

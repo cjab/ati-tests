@@ -133,6 +133,7 @@ extern void register_r100_mc_tests(void);
 extern void register_r100_clipping_tests(void);
 extern void register_r100_rop3_tests(void);
 extern void register_r100_pitch_offset_cntl_tests(void);
+extern void register_r100_host_data_tests(void);
 
 void
 register_all_tests(void)
@@ -152,6 +153,7 @@ register_all_tests(void)
     register_r100_clipping_tests();
     register_r100_rop3_tests();
     register_r100_pitch_offset_cntl_tests();
+    register_r100_host_data_tests();
 }
 
 int
