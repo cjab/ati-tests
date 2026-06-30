@@ -714,11 +714,11 @@ registers:
     group: gui_source
 
   SRC_X:
-    offset: 0x141c
+    offset: 0x1414
     group: gui_source
 
   SRC_Y:
-    offset: 0x1420
+    offset: 0x1418
     group: gui_source
 
   SRC_X_Y:
