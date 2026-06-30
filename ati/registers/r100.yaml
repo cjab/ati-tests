@@ -139,6 +139,55 @@ registers:
   # ===========================================================================
   # Datapath / Drawing Engine Registers
   # ===========================================================================
+  SRC_PITCH_OFFSET:
+    offset: 0x1428
+    group: datapath
+    ref: "M6RG:2-91"
+    flags: [no_read]
+    fields:
+      SRC_OFFSET:
+        bits: [0, 21]
+        description: |
+          Source Offset in Units of 1KB, 0 to (4GB-1KB). When a
+          write to this register occurs, bits 9: 0 of source offset
+          will be set to 0. (mirror bits 10:31 of SRC_OFFSET:SRC_OFFSET)
+      SRC_PITCH:
+        bits: [22, 29]
+        description: |
+          Pitch in units of 64 bytes, 0 to 16320 bytes across.
+          (mirror bits 6:13 of SRC_PITCH:SRC_PITCH)
+      SRC_TILE:
+        bit: 30
+        description: |
+          0: linear 1: tiled (tiled imposes additional restrictions on
+          pitch and offset)
+    reserved:
+      - bit: 31
+
+  DST_PITCH_OFFSET:
+    offset: 0x142c
+    group: datapath
+    ref: "M6RG:2-91"
+    flags: [no_read]
+    fields:
+      DST_OFFSET:
+        bits: [0, 21]
+        description: |
+          Destination Offset in Units of 1KB, 0 to (4GB-1KB). When a
+          write to this register occurs, bits 9: 0 of destination offset
+          will be set to 0. (mirror bits 10:31 of DST_OFFSET:DST_OFFSET)
+      DST_PITCH:
+        bits: [22, 29]
+        description: |
+          Pitch in units of 64 bytes, 0 to 16320 bytes across.
+          (mirror bits 6:13 of DST_PITCH:DST_PITCH)
+      DST_TILE:
+        bits: [30, 31]
+        description: |
+          0: linear 1: tiled (tiled imposes additional restrictions on
+          pitch and offset) 2: microtiled 3: tiled and microtiled Write 9:
+          0 to E2_DST_TILE DST_PITCH_OFFSET[ W/R]
+
   DP_GUI_MASTER_CNTL:
     offset: 0x146c
     group: datapath
