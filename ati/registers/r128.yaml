@@ -30,6 +30,22 @@ registers:
   # ===========================================================================
   # Datapath / Drawing Engine Registers
   # ===========================================================================
+  SRC_PITCH_OFFSET:
+    offset: 0x1428
+    group: datapath
+    ref: "RRG:3-146"
+    flags: [no_read]
+    fields:
+      SRC_OFFSET:
+        bits: [0, 20]
+        description: 32 byte-aligned source offset address.
+      SRC_PITCH:
+        bits: [21, 30]
+        description: Source pitch
+      SRC_TILE:
+        bit: 31
+        description: Source tile bit
+
   DP_GUI_MASTER_CNTL:
     offset: 0x146c
     group: datapath

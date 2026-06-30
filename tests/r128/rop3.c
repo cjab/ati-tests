@@ -78,6 +78,42 @@ test_r128_rop3_16x16(ati_device_t *dev)
 }
 
 bool
+test_r128_rop3_16x16_with_offset(ati_device_t *dev)
+{
+    ati_screen_clear(dev, 0);
+
+    int size = 16;
+    int border = 2;
+
+    wr_src_x_y(dev, 0x0);
+
+    wr_r128_default_offset(dev, 0xff * 1024);
+    wr_r128_src_pitch_offset(dev, 0x50 << 21);
+    wr_r128_default_pitch(dev, 0x50);
+
+    draw_box(dev, size, border, 0, 0);
+
+    wr_default_sc_bottom_right(dev, 0x1fff1fff);
+    wr_dp_write_msk(dev, 0xffffffff);
+
+    wr_r128_dp_gui_master_cntl(dev,
+        R128_GMC_SRC_PITCH_OFFSET_CNTL |
+        GMC_BRUSH_NONE | GMC_DST_32BPP | GMC_SRC_DATATYPE_COLOR |
+        GMC_BYTE_LSB_TO_MSB | GMC_ROP3_SRCCOPY | GMC_SRC_SOURCE_MEMORY);
+
+    wr_dst_x(dev, 0x10);
+    wr_dst_y(dev, 0x10);
+    wr_dst_width_height(dev, (size << 16) | size);
+
+    ASSERT_TRUE(ati_screen_compare_fixture(dev, "rop3_color_16x16_with_offset"));
+    /* The dst_x and dst_y registers are not updated */
+    ASSERT_EQ(rd_dst_x(dev), 0x10);
+    ASSERT_EQ(rd_dst_y(dev), 0x10);
+
+    return true;
+}
+
+bool
 test_r128_overlapping_mem_blit(ati_device_t *dev)
 {
     int size = 32;
@@ -243,6 +279,7 @@ void
 register_r128_rop3_tests(void)
 {
     REGISTER_TEST_FOR(test_r128_rop3_16x16, "r128 rop3 16x16", CHIP_R128);
+    REGISTER_TEST_FOR(test_r128_rop3_16x16_with_offset, "r128 rop3 16x16 with offset", CHIP_R128);
     REGISTER_TEST_FOR(test_r128_overlapping_mem_blit, "r128 overlapping mem blit", CHIP_R128);
     REGISTER_TEST_FOR(test_r128_mem_blit_clipping, "r128 mem blit clipping", CHIP_R128);
 }
