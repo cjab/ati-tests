@@ -487,6 +487,13 @@ registers:
       RB_NO_UPDATE:
         bit: 27
         description: "0=Write read pointer to host memory, 1=Do not write."
+      RB_RPTR_WR_ENA:
+        bit: 31
+        description: |
+          Ring Buffer Read Pointer Write Transfer Enable. When set
+          the contents of the CP_RB_RPTR_WR register is trans-
+          ferred to the active read pointer (CP_RB_RPTR) whenever
+          the CP_RB_WPTR register is written. Default=0
 
   CP_RB_BASE:
     offset: 0x0700
