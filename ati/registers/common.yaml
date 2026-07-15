@@ -608,6 +608,19 @@ registers:
     group: scissor
     description: Inclusive on r128 and exclusive on r100
 
+  DEFAULT_SC_BOTTOM_RIGHT:
+    offset: 0x16e8
+    group: datapath
+    ref: "RRG:2-119"
+    fields:
+      DEFAULT_SC_RIGHT:
+        bits: [0, 13]
+      DEFAULT_SC_BOTTOM:
+        bits: [16, 29]
+    reserved:
+      - bits: [14, 15]
+      - bits: [30, 31]
+
   SC_TOP_LEFT:
     offset: 0x16ec
     group: scissor
