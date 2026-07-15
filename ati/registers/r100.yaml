@@ -548,6 +548,29 @@ registers:
       RB_RPTR_WR:
         bits: [0, 22]
 
+  CP_IB_BASE:
+    offset: 0x738
+    group: misc
+    ref: "M6RG:2-128"
+    fields:
+      IB_BASE:
+        bits: [2, 31]
+    reserved:
+      - bits: [0, 1]
+
+  CP_IB_BUFSZ:
+    offset: 0x73c
+    group: misc
+    ref: "M6RG:2-128"
+    fields:
+      IB_BUFSZ:
+        bits: [0, 22]
+        description: |
+          Indirect Buffer Size. This size is expressed in dwords. This  field is
+          an initiator to begin fetching commands from the Indirect Buffer.
+    reserved:
+      - bits: [22, 31]
+
   CP_CSQ_CNTL:
     offset: 0x0740
     group: misc
