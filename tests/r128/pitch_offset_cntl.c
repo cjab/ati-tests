@@ -97,6 +97,93 @@ test_dst_pitch_offset_cntl_latching(ati_device_t *dev)
     return true;
 }
 
+bool
+test_dst_clipping_latching(ati_device_t *dev)
+{
+    uint32_t r128_dp_gui_master_cntl;
+
+    // Setting initial state
+    wr_r128_dp_gui_master_cntl(dev, 0x0);
+    wr_r128_default_sc_bottom_right(dev, 0x22221111);
+    wr_sc_top_left(dev, 0x000a000b);
+    wr_sc_bottom_right(dev, 0x000c000d);
+
+    ASSERT_EQ(rd_r128_dp_gui_master_cntl(dev), 0x00000000);
+    ASSERT_EQ(rd_r128_default_sc_bottom_right(dev), 0x22221111);
+    ASSERT_EQ(rd_sc_top(dev), 0x0000000a);
+    ASSERT_EQ(rd_sc_left(dev), 0x0000000b);
+    ASSERT_EQ(rd_sc_bottom(dev), 0x0000000c);
+    ASSERT_EQ(rd_sc_right(dev), 0x0000000d);
+
+    // Set GMC_DST_CLIPPING to default
+    r128_dp_gui_master_cntl = rd_r128_dp_gui_master_cntl(dev);
+    wr_r128_dp_gui_master_cntl(dev, r128_dp_gui_master_cntl & ~R128_GMC_DST_CLIPPING);
+
+    // sc_top, sc_left, sc_bottom and sc_right should latch default
+    ASSERT_EQ(rd_r128_dp_gui_master_cntl(dev), 0x00000000);
+    ASSERT_EQ(rd_r128_default_sc_bottom_right(dev), 0x22221111);
+    ASSERT_EQ(rd_sc_top(dev), 0x00000000);
+    ASSERT_EQ(rd_sc_left(dev), 0x00000000);
+    ASSERT_EQ(rd_sc_bottom(dev), 0x00002222);
+    ASSERT_EQ(rd_sc_right(dev), 0x00001111);
+
+    // Set GMC_DST_CLIPPING to leave alone
+    r128_dp_gui_master_cntl = rd_r128_dp_gui_master_cntl(dev);
+    wr_r128_dp_gui_master_cntl(dev, r128_dp_gui_master_cntl |
+                               R128_GMC_DST_CLIPPING);
+
+    // src_offset and src_pitch should remain default
+    ASSERT_EQ(rd_r128_dp_gui_master_cntl(dev),
+              r128_dp_gui_master_cntl | R128_GMC_DST_CLIPPING);
+    ASSERT_EQ(rd_r128_default_sc_bottom_right(dev), 0x22221111);
+    ASSERT_EQ(rd_sc_top(dev), 0x00000000);
+    ASSERT_EQ(rd_sc_left(dev), 0x00000000);
+    ASSERT_EQ(rd_sc_bottom(dev), 0x00002222);
+    ASSERT_EQ(rd_sc_right(dev), 0x00001111);
+
+    return true;
+}
+
+bool
+test_src_clipping_latching(ati_device_t *dev)
+{
+    uint32_t r128_dp_gui_master_cntl;
+
+    // Setting initial state
+    wr_r128_dp_gui_master_cntl(dev, 0x0);
+    wr_r128_default_sc_bottom_right(dev, 0x22221111);
+    wr_src_sc_bottom_right(dev, 0x000c000d);
+
+    ASSERT_EQ(rd_r128_dp_gui_master_cntl(dev), 0x00000000);
+    ASSERT_EQ(rd_r128_default_sc_bottom_right(dev), 0x22221111);
+    ASSERT_EQ(rd_src_sc_bottom(dev), 0x0000000c);
+    ASSERT_EQ(rd_src_sc_right(dev), 0x0000000d);
+
+    // Set GMC_DST_CLIPPING to default
+    r128_dp_gui_master_cntl = rd_r128_dp_gui_master_cntl(dev);
+    wr_r128_dp_gui_master_cntl(dev, r128_dp_gui_master_cntl & ~R128_GMC_DST_CLIPPING);
+
+    // sc_top, sc_left, sc_bottom and sc_right should latch default
+    ASSERT_EQ(rd_r128_dp_gui_master_cntl(dev), 0x00000000);
+    ASSERT_EQ(rd_r128_default_sc_bottom_right(dev), 0x22221111);
+    ASSERT_EQ(rd_src_sc_bottom(dev), 0x00002222);
+    ASSERT_EQ(rd_src_sc_right(dev), 0x00001111);
+
+    // Set GMC_DST_CLIPPING to leave alone
+    r128_dp_gui_master_cntl = rd_r128_dp_gui_master_cntl(dev);
+    wr_r128_dp_gui_master_cntl(dev, r128_dp_gui_master_cntl |
+                               R128_GMC_DST_CLIPPING);
+
+    // src_offset and src_pitch should remain default
+    ASSERT_EQ(rd_r128_dp_gui_master_cntl(dev),
+              r128_dp_gui_master_cntl | R128_GMC_DST_CLIPPING);
+    ASSERT_EQ(rd_r128_default_sc_bottom_right(dev), 0x22221111);
+    ASSERT_EQ(rd_src_sc_bottom(dev), 0x00002222);
+    ASSERT_EQ(rd_src_sc_right(dev), 0x00001111);
+
+    return true;
+}
+
 void
 register_r128_pitch_offset_cntl_tests(void)
 {
@@ -104,4 +191,8 @@ register_r128_pitch_offset_cntl_tests(void)
                   "SRC pitch offset latches", CHIP_R128);
     REGISTER_TEST_FOR(test_dst_pitch_offset_cntl_latching,
                   "DST pitch offset latches", CHIP_R128);
+    REGISTER_TEST_FOR(test_dst_clipping_latching,
+                  "DST clipping latches", CHIP_R128);
+    REGISTER_TEST_FOR(test_src_clipping_latching,
+                  "SRC clipping latches", CHIP_R128);
 }
