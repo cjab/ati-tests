@@ -386,6 +386,38 @@ bool test_r100_ring_buffer_setup(ati_device_t *dev) {
     return true;
 }
 
+bool
+test_r100_indirect_buffer(ati_device_t *dev) {
+    wr_bios_0_scratch(dev, 0);
+    wr_bios_1_scratch(dev, 0);
+    wr_bios_2_scratch(dev, 0);
+
+    ati_init_cce_engine(dev, R100_CSQ_MODE_PIO_INDBM);
+    ati_r100_cce_wait_for_idle(dev);
+    uint32_t gart_addr = ati_r100_init_pci_gart(dev);
+    ati_r100_cce_wait_for_idle(dev);
+
+    ASSERT_EQ(rd_bios_0_scratch(dev), 0);
+
+    gart_mem[0] = CCE_PKT0(BIOS_0_SCRATCH, 1);
+    gart_mem[1] = 0xdeadbeef;
+    gart_mem[2] = CCE_PKT0(BIOS_1_SCRATCH, 2);
+    gart_mem[3] = 0xbeefcafe;
+    gart_mem[4] = 0xfeedbeef;
+    gart_mem[5] = CCE_PKT2();
+    gart_mem[6] = CCE_PKT2();
+    gart_mem[7] = CCE_PKT2();
+    wr_r100_cp_ib_base(dev, gart_addr);
+    wr_r100_cp_ib_bufsz(dev, 8);
+    ati_r100_cce_wait_for_idle(dev);
+
+    ASSERT_EQ(rd_bios_0_scratch(dev), 0xdeadbeef);
+    ASSERT_EQ(rd_bios_1_scratch(dev), 0xbeefcafe);
+    ASSERT_EQ(rd_bios_2_scratch(dev), 0xfeedbeef);
+
+    return true;
+}
+
 void
 register_r100_cce_tests(void)
 {
@@ -395,4 +427,5 @@ register_r100_cce_tests(void)
     REGISTER_TEST_FOR(test_r100_cce_mm_indirect, "cce MM_INDEX and MM_DATA", CHIP_R100);
     REGISTER_TEST_FOR(test_r100_microcode, "microcode", CHIP_R100);
     REGISTER_TEST_FOR(test_r100_ring_buffer_setup, "ring buffer setup", CHIP_R100);
+    REGISTER_TEST_FOR(test_r100_indirect_buffer, "indirect buffer", CHIP_R100);
 }
